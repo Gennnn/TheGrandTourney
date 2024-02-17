@@ -1,0 +1,797 @@
+main-schematics:
+  aristocracy_1_1:
+    schematic-name: aristocracy_1_1
+    name: a_1_1
+    x-size: 1
+    z-size: 1
+    district: a
+    repeatable: true
+  aristocracy_1_2:
+    schematic-name: aristocracy_1_2
+    name: a_1_2
+    x-size: 1
+    z-size: 2
+    district: a
+    repeatable: true
+  aristocracy_1_3:
+    schematic-name: aristocracy_1_3
+    name: a_1_3
+    x-size: 1
+    z-size: 3
+    district: a
+    repeatable: true
+  aristocracy_1_4:
+    schematic-name: aristocracy_1_4
+    name: a_1_4
+    x-size: 1
+    z-size: 4
+    district: a
+    repeatable: true
+  aristocracy_1_5:
+    schematic-name: aristocracy_1_5
+    name: a_1_5
+    x-size: 1
+    z-size: 5
+    district: a
+    repeatable: true
+  aristocracy_2_1:
+    schematic-name: aristocracy_2_1
+    name: a_2_1
+    x-size: 2
+    z-size: 1
+    district: a
+    repeatable: true
+  aristocracy_2_2:
+    schematic-name: aristocracy_2_2
+    name: a_2_2
+    x-size: 2
+    z-size: 2
+    district: a
+    repeatable: true
+  aristocracy_2_3:
+    schematic-name: aristocracy_2_3
+    name: a_2_3
+    x-size: 2
+    z-size: 3
+    district: a
+    repeatable: true
+  aristocracy_2_4:
+    schematic-name: aristocracy_2_4
+    name: a_2_4
+    x-size: 2
+    z-size: 4
+    district: a
+    repeatable: true
+  aristocracy_2_5:
+    schematic-name: aristocracy_2_5
+    name: a_2_5
+    x-size: 2
+    z-size: 5
+    district: a
+    repeatable: true
+  aristocracy_3_1:
+    schematic-name: aristocracy_3_1
+    name: a_3_1
+    x-size: 3
+    z-size: 1
+    district: a
+    repeatable: true
+  aristocracy_3_2:
+    schematic-name: aristocracy_3_2
+    name: a_3_2
+    x-size: 3
+    z-size: 2
+    district: a
+    repeatable: true
+  aristocracy_3_3:
+    schematic-name: aristocracy_3_3
+    name: a_3_3
+    x-size: 3
+    z-size: 3
+    district: a
+    repeatable: true
+  aristocracy_3_4:
+    schematic-name: aristocracy_3_4
+    name: a_3_4
+    x-size: 3
+    z-size: 4
+    district: a
+    repeatable: true
+  aristocracy_3_5:
+    schematic-name: aristocracy_3_5
+    name: a_3_1
+    x-size: 3
+    z-size: 5
+    district: a
+    repeatable: true
+  aristocracy_4_1:
+    schematic-name: aristocracy_4_1
+    name: a_4_1
+    x-size: 4
+    z-size: 1
+    district: a
+    repeatable: true
+  aristocracy_4_2:
+    schematic-name: aristocracy_4_2
+    name: a_4_2
+    x-size: 4
+    z-size: 2
+    district: a
+    repeatable: true
+  aristocracy_4_3:
+    schematic-name: aristocracy_4_3
+    name: a_4_3
+    x-size: 4
+    z-size: 3
+    district: a
+    repeatable: true
+  aristocracy_4_4:
+    schematic-name: aristocracy_4_4
+    name: a_4_4
+    x-size: 4
+    z-size: 4
+    district: a
+    repeatable: true
+  aristocracy_4_5:
+    schematic-name: aristocracy_4_5
+    name: a_4_5
+    x-size: 4
+    z-size: 5
+    district: a
+    repeatable: true
+  aristocracy_5_1:
+    schematic-name: aristocracy_5_1
+    name: a_5_1
+    x-size: 5
+    z-size: 1
+    district: a
+    repeatable: true
+  aristocracy_5_2:
+    schematic-name: aristocracy_5_2
+    name: a_5_2
+    x-size: 5
+    z-size: 2
+    district: a
+    repeatable: true
+  aristocracy_5_3:
+    schematic-name: aristocracy_5_3
+    name: a_5_3
+    x-size: 5
+    z-size: 3
+    district: a
+    repeatable: true
+  aristocracy_5_4:
+    schematic-name: aristocracy_5_4
+    name: a_5_4
+    x-size: 5
+    z-size: 4
+    district: a
+    repeatable: true
+  aristocracy_5_5:
+    schematic-name: aristocracy_5_5
+    name: a_5_5
+    x-size: 5
+    z-size: 5
+    district: a
+    repeatable: true
+  aristocracy_6_6:
+    schematic-name: aristocracy_6_6
+    name: a_6_6
+    x-size: 6
+    z-size: 6
+    district: a
+    repeatable: true
+  aristocracy_7_7:
+    schematic-name: aristocracy_7_7
+    name: a_7_7
+    x-size: 7
+    z-size: 7
+    district: a
+    repeatable: true
+  aristocracy_8_8:
+    schematic-name: aristocracy_8_8
+    name: a_8_8
+    x-size: 8
+    z-size: 8
+    district: a
+    repeatable: true
+
+  farm_1_1:
+    schematic-name: farm_1_1
+    name: f_1_1
+    x-size: 1
+    z-size: 1
+    district: f
+    repeatable: true
+  farm_1_2:
+    schematic-name: farm_1_2
+    name: f_1_2
+    x-size: 1
+    z-size: 2
+    district: f
+    repeatable: true
+  farm_1_3:
+    schematic-name: farm_1_3
+    name: f_1_3
+    x-size: 1
+    z-size: 3
+    district: f
+    repeatable: true
+  farm_1_4:
+    schematic-name: farm_1_4
+    name: f_1_4
+    x-size: 1
+    z-size: 4
+    district: f
+    repeatable: true
+  farm_1_5:
+    schematic-name: farm_1_5
+    name: f_1_5
+    x-size: 1
+    z-size: 5
+    district: f
+    repeatable: true
+  farm_2_1:
+    schematic-name: farm_2_1
+    name: f_2_1
+    x-size: 2
+    z-size: 1
+    district: f
+    repeatable: true
+  farm_2_2:
+    schematic-name: farm_2_2
+    name: f_2_2
+    x-size: 2
+    z-size: 2
+    district: f
+    repeatable: true
+  farm_2_3:
+    schematic-name: farm_2_3
+    name: f_2_3
+    x-size: 2
+    z-size: 3
+    district: f
+    repeatable: true
+  farm_2_4:
+    schematic-name: farm_2_4
+    name: f_2_4
+    x-size: 2
+    z-size: 4
+    district: f
+    repeatable: true
+  farm_2_5:
+    schematic-name: farm_2_5
+    name: f_2_5
+    x-size: 2
+    z-size: 5
+    district: f
+    repeatable: true
+  farm_3_1:
+    schematic-name: farm_3_1
+    name: f_3_1
+    x-size: 3
+    z-size: 1
+    district: f
+    repeatable: true
+  farm_3_2:
+    schematic-name: farm_3_2
+    name: f_3_2
+    x-size: 3
+    z-size: 2
+    district: f
+    repeatable: true
+  farm_3_3:
+    schematic-name: farm_3_3
+    name: f_3_3
+    x-size: 3
+    z-size: 3
+    district: f
+    repeatable: true
+  farm_3_4:
+    schematic-name: farm_3_4
+    name: f_3_4
+    x-size: 3
+    z-size: 4
+    district: f
+    repeatable: true
+  farm_3_5:
+    schematic-name: farm_3_5
+    name: f_3_1
+    x-size: 3
+    z-size: 5
+    district: f
+    repeatable: true
+  farm_4_1:
+    schematic-name: farm_4_1
+    name: f_4_1
+    x-size: 4
+    z-size: 1
+    district: f
+    repeatable: true
+  farm_4_2:
+    schematic-name: farm_4_2
+    name: f_4_2
+    x-size: 4
+    z-size: 2
+    district: f
+    repeatable: true
+  farm_4_3:
+    schematic-name: farm_4_3
+    name: f_4_3
+    x-size: 4
+    z-size: 3
+    district: f
+    repeatable: true
+  farm_4_4:
+    schematic-name: farm_4_4
+    name: f_4_4
+    x-size: 4
+    z-size: 4
+    district: f
+    repeatable: true
+  farm_4_5:
+    schematic-name: farm_4_5
+    name: f_4_5
+    x-size: 4
+    z-size: 5
+    district: f
+    repeatable: true
+  farm_5_1:
+    schematic-name: farm_5_1
+    name: f_5_1
+    x-size: 5
+    z-size: 1
+    district: f
+    repeatable: true
+  farm_5_2:
+    schematic-name: farm_5_2
+    name: f_5_2
+    x-size: 5
+    z-size: 2
+    district: f
+    repeatable: true
+  farm_5_3:
+    schematic-name: farm_5_3
+    name: f_5_3
+    x-size: 5
+    z-size: 3
+    district: f
+    repeatable: true
+  farm_5_4:
+    schematic-name: farm_5_4
+    name: f_5_4
+    x-size: 5
+    z-size: 4
+    district: f
+    repeatable: true
+  farm_5_5:
+    schematic-name: farm_5_5
+    name: f_5_5
+    x-size: 5
+    z-size: 5
+    district: f
+    repeatable: true
+  farm_6_6:
+    schematic-name: farm_6_6
+    name: f_6_6
+    x-size: 6
+    z-size: 6
+    district: f
+    repeatable: true
+  farm_7_7:
+    schematic-name: farm_7_7
+    name: f_7_7
+    x-size: 7
+    z-size: 7
+    district: f
+    repeatable: true
+  farm_8_8:
+    schematic-name: farm_8_8
+    name: f_8_8
+    x-size: 8
+    z-size: 8
+    district: f
+    repeatable: true
+
+  slums_1_1:
+    schematic-name: slums_1_1
+    name: s_1_1
+    x-size: 1
+    z-size: 1
+    district: s
+    repeatable: true
+  slums_1_2:
+    schematic-name: slums_1_2
+    name: s_1_2
+    x-size: 1
+    z-size: 2
+    district: s
+    repeatable: true
+  slums_1_3:
+    schematic-name: slums_1_3
+    name: s_1_3
+    x-size: 1
+    z-size: 3
+    district: s
+    repeatable: true
+  slums_1_4:
+    schematic-name: slums_1_4
+    name: s_1_4
+    x-size: 1
+    z-size: 4
+    district: s
+    repeatable: true
+  slums_1_5:
+    schematic-name: slums_1_5
+    name: s_1_5
+    x-size: 1
+    z-size: 5
+    district: s
+    repeatable: true
+  slums_2_1:
+    schematic-name: slums_2_1
+    name: s_2_1
+    x-size: 2
+    z-size: 1
+    district: s
+    repeatable: true
+  slums_2_2:
+    schematic-name: slums_2_2
+    name: s_2_2
+    x-size: 2
+    z-size: 2
+    district: s
+    repeatable: true
+  slums_2_3:
+    schematic-name: slums_2_3
+    name: s_2_3
+    x-size: 2
+    z-size: 3
+    district: s
+    repeatable: true
+  slums_2_4:
+    schematic-name: slums_2_4
+    name: s_2_4
+    x-size: 2
+    z-size: 4
+    district: s
+    repeatable: true
+  slums_2_5:
+    schematic-name: slums_2_5
+    name: s_2_5
+    x-size: 2
+    z-size: 5
+    district: s
+    repeatable: true
+  slums_3_1:
+    schematic-name: slums_3_1
+    name: s_3_1
+    x-size: 3
+    z-size: 1
+    district: s
+    repeatable: true
+  slums_3_2:
+    schematic-name: slums_3_2
+    name: s_3_2
+    x-size: 3
+    z-size: 2
+    district: s
+    repeatable: true
+  slums_3_3:
+    schematic-name: slums_3_3
+    name: s_3_3
+    x-size: 3
+    z-size: 3
+    district: s
+    repeatable: true
+  slums_3_4:
+    schematic-name: slums_3_4
+    name: s_3_4
+    x-size: 3
+    z-size: 4
+    district: s
+    repeatable: true
+  slums_3_5:
+    schematic-name: slums_3_5
+    name: s_3_1
+    x-size: 3
+    z-size: 5
+    district: s
+    repeatable: true
+  slums_4_1:
+    schematic-name: slums_4_1
+    name: s_4_1
+    x-size: 4
+    z-size: 1
+    district: s
+    repeatable: true
+  slums_4_2:
+    schematic-name: slums_4_2
+    name: s_4_2
+    x-size: 4
+    z-size: 2
+    district: s
+    repeatable: true
+  slums_4_3:
+    schematic-name: slums_4_3
+    name: s_4_3
+    x-size: 4
+    z-size: 3
+    district: s
+    repeatable: true
+  slums_4_4:
+    schematic-name: slums_4_4
+    name: s_4_4
+    x-size: 4
+    z-size: 4
+    district: s
+    repeatable: true
+  slums_4_5:
+    schematic-name: slums_4_5
+    name: s_4_5
+    x-size: 4
+    z-size: 5
+    district: s
+    repeatable: true
+  slums_5_1:
+    schematic-name: slums_5_1
+    name: s_5_1
+    x-size: 5
+    z-size: 1
+    district: s
+    repeatable: true
+  slums_5_2:
+    schematic-name: slums_5_2
+    name: s_5_2
+    x-size: 5
+    z-size: 2
+    district: s
+    repeatable: true
+  slums_5_3:
+    schematic-name: slums_5_3
+    name: s_5_3
+    x-size: 5
+    z-size: 3
+    district: s
+    repeatable: true
+  slums_5_4:
+    schematic-name: slums_5_4
+    name: s_5_4
+    x-size: 5
+    z-size: 4
+    district: s
+    repeatable: true
+  slums_5_5:
+    schematic-name: slums_5_5
+    name: s_5_5
+    x-size: 5
+    z-size: 5
+    district: s
+    repeatable: true
+  slums_6_6:
+    schematic-name: slums_6_6
+    name: s_6_6
+    x-size: 6
+    z-size: 6
+    district: s
+    repeatable: true
+  slums_7_7:
+    schematic-name: slums_7_7
+    name: s_7_7
+    x-size: 7
+    z-size: 7
+    district: s
+    repeatable: true
+  slums_8_8:
+    schematic-name: slums_8_8
+    name: s_8_8
+    x-size: 8
+    z-size: 8
+    district: s
+    repeatable: true
+
+  port_1_1:
+    schematic-name: port_1_1
+    name: p_1_1
+    x-size: 1
+    z-size: 1
+    district: p
+    repeatable: true
+  port_1_2:
+    schematic-name: port_1_2
+    name: p_1_2
+    x-size: 1
+    z-size: 2
+    district: p
+    repeatable: true
+  port_1_3:
+    schematic-name: port_1_3
+    name: p_1_3
+    x-size: 1
+    z-size: 3
+    district: p
+    repeatable: true
+  port_1_4:
+    schematic-name: port_1_4
+    name: p_1_4
+    x-size: 1
+    z-size: 4
+    district: p
+    repeatable: true
+  port_1_5:
+    schematic-name: port_1_5
+    name: p_1_5
+    x-size: 1
+    z-size: 5
+    district: p
+    repeatable: true
+  port_2_1:
+    schematic-name: port_2_1
+    name: p_2_1
+    x-size: 2
+    z-size: 1
+    district: p
+    repeatable: true
+  port_2_2:
+    schematic-name: port_2_2
+    name: p_2_2
+    x-size: 2
+    z-size: 2
+    district: p
+    repeatable: true
+  port_2_3:
+    schematic-name: port_2_3
+    name: p_2_3
+    x-size: 2
+    z-size: 3
+    district: p
+    repeatable: true
+  port_2_4:
+    schematic-name: port_2_4
+    name: p_2_4
+    x-size: 2
+    z-size: 4
+    district: p
+    repeatable: true
+  port_2_5:
+    schematic-name: port_2_5
+    name: p_2_5
+    x-size: 2
+    z-size: 5
+    district: p
+    repeatable: true
+  port_3_1:
+    schematic-name: port_3_1
+    name: p_3_1
+    x-size: 3
+    z-size: 1
+    district: p
+    repeatable: true
+  port_3_2:
+    schematic-name: port_3_2
+    name: p_3_2
+    x-size: 3
+    z-size: 2
+    district: p
+    repeatable: true
+  port_3_3:
+    schematic-name: port_3_3
+    name: p_3_3
+    x-size: 3
+    z-size: 3
+    district: p
+    repeatable: true
+  port_3_4:
+    schematic-name: port_3_4
+    name: p_3_4
+    x-size: 3
+    z-size: 4
+    district: p
+    repeatable: true
+  port_3_5:
+    schematic-name: port_3_5
+    name: p_3_1
+    x-size: 3
+    z-size: 5
+    district: p
+    repeatable: true
+  port_4_1:
+    schematic-name: port_4_1
+    name: p_4_1
+    x-size: 4
+    z-size: 1
+    district: p
+    repeatable: true
+  port_4_2:
+    schematic-name: port_4_2
+    name: p_4_2
+    x-size: 4
+    z-size: 2
+    district: p
+    repeatable: true
+  port_4_3:
+    schematic-name: port_4_3
+    name: p_4_3
+    x-size: 4
+    z-size: 3
+    district: p
+    repeatable: true
+  port_4_4:
+    schematic-name: port_4_4
+    name: p_4_4
+    x-size: 4
+    z-size: 4
+    district: p
+    repeatable: true
+  port_4_5:
+    schematic-name: port_4_5
+    name: p_4_5
+    x-size: 4
+    z-size: 5
+    district: p
+    repeatable: true
+  port_5_1:
+    schematic-name: port_5_1
+    name: p_5_1
+    x-size: 5
+    z-size: 1
+    district: p
+    repeatable: true
+  port_5_2:
+    schematic-name: port_5_2
+    name: p_5_2
+    x-size: 5
+    z-size: 2
+    district: p
+    repeatable: true
+  port_5_3:
+    schematic-name: port_5_3
+    name: p_5_3
+    x-size: 5
+    z-size: 3
+    district: p
+    repeatable: true
+  port_5_4:
+    schematic-name: port_5_4
+    name: p_5_4
+    x-size: 5
+    z-size: 4
+    district: p
+    repeatable: true
+  port_5_5:
+    schematic-name: port_5_5
+    name: p_5_5
+    x-size: 5
+    z-size: 5
+    district: p
+    repeatable: true
+  port_6_6:
+    schematic-name: port_6_6
+    name: p_6_6
+    x-size: 6
+    z-size: 6
+    district: p
+    repeatable: true
+  port_7_7:
+    schematic-name: port_7_7
+    name: p_7_7
+    x-size: 7
+    z-size: 7
+    district: p
+    repeatable: true
+  port_8_8:
+    schematic-name: port_8_8
+    name: p_8_8
+    x-size: 8
+    z-size: 8
+    district: p
+    repeatable: true
+
+linked-schematics:
+  aristocracy_1_1:
+    schematic-name: aristocracy_1_1
+    name: a_1_1
+    x-size: 1
+    z-size: 1
+    district: a
+    repeatable: true

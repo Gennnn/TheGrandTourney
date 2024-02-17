@@ -1,0 +1,71 @@
+whitesmith_warry:
+  name: "&bWhitesmith Warry"
+  skin: whitesmith_warry
+  entity-type: player
+  quest-type: retrieval
+  relative-position: 0, 0, 0
+  cooldown-on-walk-away: 60
+  line-delay: 2
+  use-word-count-for-delay: true
+  word-count-delay-factor: 7
+  talk-sound: mob.villager.yes
+  talk-volume: 1.0
+  talk-pitch: 1.2
+  steps:
+    - prequest
+    - accept
+    - refuse
+    - walkaway
+    - active
+    - complete
+  prequest-dialogue:
+    - "&cHey! &fYou clicked me!"
+    - That means you want to do a quest for me right?
+    - Before you say anything let me tell you what it is...
+    - "I need you to retrieve an &eitem &ffor me!"
+    - Would you do it?
+  prequest-narration:
+    request:
+      text: "&7&oWill you accept Whitesmith Warry's Quest?"
+    y:
+      text: "\n&r&a[Accept]"
+      command: /zap $npcId accept
+      hover-text: "&eClick to start this quest!"
+    or:
+      text: "&r&7 or "
+    no:
+      text: "&c[Refuse]"
+      command: /zap $npcId refuse
+      hover-text: "&eClick to refuse this quest."
+  prequest-ranged: true
+  accept-dialogue:
+    - That's great!
+    - Thank you so much!
+  accept-jump-to: active
+  accept-narration:
+    narration:
+      text: "&8[&bQuest of Retrieval&8] &7&ostarted.\n&7&o Go retrieve his thing at a later &7&otime."
+  refuse-dialogue:
+    - Oh okay...
+  refuse-narration:
+    narration:
+      text: "&7&oYou refused his quest. Come back later to try again."
+  walkaway-dialogue:
+    - Wow... at least like... say no :(
+  walkaway-narration:
+    narration:
+      text: "&7&oYou refused his quest. Come back later to try again."
+  active-dialogue:
+    - Hey! Go get my thing! Posthaste!
+  active-narration:
+    n:
+      text: "&7&oGo retrieve his thing at a later time."
+  complete-dialogue:
+    - Wow! You did it! You really did it somehow...
+    - Thank you so much!
+  complete-narration:
+    n:
+      text: "&8[&bQuest of Retrieval&8] &7&ocompleted. &r&d+10 Reddit Karma&7&o."
+  dialogue-after-complete:
+    - Thank you again!
+    - Now please go away.

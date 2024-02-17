@@ -1,0 +1,34 @@
+name: TheGrandTourney
+version: '${project.version}'
+main: me.genn.thegrandtourney.TGT
+api-version: '1.19'
+depend:
+  - Citizens
+  - NBTAPI
+  - MagicSpells
+  - MythicMobs
+  - ProtocolLib
+  - WorldEdit
+  - SpectralDamage
+
+commands:
+  testgen:
+    description: test generation
+  checkcell:
+    description: check occupancy of cell
+  zap:
+    description: zaps to step
+  itemtest:
+    description: item test
+  tgtitem:
+    description: give item
+  chain:
+    description: chain commands together
+  conjure:
+    description: gives item without message lol
+  spawn:
+    description: spawns a tgt object
+  saveschematic:
+    description: saves a schem
+  fishingzone:
+    description: defines a fishing zone

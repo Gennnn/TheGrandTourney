@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: com.github.EngineHub.WorldGuard:worldguard-bukkit:master">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.m2/repository/com/github/EngineHub/WorldGuard/worldguard-bukkit/master/worldguard-bukkit-master.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.m2/repository/com/github/EngineHub/WorldGuard/worldguard-bukkit/master/worldguard-bukkit-master-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.m2/repository/com/github/EngineHub/WorldGuard/worldguard-bukkit/master/worldguard-bukkit-master-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

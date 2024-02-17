@@ -1,0 +1,4 @@
+gummi_spawner:
+  mob-name: GummiClone
+  radius: 10
+  y-radius: 3

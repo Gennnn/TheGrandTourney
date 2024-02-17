@@ -1,0 +1,5 @@
+wheat:
+  block-name: wheat_seeds:7
+  regenerating-block-name: wheat:3
+  drops:
+    - coal 100

@@ -1,0 +1,14 @@
+default-stats:
+  health: 100
+  defense: 10
+  damage: 10
+  crit-damage: 50
+  speed: 5
+  crit-chance: 30
+  mana: 100
+  ability-damage: 0
+  shop-discount: 0
+  dialogue-speed: 1
+  gold: 100
+  health-regen: 100
+  mana-regen: 100

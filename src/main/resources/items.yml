@@ -1,0 +1,11 @@
+dwarven_runeblade:
+  item: diamond_sword
+  rarity: rare
+  name: "Dwarven Runeblade"
+  durability: 250
+  lore:
+    - "&7Damage: &a+15"
+    - "&7Strength: &a+30"
+    - "&7Crit Chance: &a+10%"
+    - ""
+    - "&9&lRARE SHORTSWORD"

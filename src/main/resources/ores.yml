@@ -1,0 +1,6 @@
+coal_ore:
+  resource: coal_ore
+  type: small
+  drop: coal
+  health: 100
+  regen-time: 20
