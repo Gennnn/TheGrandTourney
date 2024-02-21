@@ -10,6 +10,7 @@ depend:
   - ProtocolLib
   - WorldEdit
   - SpectralDamage
+  - Vault
 
 commands:
   testgen:

@@ -1,34 +1,18 @@
 package me.genn.thegrandtourney.mobs;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import io.lumine.mythic.api.mobs.MythicMob;
 import io.lumine.mythic.bukkit.MythicBukkit;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.DropTable;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 
-import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.npc.NPC;
-import net.citizensnpcs.trait.LookClose;
-import net.citizensnpcs.trait.SkinTrait;
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 
 public class MMOMob {
     public MythicMob mythicmob;
@@ -37,16 +21,21 @@ public class MMOMob {
     public boolean isFakePlayer = false;
     public float defense;
     public String internalName;
+    public DropTable dropTable;
+    public boolean chanceOver100MeansMoreDrops;
+    public boolean calculateDropsIndividually;
+    TGT plugin;
 
 
 
     public static MMOMob create(ConfigurationSection config) throws IOException {
         MMOMob mob = new MMOMob();
-        TGT plugin = JavaPlugin.getPlugin(TGT.class);
+        mob.plugin = JavaPlugin.getPlugin(TGT.class);
         mob.internalName = config.getName();
+        mob.dropTable = new DropTable(mob.plugin);
         mob.mythicmob = MythicBukkit.inst().getMobManager().getMythicMob(mob.internalName).stream().findFirst().orElse(null);
         if (mob.mythicmob == null) {
-            plugin.getLogger().severe("MMMob " + mob.internalName + " had no matching MythicMob!");
+            mob.plugin.getLogger().severe("MMMob " + mob.internalName + " had no matching MythicMob!");
             return null;
         }
         mob.nameplateName = ChatColor.translateAlternateColorCodes('&',config.getString("display-name"));
@@ -62,7 +51,10 @@ public class MMOMob {
             mob.isFakePlayer = true;
         }
         mob.defense = config.getInt("defense", 5);
+        ConfigurationSection dropsSection = config.getConfigurationSection("drops");
 
+        mob.calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
+        mob.chanceOver100MeansMoreDrops = config.getBoolean("overflow-drops", false);
         return mob;
     }
 

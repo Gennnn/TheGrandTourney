@@ -1,7 +1,11 @@
 package me.genn.thegrandtourney.player;
 
+import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.mobs.MMOMob;
 import me.genn.thegrandtourney.util.IntMap;
+import net.milkbowl.vault.economy.EconomyResponse;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -9,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class MMOPlayer {
+    public TGT plugin;
     public String currentGoal;
     private float health;
     private float maxHealth;
@@ -219,6 +224,16 @@ public class MMOPlayer {
     private float baseHealthRegen;
     private float baseManaRegen;
 
+    public Location getRespawnLocation() {
+        return respawnLocation;
+    }
+
+    public void setRespawnLocation(Location respawnLocation) {
+        this.respawnLocation = respawnLocation;
+    }
+
+    private Location respawnLocation;
+
 
     public float getAttackSpeed() {
         return attackSpeed;
@@ -242,17 +257,34 @@ public class MMOPlayer {
     private UUID minecraftUUID;
 
 
-    public double getGold() {
-        return gold;
+    public double getPurseGold() {
+        return plugin.econ.getBalance(Bukkit.getOfflinePlayer(minecraftUUID));
     }
-    public void setGold(double gold) {
-        this.gold = gold;
+
+    public void addPurseGold(double amount) {
+        plugin.econ.depositPlayer(Bukkit.getOfflinePlayer(minecraftUUID), amount);
     }
-    public void addGold(double amount) {
-        this.gold = gold + amount;
+    public boolean removePurseGold(double amount) {
+        if (plugin.econ.has(Bukkit.getOfflinePlayer(minecraftUUID), amount)) {
+            plugin.econ.withdrawPlayer(Bukkit.getOfflinePlayer(minecraftUUID), amount);
+            return true;
+        } else {
+            return false;
+        }
     }
-    public void removeGold(double amount) {
-        this.gold = gold - amount;
+    public double getBankGold() {
+        return plugin.econ.bankBalance("Bank." + Bukkit.getPlayer(minecraftUUID).getName()).balance;
+    }
+    public void addBankGold(double amount) {
+        plugin.econ.bankDeposit("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount);
+    }
+    public boolean removeBankGold(double amount) {
+        if (plugin.econ.bankHas("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount).type == EconomyResponse.ResponseType.SUCCESS) {
+            plugin.econ.bankWithdraw("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount);
+            return true;
+        } else {
+            return false;
+        }
     }
     public float getHealth() {
         return health;

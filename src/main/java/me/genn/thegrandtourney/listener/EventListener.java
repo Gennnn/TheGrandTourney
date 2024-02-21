@@ -31,6 +31,7 @@ import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
@@ -185,6 +186,7 @@ public class EventListener implements Listener {
                                 }
                             }
                         }
+                        //mob.calculateDrops(p);
                     }
 
                 }
@@ -348,6 +350,16 @@ public class EventListener implements Listener {
     @EventHandler
     public void blockSpread(BlockSpreadEvent e) {
         e.setCancelled(true);
+    }
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent e) {
+        e.setCancelled(true);
+        MMOPlayer mmoPlayer = plugin.players.get(e.getPlayer().getUniqueId());
+        e.getPlayer().teleport(mmoPlayer.getRespawnLocation());
+        mmoPlayer.removePurseGold((int)(mmoPlayer.getPurseGold()/2));
+        e.getPlayer().sendMessage(ChatColor.RED + "You died and lost " + (int)(mmoPlayer.getPurseGold()/2) + " Dosh!");
+        e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
+        e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
     }
 
 

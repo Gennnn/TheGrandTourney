@@ -45,6 +45,7 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCRegistry;
 import net.citizensnpcs.api.trait.TraitInfo;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
@@ -56,6 +57,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.*;
@@ -101,7 +103,7 @@ public class TGT extends JavaPlugin implements Listener {
     public Score objectiveScore;
     public Score objectiveDescriptionScore;
     public Score websiteScore;
-
+    public Economy econ;
 
 
 
@@ -534,6 +536,13 @@ public class TGT extends JavaPlugin implements Listener {
         this.schematicCreator = new SchematicCreator(this);
         this.grid = new Grid(this.schematicHandler, this);
         this.listener = new EventListener(this);
+        if (!this.setupEconomy()) {
+            this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
+            this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
+            this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
+            this.setEnabled(false);
+            return;
+        }
         Bukkit.getPluginManager().registerEvents(this.listener, this);
         Bukkit.getPluginManager().registerEvents(this, this);
         Iterator iter = Bukkit.getOnlinePlayers().iterator();
@@ -556,6 +565,17 @@ public class TGT extends JavaPlugin implements Listener {
         this.registerTrait();
 
         this.initializeScoreboard();
+    }
+    private boolean setupEconomy() {
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            return false;
+        }
+        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            return false;
+        }
+        econ = rsp.getProvider();
+        return econ != null;
     }
 
     public void onLoad() {
@@ -622,7 +642,7 @@ public class TGT extends JavaPlugin implements Listener {
             blankScore2.setScore(counter);
             counter++;
         }
-        Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + players.get(player.getUniqueId()).getGold());
+        Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + players.get(player.getUniqueId()).getPurseGold());
         purseScore.setScore(counter);
         counter++;
         Score blankScore3 = obj.getScore("   ");
@@ -1006,6 +1026,7 @@ public class TGT extends JavaPlugin implements Listener {
     public MMOPlayer createNewPlayer(Player player) {
         player.setHealth(player.getMaxHealth());
         MMOPlayer mmoPlayer = new MMOPlayer();
+        mmoPlayer.plugin = this;
         UUID id = player.getUniqueId();
         mmoPlayer.setMinecraftUUID(id);
         mmoPlayer.setHealth(plugin.defaultStatValues.get("health"));
@@ -1058,8 +1079,9 @@ public class TGT extends JavaPlugin implements Listener {
         mmoPlayer.setFarmingProg(0.0f);
         mmoPlayer.setSmithingProg(0.0f);
         mmoPlayer.setAlchemyProg(0.0f);
-        mmoPlayer.setCookingProg(0.0f);
-        mmoPlayer.setGold((double)plugin.defaultStatValues.get("gold"));
+        mmoPlayer.setCookingProg(0.0f);;
+        mmoPlayer.setRespawnLocation(player.getBedSpawnLocation());
+        plugin.econ.createBank("Bank." + player.getName(), Bukkit.getOfflinePlayer(player.getUniqueId()));
         return mmoPlayer;
     }
 
