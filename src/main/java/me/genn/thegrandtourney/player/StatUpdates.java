@@ -149,20 +149,20 @@ public class StatUpdates {
                 line = line.replaceFirst("(Attack Speed: +\\-)", "");
                 attackSpeedChange = -Float.parseFloat(line);
                 changes.put("attackSpeed", attackSpeedChange);
-            } else if (ChatColor.stripColor(line).startsWith("Lure: +")) {
-                line = line.replaceFirst("(Lure: +\\+)", "");
+            } else if (ChatColor.stripColor(line).startsWith("Fishing Speed: +")) {
+                line = line.replaceFirst("(Fishing Speed: +\\+)", "");
                 lureChange = Float.parseFloat(line);
                 changes.put("lure", lureChange);
-            } else if (ChatColor.stripColor(line).startsWith("Lure: -")) {
-                line = line.replaceFirst("(Lure: +\\-)", "");
+            } else if (ChatColor.stripColor(line).startsWith("Fishing Speed: -")) {
+                line = line.replaceFirst("(Fishing Speed: +\\-)", "");
                 lureChange = -Float.parseFloat(line);
                 changes.put("lure", lureChange);
-            } else if (ChatColor.stripColor(line).startsWith("Flash: +")) {
-                line = line.replaceFirst("(Flash: +\\+)", "");
+            } else if (ChatColor.stripColor(line).startsWith("Lure: +")) {
+                line = line.replaceFirst("(Lure: +\\+)", "");
                 flashChange = Float.parseFloat(line);
                 changes.put("flash", flashChange);
-            } else if (ChatColor.stripColor(line).startsWith("Flash: -")) {
-                line = line.replaceFirst("(Flash: +\\-)", "");
+            } else if (ChatColor.stripColor(line).startsWith("Lure: -")) {
+                line = line.replaceFirst("(Lure: +\\-)", "");
                 flashChange = -Float.parseFloat(line);
                 changes.put("flash", flashChange);
             }
@@ -217,6 +217,13 @@ public class StatUpdates {
                         updateStatsFromItem(item, mmoPlayer, changeMap);
                     }
                 }
+            }
+        }
+        Iterator accessoryIter = mmoPlayer.getAccessoryBagContents().iterator();
+        while (accessoryIter.hasNext()) {
+            ItemStack item = (ItemStack) accessoryIter.next();
+            if (item != null) {
+                updateStatsFromItem(item, mmoPlayer, changeMap);
             }
         }
         Iterator statsIter = changeMap.keySet().iterator();

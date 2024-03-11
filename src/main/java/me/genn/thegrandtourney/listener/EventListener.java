@@ -8,6 +8,9 @@ import io.lumine.mythic.bukkit.events.MythicMobSpawnEvent;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.mobs.MMOMob;
+import me.genn.thegrandtourney.npc.ItemRetrievalQuest;
+import me.genn.thegrandtourney.npc.Quest;
+import me.genn.thegrandtourney.npc.SlayerQuest;
 import me.genn.thegrandtourney.player.CritDamageIndicator;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.NormalDamageIndicator;
@@ -183,6 +186,18 @@ public class EventListener implements Listener {
                                 if (map.containsKey(mob)) {
                                     map.increment(mob);
                                     plugin.players.get(p.getUniqueId()).slayerMap.put(questName, map);
+                                    if (plugin.players.get(p.getUniqueId()).trackedObjective.questName.equalsIgnoreCase(questName)) {
+                                        if (plugin.questHandler.getQuest(questName) != null) {
+                                            if (plugin.questHandler.getQuest(questName) instanceof SlayerQuest) {
+                                                int amount = ((SlayerQuest)plugin.questHandler.getQuest(questName)).amountToBring;
+                                                if (plugin.players.get(p.getUniqueId()).slayerMap.get(questName).get(mob) >= amount) {
+                                                    if (plugin.questHandler.getQuest(questName).questProgress.containsKey(p.getUniqueId()) && plugin.questHandler.getQuest(questName).questProgress.get(p.getUniqueId()).equalsIgnoreCase(((SlayerQuest) plugin.questHandler.getQuest(questName)).stepToFinish)) {
+                                                        plugin.questHandler.objectiveUpdater.performStatusUpdates(p, questName, plugin.questHandler.getQuest(questName).tgtNpc.updateOnCompleteCollection);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -361,6 +376,7 @@ public class EventListener implements Listener {
         e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
         e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
     }
+
 
 
 

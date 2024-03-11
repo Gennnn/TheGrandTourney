@@ -3,6 +3,9 @@ package me.genn.thegrandtourney.npc;
 import java.util.List;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.player.MMOPlayer;
+import me.genn.thegrandtourney.player.Objective;
+import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -29,10 +32,15 @@ public class Dialogue {
     BaseComponent postDialogueComponentText;
     List<String> rewards;
 
+    String questName;
+
+    TGTNpc tgtNpc;
+    ObjectiveUpdate objectiveUpdate;
 
 
 
-    Dialogue(List<String> lines, int delay, boolean useWordCt, String talkSound, float talkVolume, float talkPitch, NPC npc, TGT tgt, QuestType questType, long wordCountMult, BaseComponent postDialogueText, List<String> rewards) {
+
+    Dialogue(List<String> lines, int delay, boolean useWordCt, String talkSound, float talkVolume, float talkPitch, NPC npc, TGT tgt, QuestType questType, long wordCountMult, BaseComponent postDialogueText, List<String> rewards, String questName, TGTNpc tgtNpc, ObjectiveUpdate objectiveUpdate) {
         this.lines = lines;
         this.delayBetweenLines = delay;
         this.useWordCountForDelay = useWordCt;
@@ -46,6 +54,9 @@ public class Dialogue {
         this.postDialogueText = null;
         this.postDialogueComponentText = postDialogueText;
         this.rewards = rewards;
+        this.objectiveUpdate = objectiveUpdate;
+        this.questName = questName;
+        this.tgtNpc = tgtNpc;
     }
 
     public void speak(Player player, boolean isRanged) {
@@ -96,6 +107,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             SlayerQuest trait = npc.getTrait(SlayerQuest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -117,8 +131,8 @@ public class Dialogue {
             @Override
             public void run() {
                 if (player.getLocation().distanceSquared(npc.getEntity().getLocation()) > 20) {
-                    if (Dialogue.this.type == QuestType.RETRIEVAL) {
-                        ItemRetrievalQuest trait = npc.getTrait(ItemRetrievalQuest.class);
+                    if (Dialogue.this.type == QuestType.SLAYER) {
+                        SlayerQuest trait = npc.getTrait(SlayerQuest.class);
                         trait.zap(player, "walkaway", true);
                     }
                     return;
@@ -127,6 +141,7 @@ public class Dialogue {
             }
         }, delay * 1L);
     }
+
 
     private void speakUnrangedSlayer(int lineNum, Player player) {
         String line = lines.get(lineNum);
@@ -143,6 +158,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             SlayerQuest trait = npc.getTrait(SlayerQuest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -182,6 +200,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             ItemRetrievalQuest trait = npc.getTrait(ItemRetrievalQuest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -229,6 +250,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             ItemRetrievalQuest trait = npc.getTrait(ItemRetrievalQuest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -267,6 +291,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             Quest trait = npc.getTrait(Quest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -313,6 +340,9 @@ public class Dialogue {
         }
         if (lineNum == (this.lines.size() - 1) ) {
             Quest trait = npc.getTrait(Quest.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
                 return;
@@ -349,6 +379,8 @@ public class Dialogue {
         ChainCommand chain = new ChainCommand(Dialogue.this.rewards.toArray(new String[0]), player);
         chain.run();
     }
+
+
 
 
 }

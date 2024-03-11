@@ -700,6 +700,7 @@ public class Grid {
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 Bukkit.getPluginManager().registerEvents(ore, plugin);
                 ore.spawn(loc);
+                plugin.oreObjectiveLocList.put(ore, loc);
             }
         }
 
@@ -715,6 +716,8 @@ public class Grid {
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 npc.npc.spawn(loc);
+                plugin.npcObjectiveLocList.put(npc, loc);
+                npc.pasteLocation = loc;
             }
         }
 
@@ -731,6 +734,7 @@ public class Grid {
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 spawner.paste(loc, paste, counter);
+                plugin.spawnerObjectiveLocList.put(spawner, loc);
                 counter++;
             }
         }
@@ -747,6 +751,7 @@ public class Grid {
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 crop.spawn(loc, true);
+                plugin.cropObjectiveLocList.put(crop, loc);
             }
         }
 
@@ -762,8 +767,9 @@ public class Grid {
                 }
                 Location minLoc = getPasteLocation(paste, section.getDouble("min-x"), section.getDouble("min-y"), section.getDouble("min-z"));
                 Location maxLoc = getPasteLocation(paste, section.getDouble("max-x"), section.getDouble("max-y"), section.getDouble("max-z"));
-                Bukkit.broadcastMessage("Registering fishing zone " + zone.template.name + " with coordinates " + minLoc.getX() + "," + minLoc.getY() + "," + minLoc.getZ() + " min and " + maxLoc.getX() + "," + maxLoc.getY() + "," + maxLoc.getZ() + " max");
                 zone.pasteZone(minLoc, maxLoc, paste.schematic.name + "." + key + "." + zone.template.name);
+                Location objLocation = new Location(minLoc.getWorld(), minLoc.getX()+(maxLoc.getX()- minLoc.getX())*0.5,minLoc.getY()+(maxLoc.getY()- minLoc.getY())*0.5,minLoc.getZ()+(maxLoc.getZ()- minLoc.getZ())*0.5);
+                plugin.fishingZoneObjectiveLocList.put(zone, objLocation);
             }
         }
 

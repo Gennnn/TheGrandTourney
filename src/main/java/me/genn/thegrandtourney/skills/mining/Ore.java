@@ -30,7 +30,6 @@ public class Ore implements Listener {
     float health;
     TGT plugin;
     ItemStack resource;
-    MMOItem drop;
     int regenTime;
     int regenRate;
     int staminaCost;
@@ -38,6 +37,7 @@ public class Ore implements Listener {
     public double criticalAngle;
     Random r;
     long lastCritPointRefresh;
+    public Location loc;
 
     public Ore(TGT plugin, OreTemplate template) {
         this.resourceStands = new ArrayList<>();
@@ -47,7 +47,6 @@ public class Ore implements Listener {
         this.maxHealth = template.health;
         this.plugin = plugin;
         this.resource = template.resource;
-        this.drop = template.drop;
         this.template = template;
         this.regenTime = template.regenTime;
         this.staminaCost = template.staminaCost;
@@ -65,6 +64,8 @@ public class Ore implements Listener {
         spawnHealthbar();
         oreTest(loc);
         plugin.listener.ores.put(this.entity, this);
+        plugin.oreHandler.allSpawnedOres.add(this);
+        this.loc = loc;
         new BukkitRunnable() {
 
             @Override
@@ -309,7 +310,7 @@ public class Ore implements Listener {
                         ArmorStand as = (ArmorStand) asIter.next();
                         as.setHelmet(new ItemStack(Material.AIR));
                     } while (asIter.hasNext());
-                    p.getInventory().addItem(plugin.itemHandler.getItem(drop));
+                    template.drops.calculateDrops(p);
                     Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
                         @Override
                         public void run() {

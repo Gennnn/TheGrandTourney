@@ -3,18 +3,20 @@ package me.genn.thegrandtourney.player;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.mobs.MMOMob;
 import me.genn.thegrandtourney.util.IntMap;
+import me.genn.thegrandtourney.xp.XpType;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class MMOPlayer {
     public TGT plugin;
     public String currentGoal;
+
+    public Objective trackedObjective;
     private float health;
     private float maxHealth;
     private float defense;
@@ -27,6 +29,17 @@ public class MMOPlayer {
     private float maxMana;
     private float vendorPrice;
     private float dialogueSpeed;
+
+    public float getAbilityDamage() {
+        return abilityDamage;
+    }
+
+    public void setAbilityDamage(float abilityDamage) {
+        this.abilityDamage = abilityDamage;
+    }
+
+    private float abilityDamage;
+    private float baseAbilityDamage;
 
     public float getLure() {
         return lure;
@@ -68,6 +81,10 @@ public class MMOPlayer {
 
     public MMOPlayer() {
         this.slayerMap = new HashMap<>();
+        this.accessoryBagContents = new ArrayList<>();
+        this.storageContents = new HashMap<>();
+        this.objectives = new ArrayList<>();
+        this.completedObjectives = new ArrayList<>();
     }
 
     public float getStrength() {
@@ -197,7 +214,6 @@ public class MMOPlayer {
     private float baseCritDamage;
     private float baseSpeed;
     private float baseCritChance;
-    private float baseAbilityDamage;
     private float baseMana;
     private float baseMaxMana;
     private float baseVendorPrice;
@@ -209,7 +225,6 @@ public class MMOPlayer {
     private int fishingLvl;
     private int farmingLvl;
     private int smithingLvl;
-    private int alchemyLvl;
     private int cookingLvl;
     private float combatProg;
     private float miningProg;
@@ -217,12 +232,144 @@ public class MMOPlayer {
     private float fishingProg;
     private float farmingProg;
     private float smithingProg;
-    private float alchemyProg;
+
+    public float getTailoringProg() {
+        return tailoringProg;
+    }
+
+    public void setTailoringProg(float tailoringProg) {
+        this.tailoringProg = tailoringProg;
+    }
+
+    public float getTinkeringProg() {
+        return tinkeringProg;
+    }
+
+    public void setTinkeringProg(float tinkeringProg) {
+        this.tinkeringProg = tinkeringProg;
+    }
+
+    public int getTailoringLvl() {
+        return tailoringLvl;
+    }
+
+    public void setTailoringLvl(int tailoringLvl) {
+        this.tailoringLvl = tailoringLvl;
+    }
+
+    public int getTinkeringLvl() {
+        return tinkeringLvl;
+    }
+
+    public void setTinkeringLvl(int tinkeringLvl) {
+        this.tinkeringLvl = tinkeringLvl;
+    }
+
+    private float tailoringProg;
+    private float tinkeringProg;
+    private int tailoringLvl;
+    private int tinkeringLvl;
+
+    public int getAccessoryBagSlots() {
+        if (accessoryBagSlots >= 45) {
+            return 45;
+        } else {
+            return accessoryBagSlots;
+        }
+    }
+
+    public void setAccessoryBagSlots(int accessoryBagSlots) {
+        this.accessoryBagSlots = accessoryBagSlots;
+    }
+
+    private int accessoryBagSlots = 3;
+
+    public int getStorageSlots() {
+        return storageSlots;
+    }
+
+    public void setStorageSlots(int storageSlots) {
+        this.storageSlots = storageSlots;
+    }
+
+    private int storageSlots = 9;
+
+    public List<ItemStack> getAccessoryBagContents() {
+        return accessoryBagContents;
+    }
+
+    public void setAccessoryBagContents(List<ItemStack> accessoryBagContents) {
+        this.accessoryBagContents = accessoryBagContents;
+    }
+
+    private List<ItemStack> accessoryBagContents;
+
+
+
+    public Map<Integer, ItemStack> storageContents;
+    public List<Objective> objectives;
+    public List<Objective> completedObjectives;
+
     private float cookingProg;
     private float healthRegen;
     private float manaRegen;
     private float baseHealthRegen;
     private float baseManaRegen;
+
+    public float getMiningFortune() {
+        return miningFortune;
+    }
+
+    public void setMiningFortune(float miningFortune) {
+        this.miningFortune = miningFortune;
+    }
+
+    public float getBaseMiningFortune() {
+        return baseMiningFortune;
+    }
+
+    public void setBaseMiningFortune(float baseMiningFortune) {
+        this.baseMiningFortune = baseMiningFortune;
+    }
+
+    public float getFarmingFortune() {
+        return farmingFortune;
+    }
+
+    public void setFarmingFortune(float farmingFortune) {
+        this.farmingFortune = farmingFortune;
+    }
+
+    public float getBaseFarmingFortune() {
+        return baseFarmingFortune;
+    }
+
+    public void setBaseFarmingFortune(float baseFarmingFortune) {
+        this.baseFarmingFortune = baseFarmingFortune;
+    }
+
+    public float getLoggingFortune() {
+        return loggingFortune;
+    }
+
+    public void setLoggingFortune(float loggingFortune) {
+        this.loggingFortune = loggingFortune;
+    }
+
+    public float getBaseLoggingFortune() {
+        return baseLoggingFortune;
+    }
+
+    public void setBaseLoggingFortune(float baseLoggingFortune) {
+        this.baseLoggingFortune = baseLoggingFortune;
+    }
+
+    private float miningFortune;
+    private float baseMiningFortune;
+    private float farmingFortune;
+    private float baseFarmingFortune;
+    private float loggingFortune;
+    private float baseLoggingFortune;
 
     public Location getRespawnLocation() {
         return respawnLocation;
@@ -394,12 +541,7 @@ public class MMOPlayer {
     public void setSmithingLvl(int smithingLvl) {
         this.smithingLvl = smithingLvl;
     }
-    public int getAlchemyLvl() {
-        return alchemyLvl;
-    }
-    public void setAlchemyLvl(int alchemyLvl) {
-        this.alchemyLvl = alchemyLvl;
-    }
+
     public int getCookingLvl() {
         return cookingLvl;
     }
@@ -442,12 +584,7 @@ public class MMOPlayer {
     public void setSmithingProg(float smithingProg) {
         this.smithingProg = smithingProg;
     }
-    public float getAlchemyProg() {
-        return alchemyProg;
-    }
-    public void setAlchemyProg(float alchemyProg) {
-        this.alchemyProg = alchemyProg;
-    }
+
     public float getCookingProg() {
         return cookingProg;
     }
@@ -474,5 +611,95 @@ public class MMOPlayer {
     }
 
 
+
+
+    public float getXpForType(XpType type) {
+        if (type == XpType.BLACKSMITHING) {
+            return getSmithingProg();
+        } else if (type == XpType.TAILORING) {
+            return getTailoringProg();
+        } else if (type == XpType.COOKING) {
+            return getCookingProg();
+        } else if (type == XpType.TINKERING) {
+            return getTinkeringProg();
+        } else if (type == XpType.COMBAT) {
+            return getCombatProg();
+        } else if (type == XpType.FARMING) {
+            return getFarmingProg();
+        } else if (type == XpType.LOGGING) {
+            return getLoggingProg();
+        } else if (type == XpType.FISHING) {
+            return getFishingProg();
+        } else if (type == XpType.MINING) {
+            return getMiningProg();
+        }
+        return 0.0F;
+    }
+    public void setXpForType(XpType type, double amount) {
+        if (type == XpType.BLACKSMITHING) {
+             setSmithingProg((float)amount);
+        } else if (type == XpType.TAILORING) {
+             setTailoringProg((float)amount);
+        } else if (type == XpType.COOKING) {
+             setCookingProg((float)amount);
+        } else if (type == XpType.TINKERING) {
+             setTinkeringProg((float)amount);
+        } else if (type == XpType.COMBAT) {
+             setCombatProg((float)amount);
+        } else if (type == XpType.FARMING) {
+             setFarmingProg((float)amount);
+        } else if (type == XpType.LOGGING) {
+             setLoggingProg((float)amount);
+        } else if (type == XpType.FISHING) {
+             setFishingProg((float)amount);
+        } else if (type == XpType.MINING) {
+             setMiningProg((float)amount);
+        }
+    }
+
+    public int getLvlForType(XpType type) {
+        if (type == XpType.BLACKSMITHING) {
+            return getSmithingLvl();
+        } else if (type == XpType.TAILORING) {
+            return getTailoringLvl();
+        } else if (type == XpType.COOKING) {
+            return getCookingLvl();
+        } else if (type == XpType.TINKERING) {
+            return getTinkeringLvl();
+        } else if (type == XpType.COMBAT) {
+            return getCombatLvl();
+        } else if (type == XpType.FARMING) {
+            return getFarmingLvl();
+        } else if (type == XpType.LOGGING) {
+            return getLoggingLvl();
+        } else if (type == XpType.FISHING) {
+            return getFishingLvl();
+        } else if (type == XpType.MINING) {
+            return getMiningLvl();
+        }
+        return 0;
+    }
+
+    public void setLvlForType(XpType type, int lvl) {
+        if (type == XpType.BLACKSMITHING) {
+             setSmithingLvl(lvl);
+        } else if (type == XpType.TAILORING) {
+             setTailoringLvl(lvl);
+        } else if (type == XpType.COOKING) {
+             setCookingLvl(lvl);
+        } else if (type == XpType.TINKERING) {
+             setTinkeringLvl(lvl);
+        } else if (type == XpType.COMBAT) {
+             setCombatLvl(lvl);
+        } else if (type == XpType.FARMING) {
+             setFarmingLvl(lvl);
+        } else if (type == XpType.LOGGING) {
+             setLoggingLvl(lvl);
+        } else if (type == XpType.FISHING) {
+             setFishingLvl(lvl);
+        } else if (type == XpType.MINING) {
+             setMiningLvl(lvl);
+        }
+    }
 
 }

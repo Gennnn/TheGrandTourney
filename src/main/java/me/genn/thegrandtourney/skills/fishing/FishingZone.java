@@ -42,6 +42,7 @@ public class FishingZone implements Listener {
     TGT plugin;
     Random r;
     Map<Player, Fish> queuedFish;
+    public Location centerLocation;
 
     public FishingZone(FishingZoneTemplate template, TGT plugin) {
 
@@ -79,6 +80,7 @@ public class FishingZone implements Listener {
         this.name = name;
         Bukkit.getPluginManager().registerEvents(this, plugin);
         plugin.fishingZoneList.add(this);
+
     }
 
     public void pasteZone(Location minLoc, Location maxLoc, String name) {
@@ -104,6 +106,10 @@ public class FishingZone implements Listener {
             this.minLoc.setZ(minZ);
         }
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        this.centerLocation = new Location(this.minLoc.getWorld(), this.minLoc.getX()+(this.maxLoc.getX()- this.minLoc.getX())*0.5,this.minLoc.getY()+(this.maxLoc.getY()- this.minLoc.getY())*0.5,this.minLoc.getZ()+(this.maxLoc.getZ()- this.minLoc.getZ())*0.5);
+        plugin.fishingZoneHandler.allSpawnedZones.add(this);
+        Bukkit.broadcastMessage("Registering fishing zone " + this.template.name + " with coordinates " + this.minLoc.getX() + "," + this.minLoc.getY() + "," + this.minLoc.getZ() + " min and " + this.maxLoc.getX() + "," + this.maxLoc.getY() + "," + this.maxLoc.getZ() + " max");
+
     }
     @EventHandler
     public void onFish(PlayerFishEvent e) {
@@ -142,7 +148,7 @@ public class FishingZone implements Listener {
                 e.getHook().pullHookedEntity();
             } else if (fish.drop != null) {
                 e.setExpToDrop(0);
-                ((Item)e.getCaught()).setItemStack(plugin.itemHandler.getItem(fish.drop).asQuantity(r.nextInt(fish.minQuantity, fish.maxQuantity+1)));
+                ((Item)e.getCaught()).setItemStack(plugin.itemHandler.getItem(fish.drop).asQuantity(r.nextInt((int) fish.minQuantity, (int) (fish.maxQuantity+1))));
                 e.getHook().pullHookedEntity();
             }
         }

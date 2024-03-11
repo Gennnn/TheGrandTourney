@@ -44,10 +44,13 @@ public class ItemRetrievalQuest extends Quest {
             String itemIdToBring,
             int amountToBring,
             String stepToPerform,
-            Map<Equipment.EquipmentSlot, String> equipment
+            Map<Equipment.EquipmentSlot, String> equipment,
+            String questDisplayName,
+            String questName,
+            TGTNpc tgtNpc
 
     ) {
-        super("retrieval", walkAwayCd, lineDelay, useWordCtForDelay, wordCtFactor, talkSound, talkVolume, talkPitch, skinSig, skin, steps, equipment);
+        super("retrieval", walkAwayCd, lineDelay, useWordCtForDelay, wordCtFactor, talkSound, talkVolume, talkPitch, skinSig, skin, steps, equipment, questDisplayName, questName, tgtNpc);
         this.stepToFinish = stepToFinish;
         this.itemIdToBring = itemIdToBring;
         this.amountToBring = amountToBring;
@@ -96,7 +99,7 @@ public class ItemRetrievalQuest extends Quest {
                     return;
                 }
             }
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }

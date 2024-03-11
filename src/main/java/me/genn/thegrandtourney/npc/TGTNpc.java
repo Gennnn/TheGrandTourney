@@ -5,12 +5,16 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import net.citizensnpcs.api.trait.trait.Equipment;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -59,6 +63,11 @@ public class TGTNpc {
     public float talkPitch;
     public String stepToFinish;
     public String mobToKill;
+    public String questDisplayName;
+    public String questName;
+    public Location pasteLocation;
+    public Material objectiveItem;
+    public ObjectiveUpdate updateOnCompleteCollection;
 
 
     public static TGTNpc create(ConfigurationSection config) throws IOException {
@@ -128,6 +137,7 @@ public class TGTNpc {
             npc.steps.add(stepObj);
         }*/
         npc.questType = QuestType.valueOf(config.getString("type", "quest").toUpperCase());
+        npc.objectiveItem = Material.matchMaterial("minecraft:" + config.getString("objective-item", "paper"));
         List<String> equipmentList = config.getStringList("equipment");
         npc.equipment = new HashMap<>();
         if (equipmentList != null) {
@@ -148,6 +158,20 @@ public class TGTNpc {
         npc.amount = config.getInt("amount", 1);
         npc.mobToKill = config.getString("mob-to-kill");
         npc.stepJumpOnComplete = config.getString("step-jump-on-complete", "complete");
+        npc.questName = config.getString("quest-name", npc.name);
+        if (config.contains("objective-on-collection")) {
+            ObjectiveUpdate objectiveUpdate = new ObjectiveUpdate();
+            ConfigurationSection collectSection = config.getConfigurationSection("objective-on-collection");
+            List<String> statusText = collectSection.getStringList("status");
+            for (int i = 0; i < statusText.size(); i++) {
+                objectiveUpdate.statusUpdate.add(i, ChatColor.translateAlternateColorCodes('&', statusText.get(i)));
+                plugin.getLogger().log(Level.INFO, "Status " + statusText.get(i) + " registered");
+            }
+            objectiveUpdate.locationUpdate = collectSection.getString("objective-location");
+            objectiveUpdate.trackingTextUpdate = collectSection.getString("tracking-text");
+            objectiveUpdate.completingStep = collectSection.getBoolean("completing-step", false);
+            npc.updateOnCompleteCollection = objectiveUpdate;
+        }
         /*if (npc.questType == QuestType.RETRIEVAL) {
             ItemRetrievalQuest quest = new ItemRetrievalQuest(config.getInt("cooldown-on-walk-away"), config.getInt("line-delay"), config.getBoolean("use-word-count-for-delay"), config.getLong("word-count-delay-factor"), config.getString("talk-sound"), Float.parseFloat(config.getString("talk-volume")), Float.parseFloat(config.getString("talk-pitch")), npc.skinSig, npc.skin, npc.steps, config.getString("step-to-finish", "active"), config.getString("quest-item"), config.getInt("amount", 1), config.getString("step-jump-on-complete", "complete"), npc.equipment);
             npc.npc.addTrait(quest);
@@ -162,7 +186,7 @@ public class TGTNpc {
     }
 
     public static TGTNpc createStep2(TGTNpc npc) {
-
+        TGT plugin = JavaPlugin.getPlugin(TGT.class);
         Iterator stepsIter = npc.stepsConfig.getKeys(false).iterator();
         while (stepsIter.hasNext()) {
             String stepKey = (String) stepsIter.next();
@@ -184,18 +208,46 @@ public class TGTNpc {
                 narration.addExtra(narrationComponents.get(i));
             }
             List<String> rewards = stepContent.getStringList("rewards");
-            Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards);
+            String objectiveLocation = "";
+            List<String> status = new ArrayList<>();
+            String trackingText = "";
+            boolean completingStep = false;
+            ObjectiveUpdate objectiveUpdate = new ObjectiveUpdate(status, objectiveLocation, trackingText, completingStep);
+            if (stepContent.contains("objective")) {
+                ConfigurationSection objectiveSection = stepContent.getConfigurationSection("objective");
+                if (objectiveSection.contains("status")) {
+
+                    List<String> statusText = objectiveSection.getStringList("status");
+                    for (int i = 0; i < statusText.size(); i++) {
+                        objectiveUpdate.statusUpdate.add(ChatColor.translateAlternateColorCodes('&', statusText.get(i)));
+                        plugin.getLogger().log(Level.INFO, "Status " + statusText.get(i) + " registered");
+                    }
+
+                }
+                if (objectiveSection.contains("objective-location")) {
+                    objectiveUpdate.locationUpdate = objectiveSection.getString("objective-location");
+                }
+                if (objectiveSection.contains("tracking-text")) {
+                    objectiveUpdate.trackingTextUpdate = ChatColor.translateAlternateColorCodes('&', objectiveSection.getString("tracking-text"));
+                }
+                objectiveUpdate.completingStep = objectiveSection.getBoolean("completing-step", false);
+            }
+
+            Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate);
             npc.steps.add(stepObj);
         }
         if (npc.questType == QuestType.RETRIEVAL) {
-            ItemRetrievalQuest quest = new ItemRetrievalQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.itemToBring, npc.amount, npc.stepJumpOnComplete, npc.equipment);
+            ItemRetrievalQuest quest = new ItemRetrievalQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.itemToBring, npc.amount, npc.stepJumpOnComplete, npc.equipment, npc.questDisplayName, npc.questName, npc);
             npc.npc.addTrait(quest);
+            plugin.questHandler.allQuests.add(quest);
         } else if (npc.questType == QuestType.SLAYER) {
-            SlayerQuest quest = new SlayerQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.mobToKill, npc.amount, npc.stepJumpOnComplete, npc.equipment);
+            SlayerQuest quest = new SlayerQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.mobToKill, npc.amount, npc.stepJumpOnComplete, npc.equipment, npc.questDisplayName, npc.questName, npc);
             npc.npc.addTrait(quest);
+            plugin.questHandler.allQuests.add(quest);
         } else {
-            Quest quest = new Quest("quest", npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.equipment);
+            Quest quest = new Quest("quest", npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.equipment, npc.questDisplayName, npc.questName, npc);
             npc.npc.addTrait(quest);
+            plugin.questHandler.allQuests.add(quest);
         }
         return npc;
     }

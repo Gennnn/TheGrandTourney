@@ -22,8 +22,7 @@ public class MMOMob {
     public float defense;
     public String internalName;
     public DropTable dropTable;
-    public boolean chanceOver100MeansMoreDrops;
-    public boolean calculateDropsIndividually;
+
     TGT plugin;
 
 
@@ -32,7 +31,7 @@ public class MMOMob {
         MMOMob mob = new MMOMob();
         mob.plugin = JavaPlugin.getPlugin(TGT.class);
         mob.internalName = config.getName();
-        mob.dropTable = new DropTable(mob.plugin);
+
         mob.mythicmob = MythicBukkit.inst().getMobManager().getMythicMob(mob.internalName).stream().findFirst().orElse(null);
         if (mob.mythicmob == null) {
             mob.plugin.getLogger().severe("MMMob " + mob.internalName + " had no matching MythicMob!");
@@ -52,9 +51,14 @@ public class MMOMob {
         }
         mob.defense = config.getInt("defense", 5);
         ConfigurationSection dropsSection = config.getConfigurationSection("drops");
+        boolean calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
+        boolean overflowDrops = config.getBoolean("overflow-drops", false);
+        mob.dropTable = new DropTable(mob.plugin, calculateDropsIndividually, overflowDrops);
+        if (dropsSection != null) {
+            mob.dropTable.addDropsFromSection(dropsSection);
+        }
 
-        mob.calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
-        mob.chanceOver100MeansMoreDrops = config.getBoolean("overflow-drops", false);
+
         return mob;
     }
 

@@ -24,11 +24,12 @@ import java.util.List;
 import java.util.Random;
 
 public class Crop implements Listener {
-    Location loc;
+    public Location loc;
     TGT plugin;
     CropTemplate template;
     Block block;
     Random r;
+    boolean isGrown = true;
     public Crop(TGT plugin, CropTemplate template) {
         this.plugin = plugin;
         this.template = template;
@@ -55,6 +56,7 @@ public class Crop implements Listener {
             Skull skull = (Skull) block;
             plugin.cropHandler.getHeadFrom64(template.grownBase64String, skull);
         }
+        plugin.cropHandler.allSpawnedCrops.add(this);
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
     @EventHandler
@@ -114,6 +116,7 @@ public class Crop implements Listener {
     }
     public void breakEvents(Player player) {
         calculateDrops(player);
+        this.isGrown = false;
         List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
         MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, block.getLocation().toCenterLocation(),0.33F,0.33F,0.33F,0.25F,15,1F,(Color)null,(Material) block.getType(), (byte)0, 20.0D, players);
         Crop.this.block.setType(template.regeneratingBlock);
@@ -136,6 +139,7 @@ public class Crop implements Listener {
             @Override
             public void run() {
                 Crop.this.block.setType(template.block);
+                Crop.this.isGrown = true;
                 List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
                 MagicSpells.getEffectManager().display(Particle.VILLAGER_HAPPY, block.getLocation().toCenterLocation(),0.35F,0.35F,0.35F,0.25F,25,8F,(Color)null,(Material) null, (byte)0, 20.0D, players);
                 block.getLocation().getWorld().playSound(block.getLocation(), "block.grass.break", 0.5F, 0.75F);
@@ -158,26 +162,7 @@ public class Crop implements Listener {
     }
 
     public void calculateDrops(Player p) {
-        Iterator iter = template.drops.keySet().iterator();
-        while (iter.hasNext()) {
-            MMOItem item = (MMOItem) iter.next();
-            double chance = template.drops.get(item);
-            double remainder = 0;
-            int quantity = 0;
-            if (chance > 100) {
-                remainder = chance;
-                while (remainder > 100) {
-                    quantity++;
-                    remainder = remainder-100;
-                }
-                chance = remainder;
-            }
-            if (chance >= r.nextInt(100)) {
-                quantity++;
-            }
-            ItemStack bIteam = plugin.itemHandler.getItem(item).asQuantity(quantity);
-            p.getInventory().addItem(bIteam);
-        }
+        template.drops.calculateDrops(p);
     }
     public String getName() {
         return this.template.name;

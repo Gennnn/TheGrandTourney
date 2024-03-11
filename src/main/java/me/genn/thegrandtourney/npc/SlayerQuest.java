@@ -45,9 +45,12 @@ public class SlayerQuest extends Quest {
             String mobToKill,
             int amountToBring,
             String stepToPerform,
-            Map<Equipment.EquipmentSlot, String> equipment
+            Map<Equipment.EquipmentSlot, String> equipment,
+            String questDisplayName,
+            String questName,
+            TGTNpc tgtNpc
     ) {
-        super("slayer", walkAwayCd, lineDelay, useWordCtForDelay, wordCtFactor, talkSound, talkVolume, talkPitch, skinSig, skin, steps, equipment);
+        super("slayer", walkAwayCd, lineDelay, useWordCtForDelay, wordCtFactor, talkSound, talkVolume, talkPitch, skinSig, skin, steps, equipment, questDisplayName, questName, tgtNpc);
         this.stepToFinish = stepToFinish;
         this.mobToKill = mobToKill;
         this.amountToBring = amountToBring;
@@ -103,7 +106,7 @@ public class SlayerQuest extends Quest {
                     }
                 }
             }
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }

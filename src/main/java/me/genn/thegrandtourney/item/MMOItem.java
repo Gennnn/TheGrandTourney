@@ -197,7 +197,7 @@ public class MMOItem {
 
     public static void addFakeEnchantment(ItemMeta meta) {
         if (meta != null) {
-            meta.addItemFlags(new ItemFlag[]{ItemFlag.HIDE_ENCHANTS});
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             meta.addEnchant(Enchantment.FROST_WALKER, -1, true);
         }
     }

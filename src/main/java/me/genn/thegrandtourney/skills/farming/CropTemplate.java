@@ -1,6 +1,7 @@
 package me.genn.thegrandtourney.skills.farming;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.DropTable;
 import me.genn.thegrandtourney.item.MMOItem;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -18,7 +19,6 @@ public class CropTemplate {
     Material block;
     String blockName;
     public String name;
-    Map<MMOItem, Double> drops;
     int grownAge;
     int regeneratingAge;
     String regeneratingBlockName;
@@ -27,11 +27,15 @@ public class CropTemplate {
     boolean agedCrop;
     public String grownBase64String;
     public String regeneratingBase64String;
+    public DropTable drops;
 
     public static CropTemplate create(ConfigurationSection config) throws IOException {
         CropTemplate template = new CropTemplate();
-        template.drops = new HashMap<>();
+
         TGT plugin = JavaPlugin.getPlugin(TGT.class);
+        boolean calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
+        boolean overflowDrops = config.getBoolean("overflow-drops", false);
+        template.drops = new DropTable(plugin, calculateDropsIndividually, overflowDrops);
         if (config.getString("block-name") == null) {
             return null;
         }
@@ -59,11 +63,8 @@ public class CropTemplate {
         template.block = Material.matchMaterial("minecraft:" + template.blockName);
 
         template.regeneratingBlock = Material.matchMaterial("minecraft:" + template.regeneratingBlockName);
-        List<String> dropsList = config.getStringList("drops");
-        for (String str : dropsList) {
-            String[] parts = str.split(" ");
-            template.drops.put(plugin.itemHandler.getMMOItemFromString(parts[0]), Double.valueOf(parts[1]));
-        }
+        ConfigurationSection drops = config.getConfigurationSection("drops");
+        template.drops.addDropsFromSection(drops);
         template.regenerationTime = config.getInt("regeneration-time", 10);
         template.name = config.getName();
         if (template.block == template.regeneratingBlock) {

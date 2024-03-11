@@ -6,7 +6,9 @@ import java.util.*;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.skills.mining.Ore;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.configuration.ConfigurationSection;
@@ -18,12 +20,15 @@ public class CropHandler {
 
     public List<CropTemplate> allCrops;
 
+    public List<Crop> allSpawnedCrops;
+
 
 
     public CropHandler() {
     }
     public void registerCropTemplates(TGT plugin, ConfigurationSection config) throws IOException {
         this.allCrops = new ArrayList<>();
+        this.allSpawnedCrops = new ArrayList<>();
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -52,5 +57,33 @@ public class CropHandler {
         skull.setRotation(facesList.get(r.nextInt(facesList.size())));
         skull.update();
 
+    }
+
+    private List<Crop> listOfCropsWithTemplateName(final List<Crop> list, final String name){
+        return list.stream().filter(o -> o.getName().equals(name)).toList();
+    }
+
+    private Crop getClosestCrop(List<Crop> crops, Location originLoc) {
+        Crop crop = crops.get(0);
+        Location minLoc = crop.loc;
+        for (int i = 1; i<crops.size(); i++) {
+            if (crops.get(i).loc.distanceSquared(originLoc) < minLoc.distanceSquared(originLoc)) {
+                minLoc = crops.get(i).loc;
+                crop = crops.get(i);
+            }
+        }
+        return crop;
+    }
+
+    public Crop getCropForObj(String name, Location originLoc) {
+        List<Crop> crops = listOfCropsWithTemplateName(allSpawnedCrops, name);
+        if (crops.size() == 0) {
+            return null;
+        } else if (crops.size() == 1) {
+            return crops.get(0);
+        } else {
+            Crop crop = getClosestCrop(crops, originLoc);
+            return crop;
+        }
     }
 }

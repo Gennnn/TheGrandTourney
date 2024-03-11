@@ -33,3 +33,7 @@ commands:
     description: saves a schem
   fishingzone:
     description: defines a fishing zone
+  menu:
+    description: open menu
+  slots:
+    description: add slots for bags

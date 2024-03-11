@@ -2,6 +2,7 @@ package me.genn.thegrandtourney.skills.mining;
 
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.DropTable;
 import me.genn.thegrandtourney.item.MMOItem;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
@@ -14,7 +15,6 @@ import java.io.IOException;
 public class OreTemplate {
     public ItemStack resource;
     public VeinType type;
-    public MMOItem drop;
     public float health;
     public int regenTime;
     public String name;
@@ -25,6 +25,7 @@ public class OreTemplate {
     public String displayName;
     public int critPointRegenTime;
     public int defense;
+    public DropTable drops;
 
     public static OreTemplate create(ConfigurationSection config) throws IOException {
         OreTemplate template = new OreTemplate();
@@ -37,7 +38,6 @@ public class OreTemplate {
             return null;
         }
         template.type = VeinType.valueOf(config.getString("type", "small").toUpperCase());
-        template.drop = plugin.itemHandler.getMMOItemFromString(config.getString("drop", "coal"));
         template.health = (float) config.getDouble("health", 100);
         template.regenTime = config.getInt("regen-time", 30);
         template.width = (float) config.getDouble("width", 1.5);
@@ -48,6 +48,9 @@ public class OreTemplate {
         template.name = config.getName();
         template.displayName = ChatColor.translateAlternateColorCodes('&', config.getString("display-name"));
         template.critPointRegenTime = config.getInt("crit-point-regen-time", 15);
+        boolean calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
+        boolean overflowDrops = config.getBoolean("overflow-drops", false);
+        template.drops = new DropTable(plugin, calculateDropsIndividually, overflowDrops);
         return template;
     }
 

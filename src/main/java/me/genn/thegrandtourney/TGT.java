@@ -24,6 +24,7 @@ import me.genn.thegrandtourney.grid.Grid;
 import me.genn.thegrandtourney.grid.SchematicHandler;
 import me.genn.thegrandtourney.item.ItemHandler;
 import me.genn.thegrandtourney.listener.EventListener;
+import me.genn.thegrandtourney.menu.MenuManager;
 import me.genn.thegrandtourney.mobs.MobHandler;
 import me.genn.thegrandtourney.mobs.Spawner;
 import me.genn.thegrandtourney.mobs.SpawnerHandler;
@@ -104,12 +105,22 @@ public class TGT extends JavaPlugin implements Listener {
     public Score objectiveDescriptionScore;
     public Score websiteScore;
     public Economy econ;
+    public MenuManager menus;
+    public Map<TGTNpc, Location> npcObjectiveLocList;
+    public Map<Ore, Location> oreObjectiveLocList;
+    public Map<FishingZone, Location> fishingZoneObjectiveLocList;
+    public Map<Crop, Location> cropObjectiveLocList;
+    public Map<Spawner, Location> spawnerObjectiveLocList;
+
+    public QuestHandler questHandler;
+
 
 
 
     public void onEnable() {
         plugin = this;
         npcMap = new HashMap();
+        menus = new MenuManager(this);
         this.pm = ProtocolLibrary.getProtocolManager();
         this.pluginManager = this.getServer().getPluginManager();
         this.oreLocationList = new HashMap<>();
@@ -117,7 +128,12 @@ public class TGT extends JavaPlugin implements Listener {
         this.npcLocationList = new HashMap<>();
         this.spawnerLocationList = new HashMap<>();
         this.fishingZoneList = new ArrayList<>();
-
+        this.npcObjectiveLocList = new HashMap<>();
+        this.oreObjectiveLocList = new HashMap<>();
+        this.fishingZoneObjectiveLocList = new HashMap<>();
+        this.cropObjectiveLocList = new HashMap<>();
+        this.spawnerObjectiveLocList = new HashMap<>();
+        this.questHandler = new QuestHandler(this);
         defaultStatValues = new HashMap();
         players = new HashMap();
         File configFile = new File(this.getDataFolder(), "config.yml");
@@ -472,7 +488,7 @@ public class TGT extends JavaPlugin implements Listener {
             this.setEnabled(false);
             return;
         } else {
-            this.npcHandler = new NPCHandler(skinAndSigFolderContents, skinAndSigDirectory);
+            this.npcHandler = new NPCHandler(skinAndSigFolderContents, skinAndSigDirectory, this);
             this.npcHandler.generate();
             try {
                 this.npcHandler.registerNPCs(this, npcsSection);
@@ -865,12 +881,12 @@ public class TGT extends JavaPlugin implements Listener {
             if (args.length == 1) {
                 if (sender instanceof Player) {
                     ((Player) sender).getInventory().addItem(this.itemHandler.getItemFromString(args[0]));
-                    sender.sendMessage(ChatColor.GREEN + "Gave " + ChatColor.YELLOW + "1x " + this.itemHandler.getItemFromString(args[0]).getItemMeta().getDisplayName() + ChatColor.GREEN + " to " + ChatColor.YELLOW + sender + ChatColor.GREEN + ".");
+                    sender.sendMessage(ChatColor.GREEN + "Gave " + ChatColor.YELLOW + "1x " + this.itemHandler.getItemFromString(args[0]).getItemMeta().getDisplayName() + ChatColor.GREEN + " to " + ChatColor.YELLOW + ((Player)sender).getName() + ChatColor.GREEN + ".");
                 }
             } else if (args.length == 2) {
                 if (sender instanceof Player && args[1].matches("^[0-9]+$")) {
                     ((Player) sender).getInventory().addItem(this.itemHandler.getItemFromString(args[0]).asQuantity(Integer.parseInt(args[1])));
-                    sender.sendMessage(ChatColor.GREEN + "Gave " + ChatColor.YELLOW + args[1] + "x " + this.itemHandler.getItemFromString(args[0]).getItemMeta().getDisplayName() + ChatColor.GREEN + " to " + ChatColor.YELLOW + sender + ChatColor.GREEN + ".");
+                    sender.sendMessage(ChatColor.GREEN + "Gave " + ChatColor.YELLOW + args[1] + "x " + this.itemHandler.getItemFromString(args[0]).getItemMeta().getDisplayName() + ChatColor.GREEN + " to " + ChatColor.YELLOW + ((Player)sender).getName() + ChatColor.GREEN + ".");
 
                 }
             } else if (args.length == 3) {
@@ -952,6 +968,40 @@ public class TGT extends JavaPlugin implements Listener {
             } else {
                 sender.sendMessage(ChatColor.RED + "Only players can perform this command!");
             }
+        } else if (command.getName().equalsIgnoreCase("menu")) {
+            if (sender instanceof Player) {
+                menus.openHomeMenu((Player)sender);
+            } else {
+                sender.sendMessage(ChatColor.RED + "Only players can perform this command!");
+            }
+        } else if (command.getName().equalsIgnoreCase("slots")) {
+            if (args.length < 3) {
+                sender.sendMessage(ChatColor.RED + "You need to specify the slot type and quantity to add!");
+                return false;
+            }
+            Player player = Bukkit.getPlayer(args[0]);
+            if (player == null) {
+                sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                return false;
+            }
+            try {
+                int num = Integer.parseInt(args[2]);
+                if (args[1].equalsIgnoreCase("storage")) {
+                    this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
+                    sender.sendMessage(ChatColor.GREEN + "Added " +ChatColor.YELLOW + num + ChatColor.GREEN +" storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                } else if (args[1].equalsIgnoreCase("accessory")) {
+                    this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
+                    sender.sendMessage(ChatColor.GREEN + "Added " +ChatColor.YELLOW + num + ChatColor.GREEN +" accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+
+                } else {
+                    sender.sendMessage(ChatColor.RED + "The slot type you specified is invalid!");
+                }
+            } catch(NumberFormatException | NullPointerException e) {
+                sender.sendMessage(ChatColor.RED + "You must specify an integer!");
+                return false;
+            }
+
+
         }
         return true;
 
@@ -1064,21 +1114,23 @@ public class TGT extends JavaPlugin implements Listener {
         mmoPlayer.setBaseFlash(mmoPlayer.getFlash());
         MagicSpells.getManaHandler().setMaxMana(player, (int)mmoPlayer.getMaxMana());
         MagicSpells.getManaHandler().setMana(player, (int)mmoPlayer.getMaxMana(), ManaChangeReason.OTHER);
-        mmoPlayer.setCombatLvl(1);
-        mmoPlayer.setLoggingLvl(1);
-        mmoPlayer.setMiningLvl(1);
-        mmoPlayer.setFishingLvl(1);
-        mmoPlayer.setFarmingLvl(1);
-        mmoPlayer.setSmithingLvl(1);
-        mmoPlayer.setAlchemyLvl(1);
-        mmoPlayer.setCookingLvl(1);
+        mmoPlayer.setCombatLvl(0);
+        mmoPlayer.setLoggingLvl(0);
+        mmoPlayer.setMiningLvl(0);
+        mmoPlayer.setFishingLvl(0);
+        mmoPlayer.setFarmingLvl(0);
+        mmoPlayer.setSmithingLvl(0);
+        mmoPlayer.setCookingLvl(0);
+        mmoPlayer.setTailoringLvl(0);
+        mmoPlayer.setTinkeringLvl(0);
+        mmoPlayer.setTinkeringProg(0.0f);
+        mmoPlayer.setTailoringProg(0.0f);
         mmoPlayer.setCombatProg(0.0f);
         mmoPlayer.setMiningProg(0.0f);
         mmoPlayer.setFishingProg(0.0f);
         mmoPlayer.setLoggingProg(0.0f);
         mmoPlayer.setFarmingProg(0.0f);
         mmoPlayer.setSmithingProg(0.0f);
-        mmoPlayer.setAlchemyProg(0.0f);
         mmoPlayer.setCookingProg(0.0f);;
         mmoPlayer.setRespawnLocation(player.getBedSpawnLocation());
         plugin.econ.createBank("Bank." + player.getName(), Bukkit.getOfflinePlayer(player.getUniqueId()));
@@ -1095,10 +1147,13 @@ public class TGT extends JavaPlugin implements Listener {
                 plugin.updatePlayerSpeed(plugin.players.get(p.getUniqueId()));
                 StatUpdates.updateFullInventory(p, plugin.players.get(p.getUniqueId()));
                 p.sendActionBar(ChatColor.RED.toString() + (int)players.get(p.getUniqueId()).getHealth() + "/" + (int)players.get(p.getUniqueId()).getMaxHealth() + "❤    " + ChatColor.BLUE.toString() + (int)players.get(p.getUniqueId()).getDefense() + "❈ Defense    " + ChatColor.GREEN.toString() + this.ms.getManaHandler().getMana(p) + "/" + this.ms.getManaHandler().getMaxMana(p) + "⚡ Stamina");
+                plugin.questHandler.checkInvForFulfillingItems(p);
+                plugin.questHandler.updateTrackingDetails(p);
             } else {
                 this.getLogger().severe("PLAYER " + p.getName() + " HAS NO MMOPLAYER ENTRY");
             }
         }
+
     }
     public void healthRegen() {
         Iterator iter = Bukkit.getOnlinePlayers().iterator();

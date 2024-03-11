@@ -5,6 +5,7 @@ import java.util.logging.Level;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import net.citizensnpcs.api.trait.trait.Equipment;
 import net.minecraft.network.protocol.game.PacketPlayOutNamedSoundEffect;
 import org.bukkit.Bukkit;
@@ -29,22 +30,8 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 @TraitName("quest")
 public class Quest extends Trait {
-    List<String> randomChatter;
-    List<String> dialoguePreQuest;
-    List<String> dialogueQuestAccept;
-    List<String> dialogueQuestRefuse;
-    List<String> dialogueQuestOnCd;
-    List<String> dialogueQuestActive;
-    List<String> dialogueQuestCompleted;
-    List<String> dialoguePostQuest;
-    List<String> dialogueWalkAway;
     public Map<UUID, String> questProgress;
     public List<OfflinePlayer> onRefusalCd;
-    String questAcceptPostText;
-    String questDenyPostText;
-    String questWalkAwayPostText;
-    String questCompletePostText;
-    String questActivePostText;
     String questName;
     int npcId;
     int walkAwayCd;
@@ -65,6 +52,8 @@ public class Quest extends Trait {
     public String chestplate;
     public String leggings;
     public String boots;
+    public String questDisplayName;
+    public TGTNpc tgtNpc;
 
     public Quest() {
         super("quest");
@@ -83,7 +72,11 @@ public class Quest extends Trait {
             String skinSig,
             String skin,
             List<Step> steps,
-            Map<Equipment.EquipmentSlot, String> equipment)
+            Map<Equipment.EquipmentSlot, String> equipment,
+            String questDisplayName,
+            String questName,
+            TGTNpc tgtNpc)
+
     {
         super(questType);
         plugin = JavaPlugin.getPlugin(TGT.class);
@@ -113,6 +106,9 @@ public class Quest extends Trait {
         if (equipment.containsKey(Equipment.EquipmentSlot.BOOTS)) {
             this.boots = equipment.get(Equipment.EquipmentSlot.BOOTS);
         }
+        this.questDisplayName = questDisplayName;
+        this.questName = questName;
+        this.tgtNpc = tgtNpc;
     }
 
     TGT plugin = null;
@@ -167,7 +163,7 @@ public class Quest extends Trait {
                 this.playSound(player, "random.orb", 1.0F, 1.5F);
                 this.playSound(player, "random.levelup", 1.0F, 2.0F);
             }
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }
@@ -179,8 +175,8 @@ public class Quest extends Trait {
     }
 
 
-    public void createDialogue(List<String> lines, BaseComponent narration, Player player, boolean ranged, List<String> rewards) {
-        Dialogue dialogue = new Dialogue(lines, this.lineDelay, this.useWordCtForDelay, this.talkSound, this.talkVolume, this.talkPitch, npc, plugin, this.type, this.wordCtFactor, narration, rewards);
+    public void createDialogue(List<String> lines, BaseComponent narration, Player player, boolean ranged, List<String> rewards, ObjectiveUpdate objectiveUpdate) {
+        Dialogue dialogue = new Dialogue(lines, this.lineDelay, this.useWordCtForDelay, this.talkSound, this.talkVolume, this.talkPitch, npc, plugin, this.type, this.wordCtFactor, narration, rewards, this.questName, tgtNpc, objectiveUpdate);
         dialogue.speak(player, ranged);
     }
     @Override
@@ -213,6 +209,7 @@ public class Quest extends Trait {
             }
 
         }
+        plugin.npcHandler.allSpawnedNpcs.add(tgtNpc);
     }
 
     public void denyQuest(Player player) {
@@ -250,5 +247,9 @@ public class Quest extends Trait {
         } else {
             return true;
         }
+    }
+
+    public String getQuestName() {
+        return this.questName;
     }
 }

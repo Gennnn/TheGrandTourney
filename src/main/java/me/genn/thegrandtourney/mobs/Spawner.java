@@ -13,6 +13,7 @@ import java.util.logging.Level;
 public class Spawner {
     TGT plugin;
     SpawnerTemplate template;
+    public Location loc;
     public Spawner(TGT plugin, SpawnerTemplate template) {
         this.plugin = plugin;
         this.template = template;
@@ -36,6 +37,8 @@ public class Spawner {
         mythicSpawner.setLeashRange(template.leashRange);
         mythicSpawner.Enable();
         mythicSpawner.ActivateSpawner();
+        this.loc = loc;
+        plugin.spawnerHandler.allSpawnedSpawners.add(this);
     }
     public void paste(Location loc, Paste paste, int counter) {
         String name = template.name + "." + paste.schematic.name + "." + counter;
@@ -57,9 +60,14 @@ public class Spawner {
         mythicSpawner.setActivationRange(template.activationRange);
         mythicSpawner.Enable();
         mythicSpawner.ActivateSpawner();
+        this.loc = loc;
+        plugin.spawnerHandler.allSpawnedSpawners.add(this);
     }
 
     public String getName() {
         return template.name;
+    }
+    public String getMobName() {
+        return template.mobName;
     }
 }
