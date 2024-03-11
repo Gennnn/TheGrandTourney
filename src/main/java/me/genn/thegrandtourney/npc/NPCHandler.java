@@ -30,7 +30,7 @@ public class NPCHandler {
 
     public void generate() {
         this.allNpcs = new ArrayList<TGTNpc>();
-        this.allSpawnedNpcs = new ArrayList<>();
+        this.allSpawnedNpcs = new ArrayList<TGTNpc>();
         this.skinsAndSigs = new ArrayList<String>();
         String contents[] = skinAndSigFolder.list();
         for (int i=0; i < contents.length; i++) {

@@ -111,6 +111,13 @@ public class QuestLog implements Listener {
                 } else {
                     Objective objective = mmoPlayer.objectives.get(i+startIndex);
                     setMenuItem(objective.icon, ChatColor.translateAlternateColorCodes('&', objective.questName), objective.status, slotsToFill[i], inv);
+                    if (player.isOp()) {
+                        player.sendMessage("Lore is supposed to be:");
+                        for (int k =0 ; k < objective.status.size(); k++) {
+                            player.sendMessage(objective.status.get(k));
+                        }
+                    }
+
                 }
 
             }
@@ -179,7 +186,7 @@ public class QuestLog implements Listener {
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
         meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS);
-        if (lore.size() > 1) {
+        if (lore.size() > 0) {
             meta.setLore(lore);
         }
         item.setItemMeta(meta);

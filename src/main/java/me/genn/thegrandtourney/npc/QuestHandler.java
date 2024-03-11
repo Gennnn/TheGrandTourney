@@ -61,7 +61,9 @@ public class QuestHandler {
         if (mmoPlayer == null) {
             return;
         }
-        player.hideBossBar(this.currentlyDisplayedBossBar.get(player));
+        if (this.currentlyDisplayedBossBar.get(player) != null) {
+            player.hideBossBar(this.currentlyDisplayedBossBar.get(player));
+        }
         if (mmoPlayer.trackedObjective != null) {
             double distance = player.getLocation().distanceSquared(mmoPlayer.trackedObjective.objectiveLocation);
             String name = ChatColor.translateAlternateColorCodes('&',mmoPlayer.trackedObjective.trackingText) + " (" + (int)distance + "m away)";
