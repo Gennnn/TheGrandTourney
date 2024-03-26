@@ -64,6 +64,7 @@ public class Home implements Listener {
         lore.add("  " + ChatColor.AQUA + "☈ Lure " + ChatColor.WHITE + mmoPlayer.getFlash());
         lore.add("  " + ChatColor.LIGHT_PURPLE + "⌚ Dialogue Speed " +ChatColor.WHITE+ mmoPlayer.getDialogueSpeed());
         lore.add("  " + ChatColor.GOLD + "$ Shop Discount " + ChatColor.WHITE + mmoPlayer.getVendorPrice());
+        lore.add("  " + ChatColor.RED + "◎ Focus " + ChatColor.WHITE + mmoPlayer.getFocus());
         meta.setLore(lore);
         SkullMeta skullMeta = (SkullMeta) meta;
         skullMeta.setPlayerProfile(player.getPlayerProfile());
@@ -179,9 +180,9 @@ public class Home implements Listener {
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta() && e.getCurrentItem().getItemMeta().hasDisplayName()){
                 String name = e.getCurrentItem().getItemMeta().getDisplayName();
                 if (name.equalsIgnoreCase(recipes)) {
-                    e.getWhoClicked().sendMessage("You clicked on recipe boko");
+                    plugin.menus.openRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(skills)) {
-                    e.getWhoClicked().sendMessage("You clicked on skills");
+                    plugin.menus.openSkillMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(quests)) {
                     plugin.menus.openQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(accessories)) {

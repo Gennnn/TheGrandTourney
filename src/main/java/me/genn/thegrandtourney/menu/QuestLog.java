@@ -111,12 +111,7 @@ public class QuestLog implements Listener {
                 } else {
                     Objective objective = mmoPlayer.objectives.get(i+startIndex);
                     setMenuItem(objective.icon, ChatColor.translateAlternateColorCodes('&', objective.questName), objective.status, slotsToFill[i], inv);
-                    if (player.isOp()) {
-                        player.sendMessage("Lore is supposed to be:");
-                        for (int k =0 ; k < objective.status.size(); k++) {
-                            player.sendMessage(objective.status.get(k));
-                        }
-                    }
+
 
                 }
 
@@ -169,6 +164,8 @@ public class QuestLog implements Listener {
                         plugin.players.get(e.getWhoClicked().getUniqueId()).trackedObjective = objective;
                         e.getWhoClicked().sendMessage(ChatColor.GREEN + "Set tracked quest to: " + item.getItemMeta().getDisplayName() + ChatColor.GREEN + ".");
                     }
+                    e.setCancelled(true);
+                } else {
                     e.setCancelled(true);
                 }
             } else if (e.getCursor() != null && e.getCursor().hasItemMeta() && e.getCursor().getItemMeta().hasDisplayName()) {

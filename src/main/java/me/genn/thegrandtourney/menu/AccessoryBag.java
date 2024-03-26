@@ -122,7 +122,9 @@ public class AccessoryBag implements Listener {
 
 
                                 e.setCancelled(true);
-                                e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCurrentItem(), "tgt_menu")) {
+                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                }
                             }
                         }
                     } else {
@@ -140,7 +142,10 @@ public class AccessoryBag implements Listener {
                         if (!last.contains("CHARM")) {
                             if (!e.getCursor().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Bag")) {
                                 e.setCancelled(true);
-                                e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCursor(), "tgt_menu")) {
+                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                }
+
                             }
                         }
                     } else {

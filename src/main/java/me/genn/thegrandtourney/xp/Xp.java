@@ -1,21 +1,33 @@
 package me.genn.thegrandtourney.xp;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.npc.ChainCommand;
+import me.genn.thegrandtourney.npc.Dialogue;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import scala.concurrent.impl.FutureConvertersImpl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 public class Xp {
-    static Map<Integer, Double> xpForLevel;
+    public static Map<Integer, Double> xpForLevel;
     static TGT plugin;
-    public static void initializeXp(TGT plugin) {
+    public Xp(TGT plugin) {
         Xp.plugin = plugin;
         Xp.xpForLevel = new HashMap<>();
+        xpForLevel.put(0,0.0D);
         for (int i = 1; i <= 10; i++) {
-            xpForLevel.put(i, (62.5 * (i^2))+(37.5*i));
+            double baseXp = 0;
+            if (i != 1) {
+                baseXp = xpForLevel.get(i-1);
+            }
+            double extraXp = (62.5 * (Math.pow(i,2)))+(37.5*i);
+            xpForLevel.put(i, (baseXp + extraXp));
+            plugin.getLogger().log(Level.INFO, "Set xp needed for level " + i + " to " + xpForLevel.get(i) ) ;
         }
 
     }
@@ -50,18 +62,38 @@ public class Xp {
         player.setXpForType(type, value);
         if (player.getLvlForType(type) < 10 && xpForLevel.get(player.getLvlForType(type) + 1) <=player.getXpForType(type)) {
             player.setLvlForType(type, player.getLvlForType(type)+1);
-            //send lvl up msgs and perform lvl up bonuses
+            this.sendMessagesForLevel(bukkitPlayer, type);
+        } else {
+            bukkitPlayer.setExp((float) (player.getXpForType(type)/xpForLevel.get(player.getLvlForType(type) + 1)));
+            bukkitPlayer.setLevel(player.getLvlForType(type));
         }
-        bukkitPlayer.setExp((float) (player.getXpForType(type)/xpForLevel.get(player.getLvlForType(type) + 1)));
-        bukkitPlayer.setLevel(player.getLvlForType(type));
+
     }
     public void sendMessagesForLevel(Player bukkitPlayer, XpType type) {
         MMOPlayer player = plugin.players.get(bukkitPlayer.getUniqueId());
-        bukkitPlayer.sendMessage(ChatColor.DARK_AQUA + "==============================");
-        bukkitPlayer.sendMessage(ChatColor.AQUA + "  " + ChatColor.BOLD + "SKILL LEVEL UP " +ChatColor.RESET + "" + ChatColor.DARK_AQUA + type.getName() + " " + ChatColor.DARK_GRAY + intToRoman(player.getLvlForType(type)-1) + "➡" + ChatColor.DARK_AQUA + intToRoman(player.getLvlForType(type)));
+
+        bukkitPlayer.sendMessage(ChatColor.DARK_AQUA + "=====================================================");
+        if ((player.getLvlForType(type) - 1) > 0 ) {
+            bukkitPlayer.sendMessage(ChatColor.AQUA + "  " + ChatColor.BOLD + "SKILL LEVEL UP " +ChatColor.RESET + "" + ChatColor.DARK_AQUA + type.getName() + " " + ChatColor.DARK_GRAY + intToRoman(player.getLvlForType(type)-1) + "➡" + ChatColor.DARK_AQUA + intToRoman(player.getLvlForType(type)));
+        } else {
+            bukkitPlayer.sendMessage(ChatColor.AQUA + "  " + ChatColor.BOLD + "SKILL LEVEL UP " +ChatColor.RESET + "" + ChatColor.DARK_AQUA + type.getName() + " " + ChatColor.DARK_AQUA + intToRoman(player.getLvlForType(type)));
+
+        }
         bukkitPlayer.sendMessage("");
         bukkitPlayer.sendMessage("  " + ChatColor.GREEN + "" + ChatColor.BOLD + "REWARDS");
-        //send appropriate reward text
+        List<String> text = plugin.rewardsHandler.getTableForType(type).getRewardsForLevel(player.getLvlForType(type)).rewardText;
+        for (String str : text) {
+            bukkitPlayer.sendMessage("    " + str);
+        }
+        bukkitPlayer.sendMessage("");
+        bukkitPlayer.sendMessage(ChatColor.DARK_AQUA + "=====================================================");
+        ChainCommand chain = new ChainCommand(plugin.rewardsHandler.getTableForType(type).getRewardsForLevel(player.getLvlForType(type)).rewardCommands, bukkitPlayer);
+        chain.run();
+        double numerator = ( player.getXpForType(type) - ( xpForLevel.get(player.getLvlForType(type))));
+        double denominator = (( xpForLevel.get(player.getLvlForType(type) + 1)) - xpForLevel.get(player.getLvlForType(type) ));
+        bukkitPlayer.playSound(bukkitPlayer, "entity.player.levelup", 1.0f, 1.0f);
+        bukkitPlayer.setExp((float)  (numerator/denominator));
+        bukkitPlayer.setLevel(player.getLvlForType(type));
     }
     public static String intToRoman(int num)
     {

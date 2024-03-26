@@ -37,3 +37,13 @@ commands:
     description: open menu
   slots:
     description: add slots for bags
+  dosh:
+    description: add money
+  skill-xp:
+    description: add skill xp
+  tabletest:
+    description: table
+  grantrecipe:
+    description: grants recipe
+  stat:
+    description: modifies base stats

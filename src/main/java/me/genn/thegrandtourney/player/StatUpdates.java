@@ -2,10 +2,14 @@ package me.genn.thegrandtourney.player;
 
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTItem;
+import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.xp.Xp;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -13,6 +17,11 @@ import java.util.List;
 import java.util.Map;
 
 public class StatUpdates {
+    TGT plugin;
+
+    public StatUpdates(TGT plugin) {
+        this.plugin = plugin;
+    }
 
     public static void updateStatsFromItem(ItemStack item, MMOPlayer mmoPlayer, Map<String, Map<String, Float>> fullChangeList) {
         float strChange = 0;
@@ -30,6 +39,7 @@ public class StatUpdates {
         float attackSpeedChange = 0;
         float lureChange = 0;
         float flashChange = 0;
+        float focusChange = 0;
         Map<String, Float> changes = new HashMap<>();
         if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
             return;
@@ -165,6 +175,14 @@ public class StatUpdates {
                 line = line.replaceFirst("(Lure: +\\-)", "");
                 flashChange = -Float.parseFloat(line);
                 changes.put("flash", flashChange);
+            } else if (ChatColor.stripColor(line).startsWith("Focus: +")) {
+                line = line.replaceFirst("(Focus: +\\+)", "");
+                focusChange = Float.parseFloat(line);
+                changes.put("focus", focusChange);
+            } else if (ChatColor.stripColor(line).startsWith("Focus: -")) {
+                line = line.replaceFirst("(Focus: +\\-)", "");
+                focusChange = -Float.parseFloat(line);
+                changes.put("focus", focusChange);
             }
 
         }
@@ -175,7 +193,7 @@ public class StatUpdates {
 
     }
 
-    public static void updateFullInventory(Player player, MMOPlayer mmoPlayer) {
+    public void updateFullInventory(Player player, MMOPlayer mmoPlayer) {
         Map<String, Map<String, Float>> changeMap = new HashMap();
         float strChange = 0;
         float critDamChange = 0;
@@ -192,18 +210,30 @@ public class StatUpdates {
         float attackSpeedChange = 0;
         float flashChange = 0;
         float lureChange = 0;
-        updateStatsFromItem(player.getInventory().getItemInMainHand(), mmoPlayer, changeMap);
+        float focusChange = 0;
+        if (plugin.listener.checkWieldingItemForLvlRequirements(player)) {
+            updateStatsFromItem(player.getInventory().getItemInMainHand(), mmoPlayer, changeMap);
+        }
+
         if (player.getInventory().getHelmet() != null ) {
-            updateStatsFromItem(player.getInventory().getHelmet(), mmoPlayer, changeMap);
+            if (plugin.listener.checkItemForRequirements(player, player.getInventory().getHelmet())) {
+                updateStatsFromItem(player.getInventory().getHelmet(), mmoPlayer, changeMap);
+            }
         }
         if (player.getInventory().getChestplate() != null) {
-            updateStatsFromItem(player.getInventory().getChestplate(), mmoPlayer, changeMap);
+            if (plugin.listener.checkItemForRequirements(player, player.getInventory().getChestplate())) {
+                updateStatsFromItem(player.getInventory().getChestplate(), mmoPlayer, changeMap);
+            }
         }
         if (player.getInventory().getLeggings() != null) {
-            updateStatsFromItem(player.getInventory().getLeggings(), mmoPlayer, changeMap);
+            if (plugin.listener.checkItemForRequirements(player, player.getInventory().getLeggings())) {
+                updateStatsFromItem(player.getInventory().getLeggings(), mmoPlayer, changeMap);
+            }
         }
         if (player.getInventory().getBoots() != null) {
-            updateStatsFromItem(player.getInventory().getBoots(), mmoPlayer, changeMap);
+            if (plugin.listener.checkItemForRequirements(player, player.getInventory().getBoots())) {
+                updateStatsFromItem(player.getInventory().getBoots(), mmoPlayer, changeMap);
+            }
         }
 
         Iterator invIter = player.getInventory().iterator();
@@ -260,6 +290,8 @@ public class StatUpdates {
                     lureChange = lureChange + itr.getValue();
                 } else if (itr.getKey().equalsIgnoreCase("flash")) {
                     flashChange = flashChange + itr.getValue();
+                } else if (itr.getKey().equalsIgnoreCase("focus")) {
+                    focusChange = focusChange + itr.getValue();
                 }
             }
         }
@@ -280,6 +312,73 @@ public class StatUpdates {
 
         mmoPlayer.setFlash(mmoPlayer.getBaseFlash() + flashChange);
         mmoPlayer.setLure(mmoPlayer.getBaseLure() + lureChange);
+        mmoPlayer.setFocus(mmoPlayer.getBaseFocus() + focusChange);
+        Iterator iter = player.getInventory().iterator();
+        while (iter.hasNext()) {
+            ItemStack item = (ItemStack) iter.next();
+            if (item != null && item.hasItemMeta()) {
+                NBTItem nbtI = new NBTItem(item);
+                if (nbtI.hasTag("ExtraAttributes")) {
+                    NBTCompound comp = nbtI.getCompound("ExtraAttributes");
+                    if (comp.hasTag("id")) {
+                        String id = nbtI.getCompound("ExtraAttributes").getString("id");
+                        MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(id);
+
+                        if (mmoItem != null && mmoItem.typeRequirement != null) {
+
+                            if (mmoPlayer.getLvlForType(mmoItem.typeRequirement) < mmoItem.lvlRequirement) {
+                                if (itemLoreContainsLevelRequirement(item)) {
+                                    continue;
+                                } else {
+                                    List<String> lore = item.getItemMeta().getLore();
+                                    lore.add(lore.size()-1, (ChatColor.DARK_RED + "✖ " + ChatColor.RED + "Requires " + ChatColor.GREEN + mmoItem.typeRequirement.getName() + " Level " + Xp.intToRoman(mmoItem.lvlRequirement) + ChatColor.RED + " to use."));
+                                    ItemMeta meta = item.getItemMeta();
+                                    meta.setLore(lore);
+                                    item.setItemMeta(meta);
+                                }
+                            } else {
+                                if (itemLoreContainsLevelRequirement(item)) {
+                                    int num = lineNumberOfRequirementString(item);
+                                    if (num == -1) {
+                                        continue;
+                                    }
+                                    List<String> lore = item.getItemMeta().getLore();
+                                    lore.remove(num);
+                                    ItemMeta meta = item.getItemMeta();
+                                    meta.setLore(lore);
+                                    item.setItemMeta(meta);
+                                } else {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean itemLoreContainsLevelRequirement(ItemStack item) {
+        Iterator iter = item.getItemMeta().getLore().iterator();
+        while (iter.hasNext()) {
+            String line = (String) iter.next();
+            if (ChatColor.stripColor(line).startsWith("✖ Requires")) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public int lineNumberOfRequirementString(ItemStack item) {
+        Iterator iter = item.getItemMeta().getLore().iterator();
+        int num = 0;
+        while (iter.hasNext()) {
+            String line = (String) iter.next();
+            if (ChatColor.stripColor(line).startsWith("✖ Requires")) {
+                return num;
+            }
+            num++;
+        }
+        return -1;
     }
 
 

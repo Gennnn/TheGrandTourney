@@ -18,6 +18,8 @@ import com.sk89q.worldedit.MaxChangedBlocksException;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.world.DataException;
 
+import de.tr7zw.nbtapi.NBTCompound;
+import de.tr7zw.nbtapi.NBTItem;
 import me.genn.thegrandtourney.grid.Cell;
 import me.genn.thegrandtourney.grid.District;
 import me.genn.thegrandtourney.grid.Grid;
@@ -32,6 +34,7 @@ import me.genn.thegrandtourney.mobs.SpawnerTemplate;
 import me.genn.thegrandtourney.npc.*;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.StatUpdates;
+import me.genn.thegrandtourney.skills.*;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.farming.CropHandler;
 import me.genn.thegrandtourney.skills.farming.CropTemplate;
@@ -41,11 +44,16 @@ import me.genn.thegrandtourney.skills.fishing.FishingZoneTemplate;
 import me.genn.thegrandtourney.skills.mining.Ore;
 import me.genn.thegrandtourney.skills.mining.OreHandler;
 import me.genn.thegrandtourney.skills.mining.OreTemplate;
+import me.genn.thegrandtourney.skills.tailoring.Table;
 import me.genn.thegrandtourney.util.SchematicCreator;
+import me.genn.thegrandtourney.xp.RewardTableHandler;
+import me.genn.thegrandtourney.xp.Xp;
+import me.genn.thegrandtourney.xp.XpType;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCRegistry;
 import net.citizensnpcs.api.trait.TraitInfo;
+import net.kyori.adventure.bossbar.BossBar;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -113,6 +121,13 @@ public class TGT extends JavaPlugin implements Listener {
     public Map<Spawner, Location> spawnerObjectiveLocList;
 
     public QuestHandler questHandler;
+    public RewardTableHandler rewardsHandler;
+    public Xp xpHandler;
+    public Map<Player, BossBar> currentlyDisplayedBossBar;
+    public TableHandler tableHandler;
+    public Map<Location, Station> stationList;
+    public int toastMessageCounter = 0;
+    public StatUpdates statUpdates;
 
 
 
@@ -134,6 +149,11 @@ public class TGT extends JavaPlugin implements Listener {
         this.cropObjectiveLocList = new HashMap<>();
         this.spawnerObjectiveLocList = new HashMap<>();
         this.questHandler = new QuestHandler(this);
+        this.xpHandler = new Xp(this);
+        this.currentlyDisplayedBossBar = new HashMap<>();
+        this.tableHandler = new TableHandler(this);
+        this.stationList = new HashMap<>();
+        this.statUpdates = new StatUpdates(this);
         defaultStatValues = new HashMap();
         players = new HashMap();
         File configFile = new File(this.getDataFolder(), "config.yml");
@@ -444,6 +464,56 @@ public class TGT extends JavaPlugin implements Listener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        
+        /*
+        START REWARD TABLE REGISTER
+         */
+        
+
+        if (!config.contains("level-rewards")) {
+            config.createSection("level-rewards");
+        }
+        File levelRewardsFile = new File(this.getDataFolder(), "level-rewards.yml");
+
+        if (!levelRewardsFile.exists()) {
+            this.saveResource("level-rewards.yml", false);
+        }
+        YamlConfiguration levelRewards = new YamlConfiguration();
+        sec = config.getConfigurationSection("level-rewards");
+        if (sec == null) {
+            sec = config.createSection("level-rewards");
+        }
+        try {
+            levelRewards.load(levelRewardsFile);
+            Set<String> keys = levelRewards.getKeys(true);
+            Iterator i$ = keys.iterator();
+            while(i$.hasNext()) {
+                String key = (String)i$.next();
+                sec.set(key, levelRewards.get(key));
+            }
+        } catch (Exception var5) {
+            this.getLogger().severe("FAILED TO LOAD LEVEL REWARDS FILE");
+            var5.printStackTrace();
+            this.setEnabled(false);
+            return;
+        }
+        ConfigurationSection levelRewardsSection = config.getConfigurationSection("level-rewards");
+        if (levelRewardsSection == null) {
+            this.getLogger().severe(ChatColor.RED.toString() + "LEVEL REWARDS CONFIG IS NULL!");
+            this.setEnabled(false);
+            return;
+        }
+
+        this.rewardsHandler = new RewardTableHandler();
+        try {
+            this.rewardsHandler.registerRewardTables(levelRewardsSection);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
+        /*
+        START NPC REGISTER
+         */
 
 
 
@@ -611,6 +681,7 @@ public class TGT extends JavaPlugin implements Listener {
             net.citizensnpcs.api.CitizensAPI.getTraitFactory().registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(Quest.class).withName("quest"));
             net.citizensnpcs.api.CitizensAPI.getTraitFactory().registerTrait(TraitInfo.create(ItemRetrievalQuest.class).withName("retrieval"));
             net.citizensnpcs.api.CitizensAPI.getTraitFactory().registerTrait(TraitInfo.create(SlayerQuest.class).withName("slayer"));
+            net.citizensnpcs.api.CitizensAPI.getTraitFactory().registerTrait(TraitInfo.create(StationMaster.class).withName("station-master"));
         }
     }
     private void initializeScoreboard() {
@@ -939,6 +1010,34 @@ public class TGT extends JavaPlugin implements Listener {
                 } else {
                     sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
                 }
+            } else if (args[0].equalsIgnoreCase("holdingtable")) {
+                if (sender instanceof Player) {
+                    Player player = (Player) sender;
+                    spawnHoldingTable(player, args);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+                }
+            } else if (args[0].equalsIgnoreCase("mashingtable")) {
+                if (sender instanceof Player) {
+                    Player player = (Player) sender;
+                    spawnMashingTable(player, args);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+                }
+            } else if (args[0].equalsIgnoreCase("timingtable")) {
+                if (sender instanceof Player) {
+                    Player player = (Player) sender;
+                    spawnTimingTable(player, args);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+                }
+            } else if (args[0].equalsIgnoreCase("station")) {
+                if (sender instanceof Player) {
+                    Player player = (Player) sender;
+                    createStation(player, args);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+                }
             }
 
 
@@ -975,36 +1074,279 @@ public class TGT extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.RED + "Only players can perform this command!");
             }
         } else if (command.getName().equalsIgnoreCase("slots")) {
-            if (args.length < 3) {
-                sender.sendMessage(ChatColor.RED + "You need to specify the slot type and quantity to add!");
-                return false;
-            }
-            Player player = Bukkit.getPlayer(args[0]);
-            if (player == null) {
-                sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
-                return false;
-            }
-            try {
-                int num = Integer.parseInt(args[2]);
-                if (args[1].equalsIgnoreCase("storage")) {
-                    this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
-                    sender.sendMessage(ChatColor.GREEN + "Added " +ChatColor.YELLOW + num + ChatColor.GREEN +" storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
-                } else if (args[1].equalsIgnoreCase("accessory")) {
-                    this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
-                    sender.sendMessage(ChatColor.GREEN + "Added " +ChatColor.YELLOW + num + ChatColor.GREEN +" accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+            if (args.length >= 3) {
 
-                } else {
-                    sender.sendMessage(ChatColor.RED + "The slot type you specified is invalid!");
+
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return false;
                 }
-            } catch(NumberFormatException | NullPointerException e) {
-                sender.sendMessage(ChatColor.RED + "You must specify an integer!");
-                return false;
+                try {
+                    int num = Integer.parseInt(args[2]);
+                    if (args[1].equalsIgnoreCase("storage")) {
+                        this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
+                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                    } else if (args[1].equalsIgnoreCase("accessory")) {
+                        this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
+                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+
+                    } else {
+                        sender.sendMessage(ChatColor.RED + "The slot type you specified is invalid!");
+                    }
+                } catch (NumberFormatException | NullPointerException e) {
+                    sender.sendMessage(ChatColor.RED + "You must specify an integer!");
+                    return false;
+                }
+            } else if (args.length == 2) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return false;
+                }
+                Player player = (Player) sender;
+                try {
+                    int num = Integer.parseInt(args[1]);
+                    if (args[0].equalsIgnoreCase("storage")) {
+                        this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
+                        if (player.isOp()) {
+                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+
+                        }
+                    } else if (args[0].equalsIgnoreCase("accessory")) {
+                        this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
+                        if (player.isOp()) {
+                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+
+                        }
+                    } else {
+                        sender.sendMessage(ChatColor.RED + "The slot type you specified is invalid!");
+                    }
+                } catch (NumberFormatException | NullPointerException e) {
+                    sender.sendMessage(ChatColor.RED + "You must specify an integer!");
+                    return false;
+                }
             }
 
 
+        } else if (command.getName().equalsIgnoreCase("skill-xp")) {
+            if (args.length >= 3) {
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                XpType type = Xp.parseXpType(args[1]);
+                if (type == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid XP Type!");
+                    return true;
+                }
+                try {
+                    double amount = Double.parseDouble(args[2]);
+                    this.xpHandler.grantXp(type, player, amount);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            } else if (args.length == 2) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                Player player = (Player) sender;
+                XpType type = Xp.parseXpType(args[0]);
+                if (type == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid XP Type!");
+                    return true;
+                }
+                try {
+                    double amount = Double.parseDouble(args[1]);
+                    this.xpHandler.grantXp(type, player, amount);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            } else {
+                sender.sendMessage(ChatColor.RED + "Not enough arguments.");
+            }
+        } else if (command.getName().equalsIgnoreCase("dosh")) {
+            if (args.length >= 2) {
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                try {
+                    double amount = Double.parseDouble(args[1]);
+                    if (plugin.players.containsKey(player.getUniqueId())) {
+                        plugin.players.get(player.getUniqueId()).addPurseGold(amount);
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            } else if (args.length == 1) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                }
+                Player player = (Player) sender;
+                try {
+                    double amount = Double.parseDouble(args[0]);
+                    if (plugin.players.containsKey(player.getUniqueId())) {
+                        plugin.players.get(player.getUniqueId()).addPurseGold(amount);
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            }
+        } else if (command.getName().equalsIgnoreCase("grantrecipe")) {
+            if (args.length == 1) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                Player player = (Player)sender;
+                MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
+                Recipe recipe = this.itemHandler.getRecipeFromString(args[0]);
+                if (recipe == null) {
+                    player.sendMessage(ChatColor.RED + "No recipe with the name " + args[0] + " could be found!");
+                    return true;
+                }
+                if (mmoPlayer.recipeBook.contains(recipe)) {
+                    return true;
+                }
+                mmoPlayer.recipeBook.add(recipe);
+                if (sender.isOp()) {
+                    sender.sendMessage(ChatColor.GREEN + "Added recipe for " + recipe.reward.internalName + " to " + Bukkit.getPlayer(mmoPlayer.getMinecraftUUID()).getName() + ChatColor.GREEN + ".");
+                }
+            } else if (args.length >= 2) {
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
+                Recipe recipe = this.itemHandler.getRecipeFromString(args[1]);
+                if (recipe == null) {
+                    sender.sendMessage(ChatColor.RED + "No recipe with the name " + args[1] + " could be found!");
+                    return true;
+                }
+                if (mmoPlayer.recipeBook.contains(recipe)) {
+                    return true;
+                }
+                mmoPlayer.recipeBook.add(recipe);
+                if (sender.isOp()) {
+                    sender.sendMessage(ChatColor.GREEN + "Added recipe for " + recipe.reward.internalName + " to " + Bukkit.getPlayer(mmoPlayer.getMinecraftUUID()).getName() + ChatColor.GREEN + ".");
+                }
+            }
+
+        } else if (command.getName().equalsIgnoreCase("stat")) {
+            if (args.length ==2) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                Player player = (Player) sender;
+                MMOPlayer mmoPlayer = this.players.get(player);
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = baseStatChange(args[0].toLowerCase(), Double.parseDouble(args[1]), mmoPlayer);
+                    if (sender.isOp()) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[0].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[1] + ChatColor.GREEN + ".");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid stat type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else if (args.length >= 3) {
+
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = this.players.get(player);
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = baseStatChange(args[1].toLowerCase(), Double.parseDouble(args[2]), mmoPlayer);
+                    if (sender.isOp()) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[1].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + ".");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid stat type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else {
+                sender.sendMessage(ChatColor.RED + "Not enough arguments.");
+            }
         }
         return true;
 
+    }
+    public boolean baseStatChange(String statName, double value, MMOPlayer mmoPlayer) {
+        if (statName.equalsIgnoreCase("strength")) {
+            mmoPlayer.setBaseStrength((float)(mmoPlayer.getBaseStrength() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("defense")) {
+            mmoPlayer.setBaseDefense((float)(mmoPlayer.getBaseDefense() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("health")) {
+            mmoPlayer.setBaseHealth((float)(mmoPlayer.getBaseHealth() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("crit-damage")) {
+            mmoPlayer.setBaseCritDamage((float)(mmoPlayer.getBaseCritDamage() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("crit-chance")) {
+            mmoPlayer.setBaseCritChance((float)(mmoPlayer.getBaseCritChance() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("speed")) {
+            mmoPlayer.setBaseSpeed((float)(mmoPlayer.getBaseSpeed() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("vigor")) {
+            mmoPlayer.setBaseMaxMana((float)(mmoPlayer.getBaseMaxMana() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("stamina-regen")) {
+            mmoPlayer.setBaseManaRegen((float)(mmoPlayer.getBaseManaRegen() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("ability-damage")) {
+            mmoPlayer.setBaseAbilityDamage((float)(mmoPlayer.getBaseAbilityDamage() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("mining-fortune")) {
+            mmoPlayer.setBaseMiningFortune((float)(mmoPlayer.getMiningFortune() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("farming-fortune")) {
+            mmoPlayer.setBaseFarmingFortune((float)(mmoPlayer.getBaseFarmingFortune() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("foraging-fortune")) {
+            mmoPlayer.setBaseLoggingFortune((float)(mmoPlayer.getLoggingFortune() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("fishing-speed")) {
+            mmoPlayer.setBaseLure((float)(mmoPlayer.getBaseLure() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("lure")) {
+            mmoPlayer.setBaseFlash((float)(mmoPlayer.getBaseFlash() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("dialogue-speed")) {
+            mmoPlayer.setBaseDialogueSpeed((float)(mmoPlayer.getBaseDialogueSpeed() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("shop-discount")) {
+            mmoPlayer.setBaseVendorPrice((float)(mmoPlayer.getVendorPrice() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("focus")) {
+            mmoPlayer.setBaseFocus((float)(mmoPlayer.getBaseFocus() + value));
+            return true;
+        }
+        return false;
     }
     public void spawnNpc(Player player, String[] args) {
         if (args.length > 1) {
@@ -1070,6 +1412,59 @@ public class TGT extends JavaPlugin implements Listener {
             }
         } else {
             player.sendMessage(ChatColor.RED + "You must specify a Fishing Zone Template's internal name!");
+        }
+    }
+
+    public void spawnTimingTable(Player player, String[] args) {
+        if (args.length > 2) {
+            XpType type = Xp.parseXpType(args[1]);
+            if (type == null) {
+                player.sendMessage(ChatColor.RED + "You must specify a valid table type!");
+                return;
+            }
+            TimingTable table = new TimingTable();
+            table.spawn(player.getLocation().toCenterLocation(), args[2], type, this);
+        } else {
+            player.sendMessage(ChatColor.RED + "You must specify a table type and a name!");
+        }
+    }
+    public void spawnMashingTable(Player player, String[] args) {
+        if (args.length > 2) {
+            XpType type = Xp.parseXpType(args[1]);
+            if (type == null) {
+                player.sendMessage(ChatColor.RED + "You must specify a valid table type!");
+                return;
+            }
+            MashingTable table = new MashingTable();
+            table.spawn(player.getLocation().toCenterLocation(), args[2], type, this);
+        } else {
+            player.sendMessage(ChatColor.RED + "You must specify a table type and a name!");
+        }
+    }
+    public void spawnHoldingTable(Player player, String[] args) {
+        if (args.length > 2) {
+            XpType type = Xp.parseXpType(args[1]);
+            if (type == null) {
+                player.sendMessage(ChatColor.RED + "You must specify a valid table type!");
+                return;
+            }
+            HoldingTable table = new HoldingTable();
+            table.spawn(player.getLocation().toCenterLocation(), args[2], type, this);
+        } else {
+            player.sendMessage(ChatColor.RED + "You must specify a table type and a name!");
+        }
+    }
+    public void createStation(Player player, String[] args) {
+        if (args.length > 1) {
+            XpType type = Xp.parseXpType(args[1]);
+            if (type == null) {
+                player.sendMessage(ChatColor.RED + "You must specify a valid station type!");
+                return;
+            }
+            Station station = new Station(this, type);
+            station.create(player);
+        } else {
+            player.sendMessage(ChatColor.RED + "You must specify a valid station type!");
         }
     }
 
@@ -1145,10 +1540,26 @@ public class TGT extends JavaPlugin implements Listener {
             if (players.containsKey(p.getUniqueId())) {
                 plugin.updatePlayerMaxMana(plugin.players.get(p.getUniqueId()));
                 plugin.updatePlayerSpeed(plugin.players.get(p.getUniqueId()));
-                StatUpdates.updateFullInventory(p, plugin.players.get(p.getUniqueId()));
+                this.statUpdates.updateFullInventory(p, plugin.players.get(p.getUniqueId()));
                 p.sendActionBar(ChatColor.RED.toString() + (int)players.get(p.getUniqueId()).getHealth() + "/" + (int)players.get(p.getUniqueId()).getMaxHealth() + "❤    " + ChatColor.BLUE.toString() + (int)players.get(p.getUniqueId()).getDefense() + "❈ Defense    " + ChatColor.GREEN.toString() + this.ms.getManaHandler().getMana(p) + "/" + this.ms.getManaHandler().getMaxMana(p) + "⚡ Stamina");
                 plugin.questHandler.checkInvForFulfillingItems(p);
                 plugin.questHandler.updateTrackingDetails(p);
+                if (plugin.itemHandler.getItemFromString("tgt_menu") != null) {
+                    if (p.getInventory().getItem(8) != null) {
+                        NBTItem nbtI = new NBTItem(p.getInventory().getItem(8));
+                        NBTCompound comp = nbtI.getCompound("ExtraAttributes");
+                        if (comp != null && comp.hasTag("id") && comp.getString("id").equalsIgnoreCase("tgt_menu")) {
+
+                        } else {
+                            ItemStack item = plugin.itemHandler.getItemFromString("tgt_menu");
+                            p.getInventory().setItem(8, item);
+                        }
+
+                    } else {
+                        ItemStack item = plugin.itemHandler.getItemFromString("tgt_menu");
+                        p.getInventory().setItem(8, item);
+                    }
+                }
             } else {
                 this.getLogger().severe("PLAYER " + p.getName() + " HAS NO MMOPLAYER ENTRY");
             }
@@ -1262,9 +1673,9 @@ public class TGT extends JavaPlugin implements Listener {
 
     }
 
-
-
     public double calculateDefenseDamage(float defense, float damage) {
         return (damage * (1-((defense)/(defense+100))));
     }
+
+
 }

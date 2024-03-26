@@ -1,6 +1,8 @@
 package me.genn.thegrandtourney.npc;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.logging.Level;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.player.MMOPlayer;
@@ -78,6 +80,15 @@ public class Dialogue {
                 trait.setTalkingToPlayer(player);
                 this.speakUnrangedSlayer(0, player);
             }
+        } else if (type == QuestType.STATION_MASTER) {
+            StationMaster trait = npc.getTrait(StationMaster.class);
+            if (isRanged) {
+                trait.setTalkingToPlayer(player);
+                this.speakRangedStationMaster(0, player);
+            } else {
+                trait.setTalkingToPlayer(player);
+                this.speakUnrangedStationMaster(0, player);
+            }
         } else {
             Quest trait = npc.getTrait(Quest.class);
             if (isRanged) {
@@ -91,7 +102,110 @@ public class Dialogue {
 
 
     }
+    private void speakRangedStationMaster(int lineNum, Player player) {
+        plugin.getLogger().log(Level.INFO,"Top of created dialogue ");
+        String line = lines.get(lineNum);
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
+
+        long delay = 0L;
+        if (Dialogue.this.useWordCountForDelay) {
+            String[] wordCount = line.split(" ");
+            delay = wordCount.length * this.wordCountMult;
+        } else {
+            delay = Dialogue.this.delayBetweenLines * 20L;
+        }
+        if (lineNum == (this.lines.size() - 1) ) {
+            StationMaster trait = npc.getTrait(StationMaster.class);
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
+            plugin.getLogger().log(Level.INFO,"Pre probably faulty line ");
+            Step step = tgtNpc.steps.stream().filter(obj -> obj.dialogue.containsAll(lines)).findFirst().orElse(null);
+            plugin.getLogger().log(Level.INFO,"Post probably faulty line ");
+            if (trait.stepToCraft.equalsIgnoreCase(step.stepName)) {
+                plugin.menus.openStationMasterMenu(player, trait.xpType, trait);
+            }
+            if (this.postDialogueComponentText == null) {
+                trait.setNotTalkingToPlayer(player);
+                return;
+            }
+
+            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                    trait.setNotTalkingToPlayer(player);
+                    if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
+                        Dialogue.this.giveRewards(player);
+                    }
+
+                }
+            }, delay * 1L);
+            return;
+        }
+        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (player.getLocation().distanceSquared(npc.getEntity().getLocation()) > 20) {
+                    if (Dialogue.this.type == QuestType.STATION_MASTER) {
+                        StationMaster trait = npc.getTrait(StationMaster.class);
+                        trait.zap(player, "walkaway", true);
+                    }
+                    return;
+                }
+                speakRangedStationMaster(lineNum + 1, player);
+            }
+        }, delay * 1L);
+    }
+    private void speakUnrangedStationMaster(int lineNum, Player player) {
+        String line = lines.get(lineNum);
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        playSpeakSound(player, talkSound, talkVolume, talkPitch);
+
+
+        long delay = 0L;
+        if (Dialogue.this.useWordCountForDelay) {
+            String[] wordCount = line.split(" ");
+            delay = wordCount.length * this.wordCountMult;
+        } else {
+            delay = Dialogue.this.delayBetweenLines * 20L;
+        }
+        if (lineNum == (this.lines.size() - 1) ) {
+            StationMaster trait = npc.getTrait(StationMaster.class);
+            plugin.getLogger().log(Level.INFO,"Getting the trait");
+            if (this.objectiveUpdate.statusUpdate.size() > 0) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
+            }
+            Step step = tgtNpc.steps.stream().filter(obj -> new HashSet<>(obj.dialogue).containsAll(lines)).findFirst().orElse(null);
+            if (trait.stepToCraft.equalsIgnoreCase(step.stepName)) {
+                plugin.menus.openStationMasterMenu(player, trait.xpType, trait);
+            }
+            if (this.postDialogueComponentText == null) {
+                trait.setNotTalkingToPlayer(player);
+                return;
+            }
+
+            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                    trait.setNotTalkingToPlayer(player);
+                    if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
+                        Dialogue.this.giveRewards(player);
+                    }
+                }
+            }, delay * 1L);
+            return;
+        }
+        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                speakUnrangedStationMaster(lineNum + 1, player);
+            }
+        }, delay* 1L);
+    }
     private void speakRangedSlayer(int lineNum, Player player) {
         String line = lines.get(lineNum);
         player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));

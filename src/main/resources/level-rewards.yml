@@ -1,0 +1,8 @@
+combat:
+  1:
+    reward-text:
+      - "&a+4% damage to mobs"
+      - "&6+100 Dosh"
+    reward-commands:
+      - "dosh 100"
+      - "time night"

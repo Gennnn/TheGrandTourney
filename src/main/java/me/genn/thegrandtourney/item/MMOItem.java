@@ -17,6 +17,9 @@ import de.tr7zw.nbtapi.NBTItem;
 
 import me.genn.thegrandtourney.TGT;
 
+import me.genn.thegrandtourney.skills.Recipe;
+import me.genn.thegrandtourney.xp.Xp;
+import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
@@ -57,6 +60,8 @@ public class MMOItem {
     public Spell spell;
     public Spell lSpell;
     public Spell activateSpell;
+    public XpType typeRequirement;
+    public int lvlRequirement;
 
 
 
@@ -134,6 +139,12 @@ public class MMOItem {
         item.bukkitItemMeta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
         item.bukkitItemMeta.setDisplayName(item.displayName);
         item.bukkitItem.setItemMeta(item.bukkitItemMeta);
+        if (config.contains("type-requirement")) {
+            item.typeRequirement = Xp.parseXpType(config.getString("type-requirement"));
+            item.lvlRequirement = config.getInt("level-requirement", 1);
+        }
+
+
         item.colorStr = config.getString("color");
         if (item.colorStr != null) {
             if (item.bukkitItem.getType() == Material.LEATHER_HELMET || item.bukkitItem.getType() == Material.LEATHER_CHESTPLATE || item.bukkitItem.getType() == Material.LEATHER_LEGGINGS || item.bukkitItem.getType() == Material.LEATHER_BOOTS) {
@@ -160,6 +171,11 @@ public class MMOItem {
             comp.setBoolean("charm", true);
         }
         item.bukkitItem = nbtI.getItem();
+        if (config.contains("recipe")) {
+            ConfigurationSection section = config.getConfigurationSection("recipe");
+            Recipe recipe = Recipe.create(section, plugin, item.internalName);
+            plugin.itemHandler.allRecipes.add(recipe);
+        }
         return item;
     }
 

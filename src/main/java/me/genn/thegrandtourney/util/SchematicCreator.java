@@ -18,6 +18,7 @@ import com.sk89q.worldedit.session.SessionManager;
 import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.world.World;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -135,7 +136,42 @@ public class SchematicCreator {
                                     objectCounter++;
                                 }
                             }
+                            iter = plugin.stationList.keySet().iterator();
+                            while (iter.hasNext()) {
+                                Location targetLoc = (Location) iter.next();
+                                double targetX = targetLoc.getX();
+                                double targetY = targetLoc.getY();
+                                double targetZ = targetLoc.getZ();
 
+                                if (loc.getX() == targetX && loc.getY() == targetY && loc.getZ() == targetZ) {
+                                    Station station = plugin.stationList.get(targetLoc);
+                                    config.set(schematicName + ".stations." + objectCounter + ".min-x", station.minLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".min-y", station.minLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".min-z", station.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".max-x", station.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".max-y", station.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".max-z", station.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".type", station.type.toString());
+                                    config.set(schematicName + ".stations." + objectCounter + ".mashing-table.x", station.mashingTable.loc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".mashing-table.y", station.mashingTable.loc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".mashing-table.z", station.mashingTable.loc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".mashing-table.dir", station.mashingTable.dir.toString());
+                                    config.set(schematicName + ".stations." + objectCounter + ".holding-table.x", station.holdingTable.loc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".holding-table.y", station.holdingTable.loc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".holding-table.z", station.holdingTable.loc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".holding-table.dir", station.holdingTable.dir.toString());
+                                    config.set(schematicName + ".stations." + objectCounter + ".timing-table.x", station.timingTable.loc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".timing-table.y", station.timingTable.loc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".timing-table.z", station.timingTable.loc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".timing-table.dir", station.timingTable.dir.toString());
+                                    config.set(schematicName + ".stations." + objectCounter + ".spawn-x", station.spawnLocation.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".stations." + objectCounter + ".spawn-y", station.spawnLocation.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".stations." + objectCounter + ".spawn-z", station.spawnLocation.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".stations." + objectCounter + ".spawn-yaw", station.spawnLocation.getYaw());
+                                    p.sendMessage(station.type + " with spawn location " + station.spawnLocation.getX() + "," + station.spawnLocation.getY() + "," + station.spawnLocation.getZ() + " with yaw " + station.spawnLocation.getYaw());
+                                    objectCounter++;
+                                }
+                            }
 
                         }
                     }

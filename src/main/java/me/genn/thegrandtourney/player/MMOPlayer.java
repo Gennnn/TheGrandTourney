@@ -2,6 +2,8 @@ package me.genn.thegrandtourney.player;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.mobs.MMOMob;
+import me.genn.thegrandtourney.skills.Recipe;
+import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.util.IntMap;
 import me.genn.thegrandtourney.xp.XpType;
 import net.milkbowl.vault.economy.EconomyResponse;
@@ -85,7 +87,12 @@ public class MMOPlayer {
         this.storageContents = new HashMap<>();
         this.objectives = new ArrayList<>();
         this.completedObjectives = new ArrayList<>();
+        this.recipeBook = new ArrayList<>();
     }
+    public boolean isCrafting = false;
+    public Location craftStart;
+    public String currentCraft = "none";
+    public Station currentStation;
 
     public float getStrength() {
         return strength;
@@ -233,6 +240,7 @@ public class MMOPlayer {
     private float farmingProg;
     private float smithingProg;
 
+
     public float getTailoringProg() {
         return tailoringProg;
     }
@@ -309,12 +317,32 @@ public class MMOPlayer {
     public Map<Integer, ItemStack> storageContents;
     public List<Objective> objectives;
     public List<Objective> completedObjectives;
+    public List<Recipe> recipeBook;
 
     private float cookingProg;
     private float healthRegen;
     private float manaRegen;
     private float baseHealthRegen;
     private float baseManaRegen;
+
+    public float getBaseFocus() {
+        return baseFocus;
+    }
+
+    public void setBaseFocus(float baseFocus) {
+        this.baseFocus = baseFocus;
+    }
+
+    public float getFocus() {
+        return focus;
+    }
+
+    public void setFocus(float focus) {
+        this.focus = focus;
+    }
+
+    private float baseFocus = 0f;
+    private float focus = 0f;
 
     public float getMiningFortune() {
         return miningFortune;

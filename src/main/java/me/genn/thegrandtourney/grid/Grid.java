@@ -24,9 +24,14 @@ import com.sk89q.worldedit.world.DataException;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.mobs.Spawner;
 import me.genn.thegrandtourney.npc.TGTNpc;
+import me.genn.thegrandtourney.skills.HoldingTable;
+import me.genn.thegrandtourney.skills.MashingTable;
+import me.genn.thegrandtourney.skills.Station;
+import me.genn.thegrandtourney.skills.TimingTable;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
 import me.genn.thegrandtourney.skills.mining.Ore;
+import me.genn.thegrandtourney.xp.Xp;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -718,6 +723,8 @@ public class Grid {
                 npc.npc.spawn(loc);
                 plugin.npcObjectiveLocList.put(npc, loc);
                 npc.pasteLocation = loc;
+                plugin.npcHandler.allSpawnedNpcs.add(npc);
+                plugin.getLogger().log(Level.INFO, "Added " + npc.internalName + " to allSpawnedNpcs");
             }
         }
 
@@ -773,6 +780,68 @@ public class Grid {
             }
         }
 
+        if (master.getConfigurationSection("stations") != null) {
+            ConfigurationSection stations = master.getConfigurationSection("stations");
+            Iterator iter = stations.getKeys(false).iterator();
+            int counter = 1;
+            while (iter.hasNext()) {
+                String key = (String) iter.next();
+                ConfigurationSection section = stations.getConfigurationSection(key);
+                if (Xp.parseXpType(section.getString("type")) == null) {
+                    Bukkit.getLogger().log(Level.INFO, "Station for schematic " + paste.schematic.name + " had invalid type!");
+                    continue;
+                }
+                HoldingTable holdingTable = new HoldingTable();
+                Direction dir = getPasteDirection(paste, Direction.getDirection(section.getString("holding-table.dir")));
+                holdingTable.spawn(getPasteLocation(paste,section.getDouble("holding-table.x"),section.getDouble("holding-table.y"),section.getDouble("holding-table.z")),paste.schematic.name + "." + section.getString("type") + "." + counter, Xp.parseXpType(section.getString("type")),plugin, dir);
+                MashingTable mashingTable = new MashingTable();
+                dir = getPasteDirection(paste, Direction.getDirection(section.getString("mashing-table.dir")));
+                mashingTable.spawn(getPasteLocation(paste,section.getDouble("mashing-table.x"),section.getDouble("mashing-table.y"),section.getDouble("mashing-table.z")),paste.schematic.name + "." + section.getString("type") + "." + counter, Xp.parseXpType(section.getString("type")),plugin, dir);
+                TimingTable timingTable = new TimingTable();
+                dir = getPasteDirection(paste, Direction.getDirection(section.getString("timing-table.dir")));
+                timingTable.spawn(getPasteLocation(paste,section.getDouble("timing-table.x"),section.getDouble("timing-table.y"),section.getDouble("timing-table.z")),paste.schematic.name + "." + section.getString("type") + "." + counter, Xp.parseXpType(section.getString("type")),plugin, dir);
+                Station station = new Station(plugin, Xp.parseXpType(section.getString("type")));
+                station.holdingTable = holdingTable;
+                station.mashingTable = mashingTable;
+                station.timingTable = timingTable;
+                Location spawnLoc = getPasteLocation(paste, section.getDouble("spawn-x"), section.getDouble("spawn-y"), section.getDouble("spawn-z"));
+                spawnLoc.setYaw((float) section.getDouble("spawn-yaw"));
+                Location minLoc = getPasteLocation(paste, section.getDouble("min-x"), section.getDouble("min-y"), section.getDouble("min-z"));
+                Location maxLoc = getPasteLocation(paste, section.getDouble("max-x"), section.getDouble("max-y"), section.getDouble("max-z"));
+                if (maxLoc.getX() < minLoc.getX()) {
+                    double minX = maxLoc.getX();
+                    double maxX = minLoc.getX();
+                    maxLoc.setX(maxX);
+                    minLoc.setX(minX);
+                }
+                if (maxLoc.getY() < minLoc.getY()) {
+                    double minY = maxLoc.getY();
+                    double maxY = minLoc.getY();
+                    maxLoc.setY(maxY);
+                    minLoc.setY(minY);
+                }
+                if (maxLoc.getZ() < minLoc.getZ()) {
+                    double minZ = maxLoc.getZ();
+                    double maxZ = minLoc.getZ();
+                    maxLoc.setZ(maxZ);
+                    minLoc.setZ(minZ);
+                }
+                station.minLoc = minLoc;
+                station.maxLoc = maxLoc;
+                station.spawnLocation = spawnLoc;
+                if (paste.direction == Direction.W) {
+                    station.spawnLocation.setYaw(station.spawnLocation.getYaw() + 90);
+                } else if (paste.direction == Direction.N) {
+                    station.spawnLocation.setYaw(station.spawnLocation.getYaw() + 180);
+                } else if (paste.direction == Direction.E) {
+                    station.spawnLocation.setYaw(station.spawnLocation.getYaw() + 270);
+                }
+                station.name = paste.schematic.name + "." + counter + "." + Xp.parseXpType(section.getString("type")).toString();
+                plugin.tableHandler.allStations.add(station);
+                counter++;
+            }
+        }
+
     }
     public Location getPasteLocation(Paste paste, double x, double y, double z) {
         if (paste.direction == Direction.S) {
@@ -780,17 +849,53 @@ public class Grid {
             loc.add(x, y, z);
             return loc;
         } else if (paste.direction == Direction.N) {
-            Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize);
+            Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) ), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) - cellSize + 2);
             loc.add(-x, y, -z);
             return loc;
         } else if (paste.direction == Direction.E) {
-            Location loc = new Location(Bukkit.getWorlds().get(0), startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize);
+            Location loc = new Location(Bukkit.getWorlds().get(0), startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 6 - cellSize);
             loc.add(z, y, -x);
             return loc;
         } else if (paste.direction == Direction.W) {
-            Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4));
+            Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) - 4), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4));
             loc.add(-z, y, x);
             return loc;
+        }
+        return null;
+    }
+    public Direction getPasteDirection(Paste paste, Direction dir) {
+        if (paste.direction == Direction.S) {
+            return dir;
+        } else if (paste.direction == Direction.N) {
+            if (dir == Direction.N) {
+                return Direction.S;
+            } else if (dir == Direction.S) {
+                return Direction.N;
+            } else if (dir == Direction.E) {
+                return Direction.W;
+            } else if (dir==Direction.W) {
+                return Direction.E;
+            }
+        } else if (paste.direction == Direction.W) {
+            if (dir == Direction.E) {
+                return Direction.S;
+            } else if (dir == Direction.S) {
+                return Direction.W;
+            } else if (dir == Direction.W) {
+                return Direction.N;
+            } else if (dir==Direction.N) {
+                return Direction.E;
+            }
+        } else if (paste.direction == Direction.E) {
+            if (dir == Direction.E) {
+                return Direction.N;
+            } else if (dir == Direction.N) {
+                return Direction.W;
+            } else if (dir == Direction.W) {
+                return Direction.S;
+            } else if (dir == Direction.S) {
+                return Direction.E;
+            }
         }
         return null;
     }

@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.player.ObjectiveUpdate;
+import me.genn.thegrandtourney.xp.Xp;
+import me.genn.thegrandtourney.xp.XpType;
 import net.citizensnpcs.api.trait.trait.Equipment;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -68,6 +70,8 @@ public class TGTNpc {
     public Location pasteLocation;
     public Material objectiveItem;
     public ObjectiveUpdate updateOnCompleteCollection;
+    public XpType xpType;
+    public String stepToCraft;
 
 
     public static TGTNpc create(ConfigurationSection config) throws IOException {
@@ -165,13 +169,17 @@ public class TGTNpc {
             List<String> statusText = collectSection.getStringList("status");
             for (int i = 0; i < statusText.size(); i++) {
                 objectiveUpdate.statusUpdate.add(i, ChatColor.translateAlternateColorCodes('&', statusText.get(i)));
-                plugin.getLogger().log(Level.INFO, "Status " + statusText.get(i) + " registered");
             }
             objectiveUpdate.locationUpdate = collectSection.getString("objective-location");
             objectiveUpdate.trackingTextUpdate = collectSection.getString("tracking-text");
             objectiveUpdate.completingStep = collectSection.getBoolean("completing-step", false);
             npc.updateOnCompleteCollection = objectiveUpdate;
         }
+        npc.stepToCraft = config.getString("step-to-craft");
+        if (config.contains("xp-type")) {
+            npc.xpType = Xp.parseXpType(config.getString("xp-type"));
+        }
+
         /*if (npc.questType == QuestType.RETRIEVAL) {
             ItemRetrievalQuest quest = new ItemRetrievalQuest(config.getInt("cooldown-on-walk-away"), config.getInt("line-delay"), config.getBoolean("use-word-count-for-delay"), config.getLong("word-count-delay-factor"), config.getString("talk-sound"), Float.parseFloat(config.getString("talk-volume")), Float.parseFloat(config.getString("talk-pitch")), npc.skinSig, npc.skin, npc.steps, config.getString("step-to-finish", "active"), config.getString("quest-item"), config.getInt("amount", 1), config.getString("step-jump-on-complete", "complete"), npc.equipment);
             npc.npc.addTrait(quest);
@@ -195,17 +203,19 @@ public class TGTNpc {
             boolean ranged = stepContent.getBoolean("ranged", false);
             String jumpTo = stepContent.getString("jump-to");
             TextComponent narration = new TextComponent();
-            ConfigurationSection narrationConfig = stepContent.getConfigurationSection("narration");
-            Iterator iter2 = narrationConfig.getKeys(false).iterator();
-            List<BaseComponent> narrationComponents = new ArrayList<BaseComponent>();
-            while (iter2.hasNext()) {
-                String key2 = (String) iter2.next();
-                ConfigurationSection subSubConfig = narrationConfig.getConfigurationSection(key2);
-                narrationComponents.add(narrationParse(subSubConfig, npc));
-            }
-            narration = (TextComponent) narrationComponents.get(0);
-            for (int i = 1; i < narrationComponents.size(); i++) {
-                narration.addExtra(narrationComponents.get(i));
+            if (stepContent.contains("narration")) {
+                ConfigurationSection narrationConfig = stepContent.getConfigurationSection("narration");
+                Iterator iter2 = narrationConfig.getKeys(false).iterator();
+                List<BaseComponent> narrationComponents = new ArrayList<BaseComponent>();
+                while (iter2.hasNext()) {
+                    String key2 = (String) iter2.next();
+                    ConfigurationSection subSubConfig = narrationConfig.getConfigurationSection(key2);
+                    narrationComponents.add(narrationParse(subSubConfig, npc));
+                }
+                narration = (TextComponent) narrationComponents.get(0);
+                for (int i = 1; i < narrationComponents.size(); i++) {
+                    narration.addExtra(narrationComponents.get(i));
+                }
             }
             List<String> rewards = stepContent.getStringList("rewards");
             String objectiveLocation = "";
@@ -220,7 +230,6 @@ public class TGTNpc {
                     List<String> statusText = objectiveSection.getStringList("status");
                     for (int i = 0; i < statusText.size(); i++) {
                         objectiveUpdate.statusUpdate.add(ChatColor.translateAlternateColorCodes('&', statusText.get(i)));
-                        plugin.getLogger().log(Level.INFO, "Status " + statusText.get(i) + " registered");
                     }
 
                 }
@@ -233,8 +242,14 @@ public class TGTNpc {
                 objectiveUpdate.completingStep = objectiveSection.getBoolean("completing-step", false);
             }
 
-            Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate);
-            npc.steps.add(stepObj);
+            if (narration.getText().length() == 0) {
+                Step stepObj = new Step(stepKey, dialogue, null, ranged, jumpTo, rewards, objectiveUpdate);
+                npc.steps.add(stepObj);
+            } else {
+                Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate);
+                npc.steps.add(stepObj);
+            }
+
         }
         if (npc.questType == QuestType.RETRIEVAL) {
             ItemRetrievalQuest quest = new ItemRetrievalQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.itemToBring, npc.amount, npc.stepJumpOnComplete, npc.equipment, npc.questDisplayName, npc.questName, npc);
@@ -242,6 +257,10 @@ public class TGTNpc {
             plugin.questHandler.allQuests.add(quest);
         } else if (npc.questType == QuestType.SLAYER) {
             SlayerQuest quest = new SlayerQuest(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToFinish, npc.mobToKill, npc.amount, npc.stepJumpOnComplete, npc.equipment, npc.questDisplayName, npc.questName, npc);
+            npc.npc.addTrait(quest);
+            plugin.questHandler.allQuests.add(quest);
+        } else if (npc.questType == QuestType.STATION_MASTER) {
+            StationMaster quest = new StationMaster(npc.cdOnWalkaway, npc.lineDelay, npc.useWordCtForDelay, npc.wordCtDelayFactor, npc.talkSound, npc.talkVolume, npc.talkPitch, npc.skinSig, npc.skin, npc.steps, npc.stepToCraft, npc.xpType, npc.equipment, npc.questDisplayName, npc.questName, npc);
             npc.npc.addTrait(quest);
             plugin.questHandler.allQuests.add(quest);
         } else {

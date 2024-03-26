@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.skills.Station;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
@@ -39,6 +40,7 @@ public class SchematicHandler {
     List<Schematic> linkedSchematics;
     List<String> pastedSchematics;
     public File schematicDetailsDirectory;
+    public List<Station> allCraftingStations;
 
 
     public SchematicHandler(File schematicFolder, File linkedSchematicFolder, File schematicDirectory, File linkedSchematicDirectory) {
@@ -46,6 +48,7 @@ public class SchematicHandler {
         this.schematicFolder = schematicFolder;
         this.schematicDirectory = schematicDirectory;
         this.linkedSchematicDirectory = linkedSchematicDirectory;
+        this.allCraftingStations = new ArrayList<>();
 
     }
 

@@ -1,14 +1,14 @@
 package me.genn.thegrandtourney.xp;
 
 public enum XpType {
-    COMBAT, FISHING, FARMING, MINING, LOGGING, BLACKSMITHING, TAILORING, COOKING, TINKERING;
+    COMBAT, FISHING, FARMING, MINING, LOGGING, BLACKSMITHING, TAILORING, COOKING, TINKERING, ALCHEMY, CARPENTRY, ALL;
 
     public String getName() {
         switch (this) {
             case TINKERING -> {
                 return "Tinkering";
             } case BLACKSMITHING -> {
-                return "Blacksmithing";
+                return "Smithing";
             } case TAILORING -> {
                 return "Tailoring";
             } case COOKING -> {
@@ -22,7 +22,11 @@ public enum XpType {
             }case COMBAT -> {
                 return "Combat";
             } case LOGGING -> {
-                return "Logging";
+                return "Foraging";
+            } case CARPENTRY -> {
+                return "Carpentry";
+            } case ALCHEMY -> {
+                return "Alchemy";
             }
         }
         return "";

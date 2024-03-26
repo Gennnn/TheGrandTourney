@@ -209,8 +209,10 @@ public class Quest extends Trait {
             }
 
         }
-        plugin.npcHandler.allSpawnedNpcs.add(tgtNpc);
+
     }
+
+
 
     public void denyQuest(Player player) {
         this.onRefusalCd.add((OfflinePlayer)player);

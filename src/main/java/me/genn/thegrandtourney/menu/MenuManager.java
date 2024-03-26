@@ -1,6 +1,9 @@
 package me.genn.thegrandtourney.menu;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.npc.StationMaster;
+import me.genn.thegrandtourney.npc.StationMasterRecipeBook;
+import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.entity.Player;
 
 public class MenuManager {
@@ -8,6 +11,9 @@ public class MenuManager {
     private AccessoryBag accessoryBagMenu;
     private Storage storageMenu;
     private QuestLog questLogMenu;
+    private SkillXpSelector skillMenu;
+    private RecipeBook recipeMenu;
+    private StationMasterRecipeBook stationMasterRecipeBook;
     TGT plugin;
 
     public MenuManager(TGT plugin) {
@@ -16,6 +22,9 @@ public class MenuManager {
         this.accessoryBagMenu = new AccessoryBag(plugin);
         this.storageMenu = new Storage(plugin);
         this.questLogMenu = new QuestLog(plugin);
+        this.skillMenu = new SkillXpSelector(plugin);
+        this.recipeMenu = new RecipeBook(plugin);
+        this.stationMasterRecipeBook = new StationMasterRecipeBook(plugin);
     }
 
     public void openHomeMenu(Player player) {
@@ -31,4 +40,8 @@ public class MenuManager {
     }
 
     public void openQuestLog(Player player) {this.questLogMenu.loadMenuQuestLog(player, 0, false);}
+
+    public void openSkillMenu(Player player) {this.skillMenu.loadSkillSelectionMenu(player);}
+    public void openRecipeBook(Player player) {this.recipeMenu.loadMenuRecipeBook(player, 0, XpType.ALL);}
+    public void openStationMasterMenu(Player player, XpType type, StationMaster sm) {this.stationMasterRecipeBook.loadMenuRecipeBook(player, 0, type, sm);}
 }

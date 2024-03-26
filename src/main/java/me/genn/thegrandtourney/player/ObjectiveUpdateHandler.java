@@ -2,6 +2,7 @@ package me.genn.thegrandtourney.player;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.util.ToastMessage;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,20 +28,14 @@ public class ObjectiveUpdateHandler {
         Objective objective = mmoPlayer.objectives.stream().filter(obj -> obj.questName.equalsIgnoreCase(questName)).findFirst().orElse(null);
 
         if (objective == null) {
-            if (player.isOp()) {
-                player.sendMessage("No objective was found. Creating new one...");
-            }
+
             objective = new Objective(questName, status, trackingText);
-            if (player.isOp()) {
-                player.sendMessage("Created new objective " + objective.questName + " with TT " + trackingText);
-            }
+
             objective.icon = new ItemStack(Material.PLAYER_HEAD);
             MMOItem.getHeadFrom64(plugin.questHandler.getQuest(questName).tgtNpc.skin, objective.icon);
             mmoPlayer.objectives.add(objective);
         } else {
-            if (player.isOp()) {
-                player.sendMessage("Objective was found!");
-            }
+
             objective.status = status;
 
             if (!objective.trackingText.equalsIgnoreCase(trackingText)) {
@@ -54,6 +49,9 @@ public class ObjectiveUpdateHandler {
         }
         if (completingStep) {
             objective.completed = true;
+            mmoPlayer.trackedObjective = null;
+            mmoPlayer.completedObjectives.add(objective);
+            mmoPlayer.objectives.remove(mmoPlayer.objectives.stream().filter(obj -> obj.questName.equalsIgnoreCase(questName)).findFirst().orElse(null));
             return;
         }
 

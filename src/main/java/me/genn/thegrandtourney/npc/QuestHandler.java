@@ -21,13 +21,11 @@ public class QuestHandler {
     public List<Quest> allQuests;
     public TGT plugin;
     public ObjectiveUpdateHandler objectiveUpdater;
-    public Map<Player, BossBar> currentlyDisplayedBossBar;
 
     public QuestHandler(TGT plugin) {
         this.plugin = plugin;
         this.allQuests = new ArrayList<>();
         this.objectiveUpdater = new ObjectiveUpdateHandler(this.plugin);
-        this.currentlyDisplayedBossBar = new HashMap<>();
     }
 
     public Quest getQuest(String name) {
@@ -49,9 +47,7 @@ public class QuestHandler {
             return;
         }
         ItemRetrievalQuest quest = (ItemRetrievalQuest) this.getQuest(mmoPlayer.trackedObjective.questName);
-        int amount = quest.amountToBring;
-
-        if (player.getInventory().contains(plugin.itemHandler.getItemFromString(quest.itemIdToBring),amount)) {
+        if (quest.getAmount(player)) {
             plugin.questHandler.objectiveUpdater.performStatusUpdates(player, quest.getQuestName(), quest.tgtNpc.updateOnCompleteCollection);
         }
     }
@@ -61,14 +57,17 @@ public class QuestHandler {
         if (mmoPlayer == null) {
             return;
         }
-        if (this.currentlyDisplayedBossBar.get(player) != null) {
-            player.hideBossBar(this.currentlyDisplayedBossBar.get(player));
+        if (mmoPlayer.isCrafting) {
+            return;
+        }
+        if (plugin.currentlyDisplayedBossBar.get(player) != null) {
+            player.hideBossBar(plugin.currentlyDisplayedBossBar.get(player));
         }
         if (mmoPlayer.trackedObjective != null) {
-            double distance = player.getLocation().distanceSquared(mmoPlayer.trackedObjective.objectiveLocation);
+            double distance = Math.sqrt(player.getLocation().distanceSquared(mmoPlayer.trackedObjective.objectiveLocation));
             String name = ChatColor.translateAlternateColorCodes('&',mmoPlayer.trackedObjective.trackingText) + " (" + (int)distance + "m away)";
             final BossBar bar = BossBar.bossBar(Component.text(name), 1, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
-            this.currentlyDisplayedBossBar.put(player, bar);
+            plugin.currentlyDisplayedBossBar.put(player, bar);
             player.showBossBar(bar);
         }
     }
