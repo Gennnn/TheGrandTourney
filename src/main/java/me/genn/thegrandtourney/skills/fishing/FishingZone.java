@@ -13,6 +13,8 @@ import io.lumine.mythic.api.mobs.entities.SpawnReason;
 import io.lumine.mythic.bukkit.MythicBukkit;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.skills.TournamentObject;
+import me.genn.thegrandtourney.skills.TournamentZone;
 import me.genn.thegrandtourney.skills.farming.CropTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -22,6 +24,7 @@ import org.bukkit.entity.FishHook;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -34,7 +37,7 @@ import java.util.Random;
 import java.util.logging.Level;
 
 
-public class FishingZone implements Listener {
+public class FishingZone implements Listener, TournamentZone {
     public Location minLoc;
     public Location maxLoc;
     public FishingZoneTemplate template;
@@ -45,16 +48,14 @@ public class FishingZone implements Listener {
     public Location centerLocation;
 
     public FishingZone(FishingZoneTemplate template, TGT plugin) {
-
         this.template = template;
-
         this.plugin = plugin;
         this.r = new Random();
         this.queuedFish = new HashMap<>();
 
     }
-
-    public void createZone(org.bukkit.entity.Player p) {
+    @Override
+    public void spawn(org.bukkit.entity.Player p) {
         SessionManager manager = WorldEdit.getInstance().getSessionManager();
         com.sk89q.worldedit.entity.Player actor = BukkitAdapter.adapt(p);
         LocalSession session = manager.get(actor);
@@ -70,23 +71,18 @@ public class FishingZone implements Listener {
         BlockVector3 min = region.getMinimumPoint();
         BlockVector3 max = region.getMaximumPoint();
         FishingZone zone = new FishingZone(template, plugin);
+        zone.name = template.name + (plugin.fishingZoneList.size()+1);
         p.sendMessage("Defining fishing zone " + zone.template.name + " with coords " + min.getX() + "," + min.getY() + "," + min.getZ() + " minimum and " + max.getX() + "," + max.getY() + "," + max.getZ() + " maximum");
-        zone.pasteZone2(new Location(p.getWorld(), min.getX(), min.getY(), min.getZ()).toCenterLocation(),new Location(p.getWorld(), max.getX(), max.getY(), max.getZ()).toCenterLocation(),template.name + (plugin.fishingZoneList.size()+1));
-
-    }
-    public void pasteZone2(Location minLoc, Location maxLoc, String name) {
-        this.minLoc = minLoc;
-        this.maxLoc = maxLoc;
-        this.name = name;
+        this.minLoc = new Location(p.getWorld(), min.getX(), min.getY(), min.getZ()).toCenterLocation();
+        this.maxLoc = new Location(p.getWorld(), max.getX(), max.getY(), max.getZ()).toCenterLocation();
         Bukkit.getPluginManager().registerEvents(this, plugin);
         plugin.fishingZoneList.add(this);
-
     }
 
-    public void pasteZone(Location minLoc, Location maxLoc, String name) {
+    @Override
+    public void paste(Location minLoc, Location maxLoc) {
         this.minLoc = minLoc;
         this.maxLoc = maxLoc;
-        this.name = name;
         if (this.maxLoc.getX() < this.minLoc.getX()) {
             double minX = this.maxLoc.getX();
             double maxX = this.minLoc.getX();
@@ -108,8 +104,17 @@ public class FishingZone implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
         this.centerLocation = new Location(this.minLoc.getWorld(), this.minLoc.getX()+(this.maxLoc.getX()- this.minLoc.getX())*0.5,this.minLoc.getY()+(this.maxLoc.getY()- this.minLoc.getY())*0.5,this.minLoc.getZ()+(this.maxLoc.getZ()- this.minLoc.getZ())*0.5);
         plugin.fishingZoneHandler.allSpawnedZones.add(this);
-        Bukkit.broadcastMessage("Registering fishing zone " + this.template.name + " with coordinates " + this.minLoc.getX() + "," + this.minLoc.getY() + "," + this.minLoc.getZ() + " min and " + this.maxLoc.getX() + "," + this.maxLoc.getY() + "," + this.maxLoc.getZ() + " max");
 
+    }
+    @Override
+    public void remove() {
+        this.plugin.fishingZoneList.remove(this);
+        this.minLoc = null;
+        this.maxLoc = null;
+        this.centerLocation = null;
+        HandlerList.unregisterAll(this);
+        this.name = null;
+        this.queuedFish.clear();
     }
     @EventHandler
     public void onFish(PlayerFishEvent e) {
@@ -128,7 +133,7 @@ public class FishingZone implements Listener {
                 max = min + 1;
             }
             hook.setWaitTime(min, max);
-            Fish fish = template.selectDrop(r);
+            Fish fish = template.selectDrop(e.getPlayer());
             this.queuedFish.put(e.getPlayer(), fish);
             min = (int)calculateMinLureModifiers(e.getPlayer(), fish);
             max = (int)calculateMaxLureModifiers(e.getPlayer(), fish);
@@ -145,11 +150,24 @@ public class FishingZone implements Listener {
                 e.setExpToDrop(0);
                 e.getCaught().remove();
                 e.getHook().setHookedEntity(MythicBukkit.inst().getMobManager().spawnMob(fish.mob.mythicmob.getInternalName(), e.getHook().getLocation()).getEntity().getBukkitEntity());
+                template.drops.grantXpAndGold(e.getPlayer(), r);
                 e.getHook().pullHookedEntity();
             } else if (fish.drop != null) {
                 e.setExpToDrop(0);
-                ((Item)e.getCaught()).setItemStack(plugin.itemHandler.getItem(fish.drop).asQuantity(r.nextInt((int) fish.minQuantity, (int) (fish.maxQuantity+1))));
+                int quantity = r.nextInt((int) fish.minQuantity, (int) (fish.maxQuantity+1));
+                float bonus = plugin.players.get(e.getPlayer().getUniqueId()).getFishingFortune();
+                int bonusQuantity = 0;
+                while (bonus > 100) {
+                    bonusQuantity++;
+                    bonus-=100;
+                }
+                if (bonus > r.nextInt(100)) {
+                    bonusQuantity++;
+                }
+                ((Item)e.getCaught()).setItemStack(plugin.itemHandler.getItem(fish.drop).asQuantity(quantity+bonusQuantity));
                 e.getHook().pullHookedEntity();
+                template.drops.grantXpAndGold(e.getPlayer(), r);
+                template.drops.checkDungeonRoom(e.getPlayer(), plugin.itemHandler.getItem(fish.drop), quantity+bonusQuantity);
             }
         }
     }

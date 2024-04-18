@@ -34,7 +34,6 @@ public class RewardTable {
                 LevelReward reward = LevelReward.create(config.getConfigurationSection(key));
                 if (reward != null) {
                     table.rewardMap.put(levelNum, reward);
-                    JavaPlugin.getPlugin(TGT.class).getLogger().log(Level.INFO, "Adding rewards for level " + levelNum);
                 }
             } catch (NumberFormatException e) {
                 continue;

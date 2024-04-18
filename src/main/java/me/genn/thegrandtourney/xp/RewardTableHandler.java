@@ -23,7 +23,6 @@ public class RewardTableHandler {
                 continue;
             }
             XpType type = Xp.parseXpType(key);
-            JavaPlugin.getPlugin(TGT.class).getLogger().log(Level.INFO, "Registering reward table for " + type.getName());
             RewardTable table = RewardTable.create(config.getConfigurationSection(key), type);
             if (table != null) {
                 allRewardTables.add(table);

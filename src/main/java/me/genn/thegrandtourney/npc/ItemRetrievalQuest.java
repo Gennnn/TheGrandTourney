@@ -89,8 +89,7 @@ public class ItemRetrievalQuest extends Quest {
                     this.denyQuest(player);
                 }
             } else if (step.stepName.contains("accept")) {
-                this.playSound(player, "random.orb", 1.0F, 1.5F);
-                this.playSound(player, "random.levelup", 1.0F, 2.0F);
+                this.playSound(player, "entity.experience_orb.pickup", 1.0F, 0F);
             } else if (step.stepName.equalsIgnoreCase(this.stepToFinish)) {
                 if (this.getAmount(player)) {
                     this.questProgress.put(player.getUniqueId(), this.stepToPerform);

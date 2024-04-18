@@ -18,8 +18,12 @@ import com.sk89q.worldedit.session.SessionManager;
 import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.world.World;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.dungeons.Dungeon;
+import me.genn.thegrandtourney.dungeons.Room;
+import me.genn.thegrandtourney.dungeons.RoomGoal;
 import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
+import me.genn.thegrandtourney.skills.foraging.ForagingZone;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -172,7 +176,65 @@ public class SchematicCreator {
                                     objectCounter++;
                                 }
                             }
+                            iter = plugin.foragingZoneLocList.keySet().iterator();
+                            while (iter.hasNext()) {
+                                Location originalLoc = (Location) iter.next();
+                                Location targetLoc = originalLoc.clone().toCenterLocation();
+                                double targetX = targetLoc.getX();
+                                double targetY = targetLoc.getY();
+                                double targetZ = targetLoc.getZ();
+                                if (loc.getX() == targetX && loc.getY() == targetY && loc.getZ() == targetZ) {
+                                    ForagingZone zone = plugin.foragingZoneLocList.get(originalLoc);
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".min-x", zone.minLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".min-y", zone.minLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".min-z", zone.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".max-x", zone.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".max-y", zone.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".foraging-zones." + objectCounter + ".max-z", zone.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".template-name." + objectCounter + ".template-name", zone.template.getName());
+                                    p.sendMessage(plugin.cropLocationList.get(targetLoc).getName() + " at " + (x - clipboard.getClipboard().getOrigin().getX()) + "," + (y - clipboard.getClipboard().getOrigin().getY()) + "," + (z - clipboard.getClipboard().getOrigin().getZ()) );
+                                    objectCounter++;
+                                }
+                            }
+                            iter = plugin.dungeonLocList.keySet().iterator();
+                            while (iter.hasNext()) {
+                                Location targetLoc = (Location) iter.next();
+                                double targetX = targetLoc.getX();
+                                double targetY = targetLoc.getY();
+                                double targetZ = targetLoc.getZ();
+                                if (loc.getX() == targetX && loc.getY() == targetY && loc.getZ() == targetZ) {
+                                    Dungeon dungeon = plugin.dungeonLocList.get(targetLoc);
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".min-x", dungeon.minLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".min-y", dungeon.minLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".min-z", dungeon.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".max-x", dungeon.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".max-y", dungeon.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".max-z", dungeon.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".template-name", dungeon.template.getName());
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door", dungeon.entranceDoor.generateList(clipboard.getClipboard().getOrigin()));
+                                    config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door-material", dungeon.entranceDoor.blockType);
+                                    for (Room room : dungeon.rooms) {
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".goal", room.goal);
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-x", room.minLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-y", room.minLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-z", room.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-x", room.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-y", room.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-z", room.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".prevent-abilities", room.preventAbilities);
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".door-closed-by-default", room.doorClosedByDefault);
+                                        if (room.goal == RoomGoal.COLLECTION) {
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".item-to-get", room.itemToCollect.getName());
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".quantity", room.quantity);
+                                        } else if (room.goal == RoomGoal.SLAYER) {
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".mob-to-kill", room.mobToKill.getName());
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".quantity", room.quantity);
+                                        }
+                                    }
 
+                                    objectCounter++;
+                                }
+                            }
                         }
                     }
                 }

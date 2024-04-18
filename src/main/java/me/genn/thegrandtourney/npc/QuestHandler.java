@@ -2,20 +2,14 @@ package me.genn.thegrandtourney.npc;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.player.MMOPlayer;
+import me.genn.thegrandtourney.player.Objective;
 import me.genn.thegrandtourney.player.ObjectiveUpdateHandler;
-import me.genn.thegrandtourney.skills.farming.CropTemplate;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class QuestHandler {
     public List<Quest> allQuests;
@@ -40,16 +34,19 @@ public class QuestHandler {
         if (mmoPlayer == null) {
             return;
         }
-        if (mmoPlayer.trackedObjective == null) {
-            return;
+        for (Objective trackedObjective : mmoPlayer.objectives) {
+            if (trackedObjective == null) {
+                return;
+            }
+            if (!(this.getQuest(trackedObjective.questName) instanceof ItemRetrievalQuest)) {
+                return;
+            }
+            ItemRetrievalQuest quest = (ItemRetrievalQuest) this.getQuest(trackedObjective.questName);
+            if (quest.getAmount(player)) {
+                plugin.questHandler.objectiveUpdater.performStatusUpdates(player, quest.getQuestName(), quest.tgtNpc.updateOnCompleteCollection);
+            }
         }
-        if (!(this.getQuest(mmoPlayer.trackedObjective.questName) instanceof ItemRetrievalQuest)) {
-            return;
-        }
-        ItemRetrievalQuest quest = (ItemRetrievalQuest) this.getQuest(mmoPlayer.trackedObjective.questName);
-        if (quest.getAmount(player)) {
-            plugin.questHandler.objectiveUpdater.performStatusUpdates(player, quest.getQuestName(), quest.tgtNpc.updateOnCompleteCollection);
-        }
+
     }
 
     public void updateTrackingDetails(Player player) {

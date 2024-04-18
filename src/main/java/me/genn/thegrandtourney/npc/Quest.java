@@ -160,8 +160,7 @@ public class Quest extends Trait {
                     this.denyQuest(player);
                 }
             } else if (step.stepName.contains("accept")) {
-                this.playSound(player, "random.orb", 1.0F, 1.5F);
-                this.playSound(player, "random.levelup", 1.0F, 2.0F);
+                this.playSound(player, "entity.experience_orb.pickup", 1.0F, 0F);
             }
             this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
@@ -216,8 +215,7 @@ public class Quest extends Trait {
 
     public void denyQuest(Player player) {
         this.onRefusalCd.add((OfflinePlayer)player);
-        this.playSound(player, "mob.zombie.infect", 1.0F, 1.75F);
-        this.playSound(player, "mob.zombie.metal", 0.5F, 1.1F);
+        this.playSound(player, "entity.zombie.attack_iron_door", 1.0F, 1.5F);
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
             @Override
             public void run() {

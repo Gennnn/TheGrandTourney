@@ -48,7 +48,9 @@ public class MMOItem {
     public ItemMeta bukkitItemMeta;
     public Rarity rarity;
     public String displayName;
-    public List<String> lore;
+    public List<String> statBlock;
+    public List<String> abilityBlock;
+    public String categoryString;
     public int durability;
     public boolean unique;
 
@@ -57,11 +59,12 @@ public class MMOItem {
     public boolean enchantGlint;
     public String textureStr;
     public boolean isCharm;
-    public Spell spell;
-    public Spell lSpell;
-    public Spell activateSpell;
+    public String spellName;
+    public String lSpellName;
+    public String activateSpellName;
     public XpType typeRequirement;
     public int lvlRequirement;
+    public float abilityScaling;
 
 
 
@@ -86,23 +89,28 @@ public class MMOItem {
         item.rarity = Rarity.valueOf((config.getString("rarity", "common")).toUpperCase());
         item.displayName = getRarityColor(item.rarity) + config.getString("name", item.bukkitItemMeta.getDisplayName());
         item.durability = config.getInt("durability", 10);
-        item.lore = config.getStringList("lore");
-        for (int i = 0; i < item.lore.size() ; i++) {
-            item.lore.set(i, ChatColor.translateAlternateColorCodes('&',item.lore.get(i)));
+
+        item.statBlock = config.getStringList("stat-block");
+        if (item.statBlock != null) {
+            item.statBlock.replaceAll(textToTranslate -> ChatColor.translateAlternateColorCodes('&', textToTranslate));
+
         }
-        String spellName = config.getString("spell");
-        if (spellName != null) {
-            item.spell = MagicSpells.getSpellByInternalName(spellName);
+
+        item.abilityBlock = config.getStringList("ability-block");
+        if (item.abilityBlock != null) {
+            item.abilityBlock.replaceAll(textToTranslate -> ChatColor.translateAlternateColorCodes('&', textToTranslate));
         }
-        String leftSpellName = config.getString("lclick-spell");
-        if (leftSpellName != null) {
-            item.lSpell = MagicSpells.getSpellByInternalName(leftSpellName);
-        }
-        String activateSpellName = config.getString("activate-spell");
-        if (activateSpellName != null) {
-            item.activateSpell = MagicSpells.getSpellByInternalName(activateSpellName);
-        }
-        item.bukkitItemMeta.setLore(item.lore);
+
+
+
+        item.categoryString = config.getString("category");
+        item.spellName = config.getString("spell");
+
+        item.lSpellName = config.getString("lclick-spell");
+
+        item.activateSpellName = config.getString("activate-spell");
+
+        item.bukkitItemMeta.setLore(MMOItem.assembleFullLore(item, item.statBlock, item.abilityBlock));
         item.unique = config.getBoolean("unique", false);
         item.enchantGlint = config.getBoolean("enchanted", false);
         if (item.enchantGlint) {
@@ -111,8 +119,9 @@ public class MMOItem {
         if (item.bukkitItemMeta.hasAttributeModifiers() && item.bukkitItemMeta.getAttributeModifiers(Attribute.GENERIC_ATTACK_SPEED) != null) {
             item.bukkitItemMeta.removeAttributeModifier(Attribute.GENERIC_ATTACK_SPEED);
         }
+        item.abilityScaling = (float) config.getDouble("ability-scaling", 0.2);
         item.bukkitItemMeta.addAttributeModifier(Attribute.GENERIC_ATTACK_SPEED, new AttributeModifier("generic.attackSpeed", 0.0F, AttributeModifier.Operation.ADD_NUMBER));
-        Iterator loreIter = item.lore.iterator();
+        Iterator loreIter = item.statBlock.iterator();
         while (loreIter.hasNext()) {
             String line = org.bukkit.ChatColor.stripColor((String) loreIter.next());
             if (org.bukkit.ChatColor.stripColor(line).startsWith("Swing Speed: +")) {
@@ -245,6 +254,31 @@ public class MMOItem {
                 }
             }
         }
+    }
+
+    public static List<String> assembleFullLore(MMOItem item, List<String> masterStatBlock, List<String> masterAbilityBlock) {
+        List<String> lore = new ArrayList<>();
+        List<String> statBlock = new ArrayList<>(masterStatBlock);
+        List<String> abilityBlock = new ArrayList<>(masterAbilityBlock);
+        if (statBlock.size() > 0) {
+            lore.addAll(statBlock);
+            lore.add("");
+        }
+        if (abilityBlock.size() > 0) {
+            for (int i = 0; i < abilityBlock.size(); ++i) {
+                if (abilityBlock.get(i).contains("%ad:")) {
+                    abilityBlock.set(i, abilityBlock.get(i).replaceAll("%ad:", ""));
+                }
+            }
+            lore.addAll(abilityBlock);
+            lore.add("");
+        }
+        String finalString = getRarityColor(item.rarity) + ChatColor.BOLD.toString() + item.rarity.toString().toUpperCase();
+        if (item.categoryString != null) {
+            finalString += " " + item.categoryString.toUpperCase();
+        }
+        lore.add(finalString);
+        return lore;
     }
 
 

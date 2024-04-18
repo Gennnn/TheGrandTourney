@@ -245,7 +245,7 @@ public class RecipeBook implements Listener {
     }
 
     public List<String> constructRecipeLore(Recipe recipe, MMOPlayer mmoPlayer) {
-        List<String> list = new ArrayList<>(recipe.reward.lore);
+        List<String> list = new ArrayList<>(MMOItem.assembleFullLore(recipe.reward, recipe.reward.statBlock, recipe.reward.abilityBlock));
         list.add("");
         list.add(ChatColor.GRAY + "Components:");
         Iterator iter = recipe.components.keySet().iterator();

@@ -2,6 +2,7 @@ package me.genn.thegrandtourney.player;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.mobs.MMOMob;
+import me.genn.thegrandtourney.skills.Craft;
 import me.genn.thegrandtourney.skills.Recipe;
 import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.util.IntMap;
@@ -9,7 +10,6 @@ import me.genn.thegrandtourney.xp.XpType;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -26,7 +26,6 @@ public class MMOPlayer {
     private float critDamage;
     private float speed;
     private float critChance;
-    private float abilityDam;
     private float mana;
     private float maxMana;
     private float vendorPrice;
@@ -92,6 +91,7 @@ public class MMOPlayer {
     public boolean isCrafting = false;
     public Location craftStart;
     public String currentCraft = "none";
+    public Craft currentCraftObj = null;
     public Station currentStation;
 
     public float getStrength() {
@@ -399,6 +399,62 @@ public class MMOPlayer {
     private float loggingFortune;
     private float baseLoggingFortune;
 
+    public float getCombatFortune() {
+        return combatFortune;
+    }
+
+    public void setCombatFortune(float combatFortune) {
+        this.combatFortune = combatFortune;
+    }
+
+    public float getBaseCombatFortune() {
+        return baseCombatFortune;
+    }
+
+    public void setBaseCombatFortune(float baseCombatFortune) {
+        this.baseCombatFortune = baseCombatFortune;
+    }
+
+    public float getFishingFortune() {
+        return fishingFortune;
+    }
+
+    public void setFishingFortune(float fishingFortune) {
+        this.fishingFortune = fishingFortune;
+    }
+
+    public float getBaseFishingFortune() {
+        return baseFishingFortune;
+    }
+
+    public void setBaseFishingFortune(float baseFishingFortune) {
+        this.baseFishingFortune = baseFishingFortune;
+    }
+
+    private float combatFortune;
+    private float baseCombatFortune;
+    private float fishingFortune;
+    private float baseFishingFortune;
+
+    public float getSeaCreatureChance() {
+        return seaCreatureChance;
+    }
+
+    public void setSeaCreatureChance(float seaCreatureChance) {
+        this.seaCreatureChance = seaCreatureChance;
+    }
+
+    public float getBaseSeaCreatureChance() {
+        return baseSeaCreatureChance;
+    }
+
+    public void setBaseSeaCreatureChance(float baseSeaCreatureChance) {
+        this.baseSeaCreatureChance = baseSeaCreatureChance;
+    }
+
+    private float seaCreatureChance = 0.0f;
+    private float baseSeaCreatureChance = 20.0f;
+
     public Location getRespawnLocation() {
         return respawnLocation;
     }
@@ -503,18 +559,33 @@ public class MMOPlayer {
     public void setCritChance(float critChance) {
         this.critChance = critChance;
     }
-    public float getAbilityDam() {
-        return abilityDam;
+
+
+    public float getVigor() {
+        return vigor;
     }
-    public void setAbilityDam(float abilityDam) {
-        this.abilityDam = abilityDam;
+
+    public void setVigor(float vigor) {
+        this.vigor = vigor;
     }
+
+    public float getBaseVigor() {
+        return baseVigor;
+    }
+
+    public void setBaseVigor(float baseVigor) {
+        this.baseVigor = baseVigor;
+    }
+
+    public float vigor = 0.0f;
+    public float baseVigor = 0.0f;
     public float getMana() {
         return mana;
     }
     public void setMana(float mana) {
         this.mana = mana;
     }
+
     public float getMaxMana() {
         return maxMana;
     }

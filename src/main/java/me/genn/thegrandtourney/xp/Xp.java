@@ -27,7 +27,7 @@ public class Xp {
             }
             double extraXp = (62.5 * (Math.pow(i,2)))+(37.5*i);
             xpForLevel.put(i, (baseXp + extraXp));
-            plugin.getLogger().log(Level.INFO, "Set xp needed for level " + i + " to " + xpForLevel.get(i) ) ;
+            //plugin.getLogger().log(Level.INFO, "Set xp needed for level " + i + " to " + xpForLevel.get(i) ) ;
         }
 
     }
@@ -49,8 +49,10 @@ public class Xp {
             return XpType.TAILORING;
         } else if (str.equalsIgnoreCase("blacksmithing")) {
             return XpType.BLACKSMITHING;
-        } else if (str.equalsIgnoreCase("tinkering")) {
-            return XpType.TINKERING;
+        } else if (str.equalsIgnoreCase("alchemy")) {
+            return XpType.ALCHEMY;
+        } else if (str.equalsIgnoreCase("carpentry")) {
+            return XpType.CARPENTRY;
         }
         return null;
     }
@@ -58,6 +60,7 @@ public class Xp {
 
     public void grantXp(XpType type, Player bukkitPlayer, double amount) {
         MMOPlayer player = plugin.players.get(bukkitPlayer.getUniqueId());
+
         double value = player.getXpForType(type) + amount;
         player.setXpForType(type, value);
         if (player.getLvlForType(type) < 10 && xpForLevel.get(player.getLvlForType(type) + 1) <=player.getXpForType(type)) {
@@ -66,6 +69,7 @@ public class Xp {
         } else {
             bukkitPlayer.setExp((float) (player.getXpForType(type)/xpForLevel.get(player.getLvlForType(type) + 1)));
             bukkitPlayer.setLevel(player.getLvlForType(type));
+            bukkitPlayer.playSound(bukkitPlayer, "entity.experience_orb.pickup", 1f, 1.0f);
         }
 
     }

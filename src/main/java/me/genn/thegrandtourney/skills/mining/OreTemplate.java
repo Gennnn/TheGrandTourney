@@ -51,6 +51,10 @@ public class OreTemplate {
         boolean calculateDropsIndividually = config.getBoolean("calculate-drops-individually", false);
         boolean overflowDrops = config.getBoolean("overflow-drops", false);
         template.drops = new DropTable(plugin, calculateDropsIndividually, overflowDrops);
+        if (config.contains("drops")) {
+            ConfigurationSection section = config.getConfigurationSection("drops");
+            template.drops.addDropsFromSection(section);
+        }
         return template;
     }
 

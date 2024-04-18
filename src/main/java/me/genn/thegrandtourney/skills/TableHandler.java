@@ -2,6 +2,8 @@ package me.genn.thegrandtourney.skills;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.skills.farming.Crop;
+import me.genn.thegrandtourney.skills.foraging.ForagingZone;
+import me.genn.thegrandtourney.xp.Xp;
 import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.Location;
 
@@ -49,6 +51,13 @@ public class TableHandler {
             Station station = getClosestStation(stations, originLoc);
             return station;
         }
+    }
+    public Station getStationForObj(String name, Location originLoc) {
+        XpType type = Xp.parseXpType(name);
+        if (type == null) {
+            return null;
+        }
+        return getStationForCraft(type, originLoc);
     }
     public HoldingTable findClosestHoldingTableOfType(XpType type, Location loc) {
         List<HoldingTable> tables = listOfHoldingTablesWithType(allHoldingTables, type);

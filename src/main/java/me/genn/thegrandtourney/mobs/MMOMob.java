@@ -9,6 +9,7 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.DropTable;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 
@@ -22,6 +23,7 @@ public class MMOMob {
     public float defense;
     public String internalName;
     public DropTable dropTable;
+    public int level;
 
     TGT plugin;
 
@@ -42,6 +44,7 @@ public class MMOMob {
         if (mob.entityType == null) {
             mob.entityType = EntityType.ZOMBIE;
         }
+        mob.level = config.getInt("level", 1);
         if (mob.mythicmob.isFakePlayer()) {
             mob.isFakePlayer = true;
         }
@@ -62,7 +65,9 @@ public class MMOMob {
         return mob;
     }
 
-
+    public void calculateDrops(Player p) {
+        dropTable.calculateDrops(p, plugin.players.get(p.getUniqueId()).getCombatFortune());
+    }
 
     public String getName() {
         return this.internalName;

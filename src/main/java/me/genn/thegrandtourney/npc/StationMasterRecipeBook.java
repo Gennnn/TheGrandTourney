@@ -70,12 +70,9 @@ public class StationMasterRecipeBook implements Listener {
             modTitle = modTitle + " (" + (page+1) + "/" + getMaxPages(mmoPlayer) +")";
         }
         Inventory inv = Bukkit.createInventory(player, 54, modTitle);
-        ItemStack item = new ItemStack(Material.BOOK);
         List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GRAY + "View the recipes you've unlocked throughout");
-        lore.add(ChatColor.GRAY + "your adventures.");
-        setMenuItem(item, ChatColor.GREEN + "Recipe Book", lore, 4, inv);
-        item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+
+        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         lore.clear();
         for (int i = 0; i < inv.getSize(); i++) {
             if (i==0) {
@@ -93,7 +90,7 @@ public class StationMasterRecipeBook implements Listener {
                     lore.clear();
                     setMenuItem(item, " ", lore, i, inv);
                 }
-            } else if (i < 9 && i != 4) {
+            } else if (i < 9) {
                 setMenuItem(item, " ", lore, i, inv);
             } else {
                 if (i == 46 || i==47 || i == 51 || i == 52 || i ==50 || i == 48) {
@@ -191,7 +188,7 @@ public class StationMasterRecipeBook implements Listener {
 
     public List<String> constructRecipeLore(Recipe recipe, MMOPlayer mmoPlayer) {
         List<String> list = new ArrayList<>();
-        list.addAll(recipe.reward.lore);
+        list.addAll(MMOItem.assembleFullLore(recipe.reward, recipe.reward.statBlock, recipe.reward.abilityBlock));
         list.add("");
         list.add(ChatColor.GRAY + "Components:");
         Iterator iter = recipe.components.keySet().iterator();

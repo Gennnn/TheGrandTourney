@@ -7,6 +7,7 @@ import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.Location;
 
 public class TimingTable extends Table {
+
     public void spawn(Location loc, String name, XpType type, TGT plugin) {
         this.register(loc,name,type, plugin);
         if (type == XpType.TAILORING) {
@@ -26,4 +27,8 @@ public class TimingTable extends Table {
         }
         plugin.tableHandler.allTimingTables.add(this);
     }
+
+
+
+
 }

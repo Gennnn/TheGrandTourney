@@ -8,65 +8,71 @@ import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.player.CritDamageIndicator;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.NormalDamageIndicator;
+import me.genn.thegrandtourney.skills.TournamentObject;
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class Ore implements Listener {
-    Interaction entity;
+public class Ore implements Listener, TournamentObject {
+    Interaction hitbox;
     OreTemplate template;
-    List<ArmorStand> resourceStands;
-    float width;
-    float height;
+    List<ArmorStand> displayArmorStands;
+    float hitBoxWidth;
+    float hitBoxHeight;
     float health;
     TGT plugin;
-    ItemStack resource;
-    int regenTime;
-    int regenRate;
-    int staminaCost;
+    ItemStack displayBlock;
+    int respawnTime;
+    int healthRegenRate;
+    int hitStaminaCost;
     float maxHealth;
     public double criticalAngle;
     Random r;
     long lastCritPointRefresh;
     public Location loc;
+    BukkitTask healthRegenTask;
+    BukkitTask healthBarTask;
 
     public Ore(TGT plugin, OreTemplate template) {
-        this.resourceStands = new ArrayList<>();
-        this.width = template.width;
-        this.height = template.height;
+        this.displayArmorStands = new ArrayList<>();
+        this.hitBoxWidth = template.width;
+        this.hitBoxHeight = template.height;
         this.health = template.health;
         this.maxHealth = template.health;
         this.plugin = plugin;
-        this.resource = template.resource;
+        this.displayBlock = template.resource;
         this.template = template;
-        this.regenTime = template.regenTime;
-        this.staminaCost = template.staminaCost;
-        this.regenRate = template.regenRate;
+        this.respawnTime = template.regenTime;
+        this.hitStaminaCost = template.staminaCost;
+        this.healthRegenRate = template.regenRate;
         this.r = new Random();
     }
+    @Override
 
     public void spawn(Location loc) {
         Interaction in = loc.getWorld().spawn(loc, Interaction.class);
-        in.setInteractionWidth(this.width);
-        in.setInteractionHeight(this.height);
-        this.entity = in;
+        in.setInteractionWidth(this.hitBoxWidth);
+        in.setInteractionHeight(this.hitBoxHeight);
+        this.hitbox = in;
         this.criticalAngle = r.nextInt(12);
         this.lastCritPointRefresh = System.currentTimeMillis();
         spawnHealthbar();
-        oreTest(loc);
-        plugin.listener.ores.put(this.entity, this);
+        spawnArmorStands(loc);
+        plugin.listener.ores.put(this.hitbox, this);
         plugin.oreHandler.allSpawnedOres.add(this);
         this.loc = loc;
-        new BukkitRunnable() {
+        this.healthRegenTask = new BukkitRunnable() {
 
             @Override
             public void run() {
@@ -77,31 +83,35 @@ public class Ore implements Listener {
                 if (Ore.this.health == Ore.this.maxHealth) {
                     return;
                 }
-                if (Ore.this.health + Ore.this.regenRate >= Ore.this.maxHealth) {
+                if (Ore.this.health + Ore.this.healthRegenRate >= Ore.this.maxHealth) {
                     Ore.this.health = Ore.this.maxHealth;
                     return;
                 }
-                Ore.this.health = Ore.this.health + Ore.this.regenRate;
+                Ore.this.health = Ore.this.health + Ore.this.healthRegenRate;
 
             }
         }.runTaskTimer(plugin, 0L, 40L);
     }
+    @Override
+    public void paste(Location loc) {
+        spawn(loc);
+    }
     public void spawnHealthbar() {
-        ArmorStand as = (ArmorStand) entity.getLocation().getWorld().spawn(new Location(entity.getLocation().getWorld(), entity.getLocation().getX(), entity.getLocation().getY() - 0.5D, entity.getLocation().getZ()), ArmorStand.class);
+        ArmorStand as = (ArmorStand) hitbox.getLocation().getWorld().spawn(new Location(hitbox.getLocation().getWorld(), hitbox.getLocation().getX(), hitbox.getLocation().getY() - 0.5D, hitbox.getLocation().getZ()), ArmorStand.class);
         as.setGravity(false);
         as.setCustomName(template.displayName);
         as.setCustomNameVisible(true);
         as.setVisible(false);
         as.setMarker(true);
-        new BukkitRunnable() {
+        this.healthBarTask = new BukkitRunnable() {
             @Override
             public void run() {
-                if (!Ore.this.entity.isValid() || !(Ore.this.health > 0)) {
+                if (!Ore.this.hitbox.isValid() || !(Ore.this.health > 0)) {
                     cancel();
                     as.remove();
                     return;
                 }
-                as.teleport(Ore.this.entity.getLocation().clone().add(0, height, 0));
+                as.teleport(Ore.this.hitbox.getLocation().clone().add(0, hitBoxHeight, 0));
                 as.setCustomName(oreName(Ore.this, template.displayName));
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -117,7 +127,7 @@ public class Ore implements Listener {
         str = str + (int)ore.health + ChatColor.WHITE.toString() + "/" + ChatColor.GREEN.toString() + (int)ore.maxHealth + ChatColor.RED.toString() + "❤";
         return str;
     }
-    public void oreTest(Location loc) {
+    public void spawnArmorStands(Location loc) {
         //summonArmorStandHead(-0.318964 ,-4.77656 ,-0.09264800000000001, -15, -60, 0, false, base, loc);
         //summonArmorStandHead(0.293257,-4.68843,0.056036,-15,30,20, false, base, loc);
         //summonArmorStandHead(0.08071999999999999 ,-4.79242 ,0.48845,20,-30,25, false, base, loc);
@@ -131,15 +141,15 @@ public class Ore implements Listener {
         summonArmorStandHead(-0.35 ,-4.62883 ,0.35,0,45,0,false,base,loc);
         summonArmorStandHead(0.35 ,-4.62883 ,0.35,0,-135,0,false,base,loc);*/
 
-        summonArmorStandHead(0.31475 ,-3.63666 ,-0.384673,-25,60,0,false,resource,loc);
-        summonArmorStandHead(-0.573 ,-3.245 ,-0.432,20,125,0,false,resource,loc);
-        summonArmorStandHead(-0.395951 ,-3.48041 ,0.137903,25,80,0,false,resource,loc);
-        summonArmorStandHead(-0.106653 ,-3.63666 ,0.458451,25,10,0,false,resource,loc);
-        summonArmorStandHead(0.413788 ,-3.1 ,0.246999,160,120,0,false,resource,loc);
-        summonArmorStandHead(0.013456000000000003 ,-3.05 ,0.070042,0,200,35,false,resource,loc);
-        summonArmorStandHead(-0.125 ,-2.02 ,0.336527,35,35,0,true,resource,loc);
-        summonArmorStandHead(0.2 ,-2.15 ,-0.237,185,155,0,true,resource,loc);
-        summonArmorStandHead(-0.123 ,-2.935 ,-0.328,315,175,0,true,resource,loc);
+        summonArmorStandHead(0.31475 ,-3.63666 ,-0.384673,-25,60,0,false,displayBlock,loc);
+        summonArmorStandHead(-0.573 ,-3.245 ,-0.432,20,125,0,false,displayBlock,loc);
+        summonArmorStandHead(-0.395951 ,-3.48041 ,0.137903,25,80,0,false,displayBlock,loc);
+        summonArmorStandHead(-0.106653 ,-3.63666 ,0.458451,25,10,0,false,displayBlock,loc);
+        summonArmorStandHead(0.413788 ,-3.1 ,0.246999,160,120,0,false,displayBlock,loc);
+        summonArmorStandHead(0.013456000000000003 ,-3.05 ,0.070042,0,200,35,false,displayBlock,loc);
+        summonArmorStandHead(-0.125 ,-2.02 ,0.336527,35,35,0,true,displayBlock,loc);
+        summonArmorStandHead(0.2 ,-2.15 ,-0.237,185,155,0,true,displayBlock,loc);
+        summonArmorStandHead(-0.123 ,-2.935 ,-0.328,315,175,0,true,displayBlock,loc);
         //summonArmorStandHead(-0.097452 ,-3.87968 ,0.589221,25,-25,-45,true,base,loc);
         //summonArmorStandHead(0.592344 ,-4.03487 ,0.293562,35,-60,-20,true,base,loc);
         //summonArmorStandHead(0.020471 ,-3.49715 ,-0.076709,-45,-50,-135,true,base,loc);
@@ -197,15 +207,15 @@ public class Ore implements Listener {
         as.teleport(as.getLocation().add(x,y+1.5,z));
         as.setHeadPose(new EulerAngle(xAngle, yAngle, zAngle));
         as.setHelmet(item);
-        if (item.getType() == resource.getType()) {
-            this.resourceStands.add(as);
+        if (item.getType() == displayBlock.getType()) {
+            this.displayArmorStands.add(as);
         }
     }
 
 
     @EventHandler (priority = EventPriority.MONITOR)
     public void onDamageEntity(EntityDamageByEntityEvent e) {
-        if (e.getEntity() == this.entity) {
+        if (e.getEntity() == this.hitbox) {
             if (this.health <= 0) {
                 e.setCancelled(true);
                 return;
@@ -221,19 +231,19 @@ public class Ore implements Listener {
                     e.setCancelled(true);
                     return;
                 }
-                ParticleOptions po = new ParticleOptions((float) 0.25, (float) 0.3, (float) 0.25, 0.2F,8, 1F, (Color) null,resource.getType(), (byte) 0);
+                ParticleOptions po = new ParticleOptions((float) 0.25, (float) 0.3, (float) 0.25, 0.2F,8, 1F, (Color) null,displayBlock.getType(), (byte) 0);
                 List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
-                if (!MagicSpells.getManaHandler().hasMana(p, staminaCost)) {
-                    MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, entity.getLocation(), 32.0D, players);
-                    p.playSound(this.entity.getLocation(), "block.anvil.place",0.5F, 2F);
+                if (!MagicSpells.getManaHandler().hasMana(p, hitStaminaCost)) {
+                    MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, hitbox.getLocation(), 32.0D, players);
+                    p.playSound(this.hitbox.getLocation(), "block.anvil.place",0.5F, 2F);
                     e.setCancelled(true);
                     return;
                 }
                 double angle = testForPlayerEyes(p);
                 boolean crit = false;
                 if (!e.isCancelled()) {
-                    p.playSound(this.entity.getLocation(), "block.anvil.place",0.75F, 1.25F);
-                    p.playSound(this.entity.getLocation(), "block.stone.hit",1.0F, 0.5F);
+                    p.playSound(this.hitbox.getLocation(), "block.anvil.place",0.75F, 1.25F);
+                    p.playSound(this.hitbox.getLocation(), "block.stone.hit",1.0F, 0.5F);
                 }
 
                 if ((30*(this.criticalAngle+1)) > angle && angle >= (30*this.criticalAngle)) {
@@ -248,11 +258,15 @@ public class Ore implements Listener {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            if (!Ore.this.hitbox.isValid()) {
+                                this.cancel();
+                                return;
+                            }
                             Iterator iter = Bukkit.getOnlinePlayers().iterator();
                             boolean pass = false;
                             while (iter.hasNext()) {
                                 Player p = (Player) iter.next();
-                                if ((p.getLocation().distanceSquared(Ore.this.entity.getLocation()) <= 40) && Ore.this.health < Ore.this.maxHealth) {
+                                if ((p.getLocation().distanceSquared(Ore.this.hitbox.getLocation()) <= 40) && Ore.this.health < Ore.this.maxHealth) {
                                     pass = true;
                                 }
                             }
@@ -265,6 +279,10 @@ public class Ore implements Listener {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            if (!Ore.this.hitbox.isValid()) {
+                                this.cancel();
+                                return;
+                            }
                             if (health <= 0) {
                                 this.cancel();
                                 return;
@@ -274,28 +292,28 @@ public class Ore implements Listener {
                                 this.cancel();
                                 return;
                             }
-                            MagicSpells.getEffectManager().display(Particle.REDSTONE, entity.getLocation(),1.0F - ((counter[0]+1)*0.15F),0.3F,1.0F - ((counter[0]+1)*0.15F),0.1F,10 * (counter[0]+1), 1.2F,Color.fromRGB(6,90+(counter[0]*17),204),(Material) null, (byte)0, 20.0D, players);
-                            Ore.this.entity.getLocation().getWorld().playSound(Ore.this.entity.getLocation(), "entity.guardian.ambient", 0.5F + ((counter[0]+1)*0.2F), 1.4F + ((counter[0]+1)*0.1F));
+                            MagicSpells.getEffectManager().display(Particle.REDSTONE, hitbox.getLocation(),1.0F - ((counter[0]+1)*0.15F),0.3F,1.0F - ((counter[0]+1)*0.15F),0.1F,10 * (counter[0]+1), 1.2F,Color.fromRGB(6,90+(counter[0]*17),204),(Material) null, (byte)0, 20.0D, players);
+                            Ore.this.hitbox.getLocation().getWorld().playSound(Ore.this.hitbox.getLocation(), "entity.guardian.ambient", 0.5F + ((counter[0]+1)*0.2F), 1.4F + ((counter[0]+1)*0.1F));
                         }
                     }.runTaskTimer(plugin, (this.template.critPointRegenTime*20L)-50L,10L);
                 }
 
                 po.amount = 25;
                 po.speed = 0.35F;
-                MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, entity.getLocation(), 32.0D, players);
-                double coords[] = lerp3D(0.5, p.getLocation().getX(), p.getLocation().getY(), p.getLocation().getZ(), entity.getLocation().getX(), entity.getLocation().getY(), entity.getLocation().getZ());
+                MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, hitbox.getLocation(), 32.0D, players);
+                double coords[] = lerp3D(0.5, p.getLocation().getX(), p.getLocation().getY(), p.getLocation().getZ(), hitbox.getLocation().getX(), hitbox.getLocation().getY(), hitbox.getLocation().getZ());
                 Location middlePoint = new Location(p.getWorld(), coords[0], coords[1] + 0.2, coords[2]);
                 if (!e.isCancelled()) {
                     if (crit) {
                         MagicSpells.getEffectManager().display(Particle.CRIT_MAGIC, middlePoint, 0.1F, 0F, 0.1F, 0.25F, 10, 8F, (Color) null, (Material) null, (byte) 0, 20.0D, players);
-                        Ore.this.entity.getLocation().getWorld().playSound(p, "entity.vex.hurt", 1.5F, 2F);
+                        Ore.this.hitbox.getLocation().getWorld().playSound(p, "entity.vex.hurt", 1.5F, 2F);
                         p.playSound(p, "block.anvil.place", 0.25F, 0.75F);
                         plugin.listener.spectralDamage.spawnDamageIndicator(p, target, new CritDamageIndicator(), (int)damage);
                     } else {
                         MagicSpells.getEffectManager().display(Particle.CRIT, middlePoint, 0.1F, 0F, 0.1F, 0.25F, 10, 8F, (Color) null, (Material) null, (byte) 0, 20.0D, players);
                         plugin.listener.spectralDamage.spawnDamageIndicator(p, target, new NormalDamageIndicator(), (int)damage);
                     }
-                    MagicSpells.getManaHandler().removeMana(p, staminaCost, ManaChangeReason.OTHER);
+                    MagicSpells.getManaHandler().removeMana(p, hitStaminaCost, ManaChangeReason.OTHER);
                     e.setDamage((int)damage);
                 }
                 this.health = (float) (this.health - e.getDamage());
@@ -304,35 +322,43 @@ public class Ore implements Listener {
                     po.amount = 50;
                     po.speed = 0.55F;
 
-                    MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, entity.getLocation(), 32.0D, players);
-                    Iterator asIter = this.resourceStands.iterator();
+                    MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, hitbox.getLocation(), 32.0D, players);
+                    Iterator asIter = this.displayArmorStands.iterator();
                     do {
                         ArmorStand as = (ArmorStand) asIter.next();
                         as.setHelmet(new ItemStack(Material.AIR));
                     } while (asIter.hasNext());
-                    template.drops.calculateDrops(p);
-                    Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+                    template.drops.calculateDrops(p, plugin.players.get(p.getUniqueId()).getMiningFortune());
+                    new BukkitRunnable() {
                         @Override
                         public void run() {
-                            Iterator asIter = Ore.this.resourceStands.iterator();
+                            if (!Ore.this.hitbox.isValid()) {
+                                this.cancel();
+                                return;
+                            }
+                            Iterator asIter = Ore.this.displayArmorStands.iterator();
                             do {
                                 ArmorStand as = (ArmorStand) asIter.next();
-                                as.setHelmet(resource);
+                                as.setHelmet(displayBlock);
 
                             } while (asIter.hasNext());
-                            MagicSpells.getEffectManager().display(Particle.VILLAGER_HAPPY, entity.getLocation(),0.4F,0.2F,0.4F,0.25F,50,8F,(Color)null,(Material) null, (byte)0, 20.0D, players);
-                            MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, entity.getLocation(), 32.0D, players);
+                            MagicSpells.getEffectManager().display(Particle.VILLAGER_HAPPY, hitbox.getLocation(),0.4F,0.2F,0.4F,0.25F,50,8F,(Color)null,(Material) null, (byte)0, 20.0D, players);
+                            MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, hitbox.getLocation(), 32.0D, players);
                             Ore.this.health = Ore.this.maxHealth;
-                            Ore.this.entity.getLocation().getWorld().playSound(Ore.this.entity.getLocation(), "entity.player.attack.crit", 1.5F, 2.0F);
-                            Ore.this.entity.getLocation().getWorld().playSound(Ore.this.entity.getLocation(), "block.stone.break", 1F, 1F);
-                            Ore.this.entity.getLocation().getWorld().playSound(Ore.this.entity.getLocation(), "block.stone.place", 2F, 0F);
+                            Ore.this.hitbox.getLocation().getWorld().playSound(Ore.this.hitbox.getLocation(), "entity.player.attack.crit", 1.5F, 2.0F);
+                            Ore.this.hitbox.getLocation().getWorld().playSound(Ore.this.hitbox.getLocation(), "block.stone.break", 1F, 1F);
+                            Ore.this.hitbox.getLocation().getWorld().playSound(Ore.this.hitbox.getLocation(), "block.stone.place", 2F, 0F);
                             spawnHealthbar();
                         }
-                    }, 20L * regenTime);
+                    }.runTaskLater(plugin, 20L * respawnTime);
                     new BukkitRunnable() {
 
                         @Override
                         public void run() {
+                            if (!Ore.this.hitbox.isValid()) {
+                                this.cancel();
+                                return;
+                            }
                             if (Ore.this.health <= 0) {
                                 this.cancel();
                                 return;
@@ -340,31 +366,52 @@ public class Ore implements Listener {
                             if (Ore.this.health == Ore.this.maxHealth) {
                                 return;
                             }
-                            if (Ore.this.health + Ore.this.regenRate >= Ore.this.maxHealth) {
+                            if (Ore.this.health + Ore.this.healthRegenRate >= Ore.this.maxHealth) {
                                 Ore.this.health = Ore.this.maxHealth;
                                 return;
                             }
-                            Ore.this.health = Ore.this.health + Ore.this.regenRate;
+                            Ore.this.health = Ore.this.health + Ore.this.healthRegenRate;
 
                         }
-                    }.runTaskTimer(plugin, 20L * regenTime, 40L);
+                    }.runTaskTimer(plugin, 20L * respawnTime, 40L);
                     new BukkitRunnable() {
                         int counter = 0;
                         @Override
                         public void run() {
+                            if (!Ore.this.hitbox.isValid()) {
+                                this.cancel();
+                                return;
+                            }
                             counter++;
                             if (counter > 10) {
                                 this.cancel();
                                 return;
                             }
-                            Ore.this.entity.getLocation().getWorld().playSound(Ore.this.entity.getLocation(), "block.stone.hit", 2F, 0.5F);
-                            MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, entity.getLocation().add(0D, -0.25D, 0.0D), 0.25F, 0.00F, 0.25F, 0.2F, 15, 1F, (Color)null, resource.getType(), (byte)0, 20.0D, players);
+                            Ore.this.hitbox.getLocation().getWorld().playSound(Ore.this.hitbox.getLocation(), "block.stone.hit", 2F, 0.5F);
+                            MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, hitbox.getLocation().add(0D, -0.25D, 0.0D), 0.25F, 0.00F, 0.25F, 0.2F, 15, 1F, (Color)null, displayBlock.getType(), (byte)0, 20.0D, players);
 
                         }
-                    }.runTaskTimer(plugin, (20L * regenTime) - 47L, 5L);
+                    }.runTaskTimer(plugin, (20L * respawnTime) - 47L, 5L);
                 }
             }
         }
+    }
+    @Override
+    public void remove() {
+        plugin.oreHandler.allSpawnedOres.remove(this);
+        this.hitbox.remove();
+        HandlerList.unregisterAll(this);
+        if (this.healthBarTask != null) {
+            this.healthBarTask.cancel();
+        }
+        if (this.healthRegenTask != null) {
+            this.healthRegenTask.cancel();
+        }
+        for (ArmorStand displayStand : displayArmorStands) {
+            displayStand.remove();
+        }
+        this.health = 0;
+        this.loc = null;
     }
 
     public String getName() {
@@ -377,7 +424,7 @@ public class Ore implements Listener {
 
     public double testForPlayerEyes(Player player) {
         Location pEyes = player.getLocation();
-        Location oreLoc = this.entity.getLocation();
+        Location oreLoc = this.hitbox.getLocation();
         double dx = pEyes.getX() - oreLoc.getX();
         double dz = pEyes.getZ() - oreLoc.getZ();
         double angle = Math.atan2(dz,dx);

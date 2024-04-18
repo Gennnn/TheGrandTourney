@@ -27,12 +27,15 @@ public class ObjectiveUpdateHandler {
         String questLocation = objectiveUpdate.locationUpdate;
         Objective objective = mmoPlayer.objectives.stream().filter(obj -> obj.questName.equalsIgnoreCase(questName)).findFirst().orElse(null);
 
+        String textToTranslate = questName.replace(" ", "_") + "." + trackingText.replace(" ", "_");
         if (objective == null) {
 
             objective = new Objective(questName, status, trackingText);
 
             objective.icon = new ItemStack(Material.PLAYER_HEAD);
             MMOItem.getHeadFrom64(plugin.questHandler.getQuest(questName).tgtNpc.skin, objective.icon);
+            ToastMessage.displayTo(player, "writable_book", ChatColor.translateAlternateColorCodes('&', questName) + ChatColor.GRAY + " started.", ToastMessage.Style.TASK);
+            player.playSound(player, "entity.experience_orb.pickup", 1f, 1.5f);
             mmoPlayer.objectives.add(objective);
         } else {
 
@@ -46,12 +49,19 @@ public class ObjectiveUpdateHandler {
             return;
         } else {
             objective.objectiveUpdatesPassed.add(status);
+            if (!completingStep) {
+                ToastMessage.displayTo(player, "writable_book",  ChatColor.translateAlternateColorCodes('&', questName) + ChatColor.GRAY + " updated.", ToastMessage.Style.TASK);
+                player.playSound(player, "entity.experience_orb.pickup", 1f, 1.5f);
+            }
+
         }
         if (completingStep) {
             objective.completed = true;
             mmoPlayer.trackedObjective = null;
             mmoPlayer.completedObjectives.add(objective);
             mmoPlayer.objectives.remove(mmoPlayer.objectives.stream().filter(obj -> obj.questName.equalsIgnoreCase(questName)).findFirst().orElse(null));
+            ToastMessage.displayTo(player, "writable_book", ChatColor.translateAlternateColorCodes('&', questName) + ChatColor.GRAY + " completed.", ToastMessage.Style.TASK);
+            player.playSound(player, "entity.experience_orb.pickup", 1f, 1.5f);
             return;
         }
 
@@ -86,10 +96,27 @@ public class ObjectiveUpdateHandler {
                 if (loc != null) {
                     objective.objectiveLocation = loc;
                 }
+            } else if (questLocation.startsWith("foraging:")) {
+                String locString = questLocation.replaceFirst("foraging:", "");
+                Location loc = plugin.foragingZoneHandler.getZoneForObj(locString, player.getLocation()).centerLoc;
+                if (loc != null) {
+                    objective.objectiveLocation = loc;
+                }
+            } else if (questLocation.startsWith("station:")) {
+                String locString = questLocation.replaceFirst("station:", "");
+                if (plugin.tableHandler.getStationForObj(locString, player.getLocation()) == null) {
+                    return;
+                }
+
+                Location loc = plugin.tableHandler.getStationForObj(locString, player.getLocation()).spawnLocation;
+                if (loc != null) {
+                    objective.objectiveLocation = loc;
+                }
             }
         }
         if (objective.objectiveLocation != null) {
-            player.sendMessage(ChatColor.GRAY + ChatColor.ITALIC.toString() + "Quest location updated.");
+
+            //player.sendMessage(ChatColor.GRAY + ChatColor.ITALIC.toString() + "Quest location updated.");
         } else {
             player.sendMessage(ChatColor.GRAY + ChatColor.ITALIC.toString() + "The trail for this quest seems to have run cold...");
         }

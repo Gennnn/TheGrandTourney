@@ -1,0 +1,20 @@
+oak-tree:
+  drops:
+    salmon:
+      item: salmon
+      quantity: 1-2
+    coal:
+      item: coal
+      quantity: 1
+  fell-drops:
+    salmon:
+      item: salmon
+      quantity: 48-64
+    coal:
+      item: coal
+      quantity: 24-48
+  log-blocks:
+    - oak_log
+  leaf-blocks:
+    - oak_leaves
+  display-name: "&eOak Tree"

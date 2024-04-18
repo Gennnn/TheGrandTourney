@@ -16,7 +16,7 @@ import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 
-public class Station {
+public class Station implements TournamentZone {
     public HoldingTable holdingTable;
     public MashingTable mashingTable;
     public TimingTable timingTable;
@@ -33,8 +33,8 @@ public class Station {
         this.plugin = plugin;
         this.type = type;
     }
-
-    public void create(org.bukkit.entity.Player p) {
+    @Override
+    public void spawn(org.bukkit.entity.Player p) {
         SessionManager manager = WorldEdit.getInstance().getSessionManager();
         com.sk89q.worldedit.entity.Player actor = BukkitAdapter.adapt(p);
         LocalSession session = manager.get(actor);
@@ -79,6 +79,21 @@ public class Station {
         p.sendMessage("Created zone of type " + this.type + " with center loc " + loc.getX() + "," + loc.getY() + "," + loc.getZ());
     }
 
+    @Override
+    public void paste(Location minLoc, Location maxLoc) {
+
+    }
+
+    @Override
+    public void remove() {
+        this.plugin.tableHandler.allStations.remove(this);
+        this.holdingTable.unregister();
+        this.mashingTable.unregister();
+        this.timingTable.unregister();
+        this.maxLoc = null;
+        this.minLoc = null;
+        this.name = null;
+    }
 
 
 }

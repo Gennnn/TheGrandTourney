@@ -5,6 +5,9 @@ import com.nisovin.magicspells.shaded.effectlib.util.ParticleOptions;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.grid.Direction;
 import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.skills.HoldingTable;
+import me.genn.thegrandtourney.skills.MashingTable;
+import me.genn.thegrandtourney.skills.TimingTable;
 import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
@@ -25,6 +28,7 @@ public class Table {
     public Direction dir;
     TGT plugin;
     public Interaction entity;
+    List<ArmorStand> displayStands;
 
     public Table() {
     }
@@ -34,6 +38,23 @@ public class Table {
         this.name = name;
         this.type = type;
         this.plugin = plugin;
+        this.displayStands = new ArrayList<>();
+    }
+    public void unregister() {
+        this.loc = null;
+        this.entity.remove();
+        this.name = null;
+        if (this instanceof TimingTable) {
+            plugin.tableHandler.allTimingTables.remove(this);
+        } else if (this instanceof HoldingTable) {
+            plugin.tableHandler.allHoldingTables.remove(this);
+        } else if (this instanceof MashingTable) {
+            plugin.tableHandler.allMashingTables.remove(this);
+        }
+        for (ArmorStand displayStand : displayStands) {
+            displayStand.remove();
+        }
+        displayStands.clear();
     }
     public void blacksmithMashing(Location loc) {
         Direction dir = Direction.S;
@@ -765,7 +786,7 @@ public class Table {
         as.teleport(as.getLocation().add(x,y+2.5,z));
         as.setHeadPose(new EulerAngle(xAngle, yAngle, zAngle));
         as.setHelmet(item);
-
+        this.displayStands.add(as);
     }
 
     public String getName() {

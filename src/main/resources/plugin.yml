@@ -11,6 +11,7 @@ depend:
   - WorldEdit
   - SpectralDamage
   - Vault
+  - GennsGym
 
 commands:
   testgen:
@@ -47,3 +48,33 @@ commands:
     description: grants recipe
   stat:
     description: modifies base stats
+  foragingtest:
+    description: foragingtest
+  create-dungeon:
+    description: create dungeon
+  room:
+    description: creates room
+  door:
+    description: creates door
+  startgame:
+    description: Starts the game
+  nextgame:
+    description: Shows or sets the next game
+  override:
+    description: Override
+  endround:
+    description: Ends the round and starts the next one
+  roundscoreadd:
+    description: Add round score
+  gamescoreadd:
+    description: Ends the round and starts the next one
+  gamescoreset:
+    description: Add round score
+  roundscoreset:
+    description: Sets round score
+  playerout:
+    description: mark player out
+  start-tournament:
+    description: starts the tourney
+  exit:
+    description: creates dungeon exit point or entry point

@@ -2,6 +2,7 @@ package me.genn.thegrandtourney.skills;
 
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.shaded.effectlib.util.ParticleOptions;
+import de.tr7zw.nbtapi.NBTItem;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.grid.Direction;
 import me.genn.thegrandtourney.player.MMOPlayer;
@@ -36,13 +37,15 @@ public class Craft implements Listener {
     ArmorStand as;
     ArmorStand instructionAs;
     float currentTaskProgress = 0f;
-    float totalProgress = 0f;
+    public float totalProgress = 0f;
     int[] timingCount = {2};
     boolean cancelNextTimingTask = false;
     boolean currentlyTiming = false;
     BukkitTask timingRunnable;
     boolean craftActive = false;
     boolean firstClick = true;
+    public double totalCraftScore;
+
 
     public Craft(TGT plugin) {
         this.plugin = plugin;
@@ -56,10 +59,11 @@ public class Craft implements Listener {
         mmoPlayer.isCrafting = true;
         mmoPlayer.craftStart = player.getLocation();
         mmoPlayer.currentStation = station;
+        this.totalCraftScore = recipe.craftingScore;
         Location tpLocation = station.spawnLocation;
         tpLocation.setY((int)tpLocation.getY());
         player.teleport(tpLocation);
-
+        mmoPlayer.currentCraftObj = this;
         final int[] countdown = {3, 10, 30};
         new BukkitRunnable() {
             @Override
@@ -351,7 +355,13 @@ public class Craft implements Listener {
         if (this.timingRunnable != null && !this.timingRunnable.isCancelled()) {
             this.timingRunnable.cancel();
         }
+        MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
+        mmoPlayer.currentCraft = "";
+        mmoPlayer.isCrafting = false;
+        mmoPlayer.currentStation = null;
+        mmoPlayer.currentCraftObj = null;
         this.as.remove();
+        this.craftActive = false;
     }
 
     public void setBossBar(Player player, Recipe recipe, long time) {
@@ -681,6 +691,7 @@ public class Craft implements Listener {
         mmoPlayer.currentCraft = "";
         mmoPlayer.isCrafting = false;
         mmoPlayer.currentStation = null;
+        mmoPlayer.currentCraftObj = null;
         this.as.remove();
         this.craftActive = false;
     }
@@ -696,6 +707,9 @@ public class Craft implements Listener {
             lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.RED + "✯" );
             meta.setLore(lore);
             item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", statBoost);
+            item = nbtI.getItem();
             player.getInventory().addItem(item);
         } else if (quality.equalsIgnoreCase("great")) {
             ItemStack item = plugin.itemHandler.getItem(recipe.reward);
@@ -705,6 +719,9 @@ public class Craft implements Listener {
             lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.WHITE + "✯✯" );
             meta.setLore(lore);
             item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", statBoost);
+            item = nbtI.getItem();
             player.getInventory().addItem(item);
         } else if (quality.equalsIgnoreCase("superb")) {
             ItemStack item = plugin.itemHandler.getItem(recipe.reward);
@@ -714,6 +731,9 @@ public class Craft implements Listener {
             lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.GOLD + "✯✯✯" );
             meta.setLore(lore);
             item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", statBoost);
+            item = nbtI.getItem();
             player.getInventory().addItem(item);
         }
 
@@ -721,7 +741,6 @@ public class Craft implements Listener {
 
     public static void updateStatsFromItem(ItemStack item, float multiplier) {
         float change;
-        Map<String, Float> changes = new HashMap<>();
         if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
             return;
         }
@@ -738,6 +757,26 @@ public class Craft implements Listener {
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
                 lore.set(i, ChatColor.GRAY + "Damage: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Mining Damage: +")) {
+                line = line.replaceFirst("(Mining Damage: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Mining Damage: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Mining Damage: -")) {
+                line = line.replaceFirst("(Mining Damage: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Mining Damage: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Chopping Damage: +")) {
+                line = line.replaceFirst("(Chopping Damage: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Chopping Damage: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Chopping Damage: -")) {
+                line = line.replaceFirst("(Chopping Damage: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Chopping Damage: " + ChatColor.RED + "-" + String.format("%.1f", change));
             } else if (line.startsWith("Strength: +")) {
                 line = line.replaceFirst("(Strength: +\\+)", "");
                 change = Float.parseFloat(line);
@@ -802,16 +841,16 @@ public class Craft implements Listener {
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
                 lore.set(i, ChatColor.GRAY + "Defense: " + ChatColor.RED + "-" + String.format("%.1f", change));
-            } else if (line.startsWith("Mana: +")) {
-                line = line.replaceFirst("(Mana: +\\+)", "");
+            } else if (line.startsWith("Stamina: +")) {
+                line = line.replaceFirst("(Stamina: +\\+)", "");
                 change = Float.parseFloat(line);
                 change = change * multiplier;
-                lore.set(i, ChatColor.GRAY + "Mana: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
-            } else if (line.startsWith("Mana: -")) {
-                line = line.replaceFirst("(Mana: +\\-)", "");
+                lore.set(i, ChatColor.GRAY + "Stamina: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Stamina: -")) {
+                line = line.replaceFirst("(Stamina: +\\-)", "");
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
-                lore.set(i, ChatColor.GRAY + "Mana: " + ChatColor.RED + "-" + String.format("%.1f", change));
+                lore.set(i, ChatColor.GRAY + "Stamina: " + ChatColor.RED + "-" + String.format("%.1f", change));
             } else if (line.startsWith("Ability Damage: +")) {
                 line = line.replaceFirst("(Ability Damage: +\\+)", "");
                 line = line.replaceFirst("(%)", "");
@@ -856,16 +895,16 @@ public class Craft implements Listener {
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
                 lore.set(i, ChatColor.GRAY + "Health Regen: " + ChatColor.RED + "-" + String.format("%.1f", change));
-            } else if (line.startsWith("Mana Regen: +")) {
-                line = line.replaceFirst("(Mana Regen: +\\+)", "");
+            } else if (line.startsWith("Stamina Regen: +")) {
+                line = line.replaceFirst("(Stamina Regen: +\\+)", "");
                 change = Float.parseFloat(line);
                 change = change * multiplier;
-                lore.set(i, ChatColor.GRAY + "Mana Regen: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
-            } else if (line.startsWith("Mana Regen: -")) {
-                line = line.replaceFirst("(Mana Regen: +\\-)", "");
+                lore.set(i, ChatColor.GRAY + "Stamina Regen: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Stamina Regen: -")) {
+                line = line.replaceFirst("(Stamina Regen: +\\-)", "");
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
-                lore.set(i, ChatColor.GRAY + "Mana Regen: " + ChatColor.RED + "-" + String.format("%.1f", change));
+                lore.set(i, ChatColor.GRAY + "Stamina Regen: " + ChatColor.RED + "-" + String.format("%.1f", change));
             } else if (line.startsWith("Fishing Speed: +")) {
                 line = line.replaceFirst("(Fishing Speed: +\\+)", "");
                 change = Float.parseFloat(line);
@@ -896,6 +935,26 @@ public class Craft implements Listener {
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
                 lore.set(i, ChatColor.GRAY + "Focus: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Vigor: +")) {
+                line = line.replaceFirst("(Vigor: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Vigor: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Vigor: -")) {
+                line = line.replaceFirst("(Vigor: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Vigor: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Sea Creature Chance: +")) {
+                line = line.replaceFirst("(Sea Creature Chance: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Sea Creature Chance: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Vigor: -")) {
+                line = line.replaceFirst("(Sea Creature Chance: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Sea Creature Chance: " + ChatColor.RED + "-" + String.format("%.1f", change));
             }
         }
         ItemMeta meta = item.getItemMeta();

@@ -32,7 +32,8 @@ public class SkillXpSelector implements Listener {
     final String blacksmithing = ChatColor.GREEN + "Smithing";
     final String tailoring = ChatColor.GREEN + "Tailoring";
     final String cooking = ChatColor.GREEN + "Cooking";
-    final String tinkering = ChatColor.GREEN + "Tinkering";
+    final String alchemy = ChatColor.GREEN + "Alchemy";
+    final String carpentry = ChatColor.GREEN + "Carpentry";
     final String close = ChatColor.RED + "Close";
     final String back = ChatColor.GREEN + "Go Back";
     TGT plugin;
@@ -74,28 +75,34 @@ public class SkillXpSelector implements Listener {
         createSkillSelectorIcon(player, Material.FISHING_ROD, XpType.FISHING, fishing, lore, 24, inv);
 
         lore.clear();
-        lore.add(ChatColor.GRAY + "Forge weapons at a Smithing Station");
+        lore.add(ChatColor.GRAY + "Forge items at a Smithing Station");
         lore.add(ChatColor.GRAY + "to gain Smithing XP!");
 
         createSkillSelectorIcon(player, Material.ANVIL, XpType.BLACKSMITHING, blacksmithing, lore, 29, inv);
 
         lore.clear();
-        lore.add(ChatColor.GRAY + "Craft armor at a Tailoring Station");
+        lore.add(ChatColor.GRAY + "Craft items at a Tailoring Station");
         lore.add(ChatColor.GRAY + "to gain Tailoring XP!");
 
-        createSkillSelectorIcon(player, Material.PISTON, XpType.TAILORING, tailoring, lore, 30, inv);
+        createSkillSelectorIcon(player, Material.PINK_WOOL, XpType.TAILORING, tailoring, lore, 30, inv);
 
         lore.clear();
-        lore.add(ChatColor.GRAY + "Cook food and brew potions at a Cooking");
+        lore.add(ChatColor.GRAY + "Create items at a Carpentry Station");
+        lore.add(ChatColor.GRAY + "to gain Carpentry XP!");
+
+        createSkillSelectorIcon(player, Material.OAK_PLANKS, XpType.CARPENTRY, carpentry, lore, 31, inv);
+
+        lore.clear();
+        lore.add(ChatColor.GRAY + "Cook food and at a Cooking");
         lore.add(ChatColor.GRAY + "Station to gain Cooking XP!");
 
         createSkillSelectorIcon(player, Material.FURNACE, XpType.COOKING, cooking, lore, 32, inv);
 
         lore.clear();
-        lore.add(ChatColor.GRAY + "Build accessories at a Tinkering");
-        lore.add(ChatColor.GRAY + "Station to gain Tinkering XP!");
+        lore.add(ChatColor.GRAY + "Brew potions at an Alchemy");
+        lore.add(ChatColor.GRAY + "Station to gain Alchemy XP!");
 
-        createSkillSelectorIcon(player, Material.ENCHANTING_TABLE, XpType.TINKERING, tinkering, lore, 33, inv);
+        createSkillSelectorIcon(player, Material.BREWING_STAND, XpType.ALCHEMY, alchemy, lore, 33, inv);
         lore.clear();
         setMenuItem(new ItemStack(Material.BARRIER), close, lore, 49, inv);
         lore.add(ChatColor.GRAY + "To Menu");
@@ -149,12 +156,12 @@ public class SkillXpSelector implements Listener {
         int numOfEmtptyBars = 20 - numOfFilledBars;
         String barString = "";
         for (int i = 0; i < numOfFilledBars; i++) {
-            barString = barString.concat(ChatColor.GREEN + "-");
-        }
-        for (int i = 0; i < numOfEmtptyBars; i++) {
             barString = barString.concat(ChatColor.DARK_GREEN + "-");
         }
-        barString = barString + " " + ChatColor.YELLOW.toString() + numerator + ChatColor.GOLD + "/" + ChatColor.YELLOW.toString() + denominator;
+        for (int i = 0; i < numOfEmtptyBars; i++) {
+            barString = barString.concat(ChatColor.GRAY + "-");
+        }
+        barString = barString + " " + ChatColor.YELLOW.toString() + String.format("%.1f", numerator) + ChatColor.GOLD + "/" + ChatColor.YELLOW.toString() + denominator;
         lore.add(barString);
         lore.add("");
         lore.add(ChatColor.GRAY + "Level " + Xp.intToRoman(mmoPlayer.getLvlForType(type) + 1) + " Rewards:");

@@ -30,6 +30,7 @@ import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.skills.TimingTable;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
+import me.genn.thegrandtourney.skills.foraging.ForagingZone;
 import me.genn.thegrandtourney.skills.mining.Ore;
 import me.genn.thegrandtourney.xp.Xp;
 import org.bukkit.Bukkit;
@@ -95,7 +96,7 @@ public class Grid {
     }
 
     public void initialize() throws DataException, WorldEditException, IOException {
-        grid = new Cell[size][size];
+        grid = new Cell[size][size + (int)(0.5*size)];
         highways = new HashMap();
         listOfCellsThatShouldHaveBeenPastedTo = new ArrayList();
         this.portCells = new ArrayList<>();
@@ -116,7 +117,7 @@ public class Grid {
         this.localSlumsOmni = new ArrayList<>();
         cellsForBuildings = new ArrayList();
         int cellNum = 0;
-        for (int z = 0; z < size; z++) {
+        for (int z = 0; z < size + (int)(0.5*size); z++) {
             for (int x = 0; x<size; x++) {
                 Cell cell = new Cell();
                 cell.isRoad = false;
@@ -164,7 +165,7 @@ public class Grid {
                 }
             }
         }
-        for (int z = 0; z < size; z++) {
+        for (int z = 0; z < size + (int)(0.5*size); z++) {
             for (int x = 0; x<size; x++) {
                 Cell cell = grid[x][z];
                 if (!cell.isOccupied && !cell.isRoad) {
@@ -239,6 +240,12 @@ public class Grid {
                     grid[x][z].district = District.ARISTOCRACY;
                     this.aristocracyCells.add(grid[x][z]);
                 }
+            }
+        }
+        for (int x = 0; x < size; x++) {
+            for (int z = size; z < size + (int)(0.5*size); z++) {
+                grid[x][z].district = District.OUTSKIRTS;
+                this.outskirtsCells.add(grid[x][z]);
             }
         }
     }
@@ -435,20 +442,31 @@ public class Grid {
                 @Override
                 public void run() {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(true).build();
+                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    try {
-                        paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
         } else if (paste.direction == Direction.E) {
@@ -458,20 +476,31 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(90));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    try {
-                        paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
         } else if (paste.direction == Direction.N) {
@@ -481,20 +510,31 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(180));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    try {
-                        paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
         } else if (paste.direction == Direction.W) {
@@ -504,20 +544,31 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(270));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    try {
-                        paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        try {
+                            paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
         }
@@ -536,7 +587,7 @@ public class Grid {
                 @Override
                 public void run() {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(true).build();
+                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
@@ -553,18 +604,34 @@ public class Grid {
                     } else {
                         Bukkit.getLogger().log(Level.INFO, "No spawners detected for schematic " + paste.schematic.name);
                     }*/
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    try {
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    } catch (DataException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
             return;
@@ -575,7 +642,7 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(90));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
@@ -591,18 +658,34 @@ public class Grid {
                     } else {
                         Bukkit.getLogger().log(Level.INFO, "No spawners detected for schematic " + paste.schematic.name);
                     }*/
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    try {
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    } catch (DataException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district == District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
 
                 }
             }, paste.schematic.area);
@@ -614,7 +697,7 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(180));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
@@ -630,18 +713,34 @@ public class Grid {
                     } else {
                         Bukkit.getLogger().log(Level.INFO, "No spawners detected for schematic " + paste.schematic.name);
                     }*/
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    try {
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    } catch (DataException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
             return;
@@ -652,7 +751,7 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(270));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
@@ -668,18 +767,34 @@ public class Grid {
                     } else {
                         Bukkit.getLogger().log(Level.INFO, "No spawners detected for schematic " + paste.schematic.name);
                     }*/
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    try {
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    } catch (DataException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        try {
+                            generateStructure(getSchematicsForDistrict(cycleToNextDistrict(paste.schematic.district)), grid, getCellsForDistrict(cycleToNextDistrict(paste.schematic.district)), cycleToNextDistrict(paste.schematic.district));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        } catch (DataException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
         }
@@ -705,7 +820,6 @@ public class Grid {
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 Bukkit.getPluginManager().registerEvents(ore, plugin);
                 ore.spawn(loc);
-                plugin.oreObjectiveLocList.put(ore, loc);
             }
         }
 
@@ -721,7 +835,6 @@ public class Grid {
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
                 npc.npc.spawn(loc);
-                plugin.npcObjectiveLocList.put(npc, loc);
                 npc.pasteLocation = loc;
                 plugin.npcHandler.allSpawnedNpcs.add(npc);
                 plugin.getLogger().log(Level.INFO, "Added " + npc.internalName + " to allSpawnedNpcs");
@@ -740,8 +853,8 @@ public class Grid {
                     continue;
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
-                spawner.paste(loc, paste, counter);
-                plugin.spawnerObjectiveLocList.put(spawner, loc);
+                spawner.name = spawner.template.name + "." + paste.schematic.name + "." + counter;
+                spawner.paste(loc);
                 counter++;
             }
         }
@@ -757,8 +870,7 @@ public class Grid {
                     continue;
                 }
                 Location loc = getPasteLocation(paste, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"));
-                crop.spawn(loc, true);
-                plugin.cropObjectiveLocList.put(crop, loc);
+                crop.spawn(loc);
             }
         }
 
@@ -774,9 +886,9 @@ public class Grid {
                 }
                 Location minLoc = getPasteLocation(paste, section.getDouble("min-x"), section.getDouble("min-y"), section.getDouble("min-z"));
                 Location maxLoc = getPasteLocation(paste, section.getDouble("max-x"), section.getDouble("max-y"), section.getDouble("max-z"));
-                zone.pasteZone(minLoc, maxLoc, paste.schematic.name + "." + key + "." + zone.template.name);
+                zone.name = paste.schematic.name + "." + key + "." + zone.template.name;
+                zone.paste(minLoc, maxLoc);
                 Location objLocation = new Location(minLoc.getWorld(), minLoc.getX()+(maxLoc.getX()- minLoc.getX())*0.5,minLoc.getY()+(maxLoc.getY()- minLoc.getY())*0.5,minLoc.getZ()+(maxLoc.getZ()- minLoc.getZ())*0.5);
-                plugin.fishingZoneObjectiveLocList.put(zone, objLocation);
             }
         }
 
@@ -839,6 +951,22 @@ public class Grid {
                 station.name = paste.schematic.name + "." + counter + "." + Xp.parseXpType(section.getString("type")).toString();
                 plugin.tableHandler.allStations.add(station);
                 counter++;
+            }
+        }
+        if (master.getConfigurationSection("foraging-zones") != null) {
+            ConfigurationSection foragingZones = master.getConfigurationSection("foraging-zones");
+            Iterator iter = foragingZones.getKeys(false).iterator();
+            while (iter.hasNext()) {
+                String key = (String) iter.next();
+                ConfigurationSection section = foragingZones.getConfigurationSection(key);
+                ForagingZone zone = new ForagingZone(plugin, plugin.foragingZoneHandler.allZones.stream().filter(obj -> obj.name.equalsIgnoreCase(section.getString("template-name"))).findFirst().orElse(null));
+                if (zone.getName() == null) {
+                    continue;
+                }
+                Location minLoc = getPasteLocation(paste, section.getDouble("min-x"), section.getDouble("min-y"), section.getDouble("min-z"));
+                Location maxLoc = getPasteLocation(paste, section.getDouble("max-x"), section.getDouble("max-y"), section.getDouble("max-z"));
+                zone.name = paste.schematic.name + "." + key + "." + zone.template.name;
+                zone.paste(minLoc, maxLoc);
             }
         }
 
@@ -1025,24 +1153,39 @@ public class Grid {
                 @Override
                 public void run() {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(true).build();
+                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    cells.removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    runningDelay = runningDelay + paste.schematic.area;
-                    try {
-                        Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
-                        generateRepeatables(grid, cells);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area);
             return;
@@ -1053,25 +1196,41 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(90));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    cells.removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
 
-                    runningDelay = runningDelay + paste.schematic.area;
-                    try {
-                        Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
-                        generateRepeatables(grid, cells);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
             return;
@@ -1082,24 +1241,39 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(180));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    cells.removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    runningDelay = runningDelay + paste.schematic.area;
-                    try {
-                        Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
-                        generateRepeatables(grid, cells);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
             return;
@@ -1110,24 +1284,39 @@ public class Grid {
                     EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                     ClipboardHolder holder = new ClipboardHolder(clipboard);
                     holder.setTransform(new AffineTransform().rotateY(270));
-                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(true).build();
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
                     try {
                         Operations.complete(operation);
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-                    List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
-                    getCellsForDistrict(paste.schematic.district).removeAll(newCells);
-                    cells.removeAll(newCells);
-                    getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                    runningDelay = runningDelay + paste.schematic.area;
-                    try {
-                        Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
-                        generateRepeatables(grid, cells);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (paste.schematic.district != District.OUTSKIRTS) {
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        getCellsForDistrict(paste.schematic.district).removeAll(newCells);
+                        cells.removeAll(newCells);
+                        getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                        runningDelay = runningDelay + paste.schematic.area;
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                            generateRepeatables(grid, cells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+
                 }
             }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
         }
@@ -1141,9 +1330,11 @@ public class Grid {
         } else if (district == District.ARISTOCRACY) {
             return District.PORT;
         } else if (district == District.SLUMS) {
-            return  District.FARM;
+            return  District.OUTSKIRTS;
+        } else if (district == District.OUTSKIRTS) {
+            return District.FARM;
         } else {
-            return District.OUTSKIRTS;
+            return District.FARM;
         }
     }
     public void generateStructure(List<Schematic> schematicList, Cell[][] grid, List<Cell> cells, District lastDistrict) throws IOException, WorldEditException, DataException {
@@ -1178,49 +1369,96 @@ public class Grid {
                 x = schematic.zHeight;
                 z = schematic.xLength;
             }
-            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
-                Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                if (schematic.linkedSchematic == null) {
-                    paste(paste, getCellsForDistrict(paste.schematic.district));
-                    return;
-                } else {
-                    Schematic linkedSchem = schematic.linkedSchematic;
-                    List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
-                    Collections.shuffle(linkedCells);
-                    Iterator linkedIter = linkedCells.iterator();
+            if (cell.district != District.OUTSKIRTS) {
+                if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
+                    Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
+                    if (schematic.linkedSchematic == null) {
+                        paste(paste, getCellsForDistrict(paste.schematic.district));
+                        return;
+                    } else {
+                        Schematic linkedSchem = schematic.linkedSchematic;
+                        List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
+                        Collections.shuffle(linkedCells);
+                        Iterator linkedIter = linkedCells.iterator();
 
-                    do {
-                        Cell linkedCell = (Cell) linkedIter.next();
-                        List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
-                        Direction linkedDirection = null;
-                        if (linkedNearbyRoads.size() > 1) {
-                            linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
-                        } else if (linkedNearbyRoads.size() == 1) {
-                            linkedDirection = linkedNearbyRoads.get(0);
-                        }
-                        if (linkedDirection == null) {
-                            continue;
-                        }
-                        int linkedTargetZ = linkedCell.z;
-                        int linkedTargetX = linkedCell.x;
-                        int linkedX = linkedSchem.xLength;
-                        int linkedZ = linkedSchem.zHeight;
-                        if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
-                            linkedX = linkedSchem.zHeight;
-                            linkedZ = linkedSchem.xLength;
-                        }
-                        if (this.schemFitsInBounds(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(toBeOccupiedCells(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCells(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
-                            Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
-                            pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
-                            return;
-                        }
-                    } while (linkedIter.hasNext());
+                        do {
+                            Cell linkedCell = (Cell) linkedIter.next();
+                            List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
+                            Direction linkedDirection = null;
+                            if (linkedNearbyRoads.size() > 1) {
+                                linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
+                            } else if (linkedNearbyRoads.size() == 1) {
+                                linkedDirection = linkedNearbyRoads.get(0);
+                            }
+                            if (linkedDirection == null) {
+                                continue;
+                            }
+                            int linkedTargetZ = linkedCell.z;
+                            int linkedTargetX = linkedCell.x;
+                            int linkedX = linkedSchem.xLength;
+                            int linkedZ = linkedSchem.zHeight;
+                            if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
+                                linkedX = linkedSchem.zHeight;
+                                linkedZ = linkedSchem.xLength;
+                            }
+                            if (this.schemFitsInBounds(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(toBeOccupiedCells(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCells(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
+                                Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
+                                pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
+                                return;
+                            }
+                        } while (linkedIter.hasNext());
 
-                    schematicList.remove(schematic);
-                    generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-                    return;
+                        schematicList.remove(schematic);
+                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
+                        return;
+                    }
+                }
+            } else {
+                if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
+                    Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
+                    if (schematic.linkedSchematic == null) {
+                        paste(paste, getCellsForDistrict(paste.schematic.district));
+                        return;
+                    } else {
+                        Schematic linkedSchem = schematic.linkedSchematic;
+                        List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
+                        Collections.shuffle(linkedCells);
+                        Iterator linkedIter = linkedCells.iterator();
+
+                        do {
+                            Cell linkedCell = (Cell) linkedIter.next();
+                            List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
+                            Direction linkedDirection = null;
+                            if (linkedNearbyRoads.size() > 1) {
+                                linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
+                            } else if (linkedNearbyRoads.size() == 1) {
+                                linkedDirection = linkedNearbyRoads.get(0);
+                            }
+                            if (linkedDirection == null) {
+                                continue;
+                            }
+                            int linkedTargetZ = linkedCell.z;
+                            int linkedTargetX = linkedCell.x;
+                            int linkedX = linkedSchem.xLength;
+                            int linkedZ = linkedSchem.zHeight;
+                            if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
+                                linkedX = linkedSchem.zHeight;
+                                linkedZ = linkedSchem.xLength;
+                            }
+                            if (this.schemFitsInBoundsOutskirts(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(toBeOccupiedCellsOutskirts(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCellsOutskirts(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
+                                Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
+                                pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
+                                return;
+                            }
+                        } while (linkedIter.hasNext());
+
+                        schematicList.remove(schematic);
+                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
+                        return;
+                    }
                 }
             }
+
         } while (cellsIter.hasNext());
         schematicList.remove(schematic);
         generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
@@ -1294,7 +1532,7 @@ public class Grid {
                                         @Override
                                         public void run() {
                                             EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (linkedTargetX * cellSize), yLvl + 1, startZ + (linkedTargetZ * -cellSize))).ignoreAirBlocks(true).build();
+                                            Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (linkedTargetX * cellSize), yLvl + 1, startZ + (linkedTargetZ * -cellSize))).ignoreAirBlocks(false).build();
                                             try {
                                                 Operations.complete(operation);
                                             } catch (WorldEditException e) {
@@ -1314,7 +1552,7 @@ public class Grid {
                                                 outskirtsCells = newCells;
                                             }
                                             editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize), yLvl + 1, startZ + (targetZ * -cellSize))).ignoreAirBlocks(true).build();
+                                            operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize), yLvl + 1, startZ + (targetZ * -cellSize))).ignoreAirBlocks(false).build();
                                             try {
                                                 Operations.complete(operation);
                                             } catch (WorldEditException e) {
@@ -1342,7 +1580,7 @@ public class Grid {
                                             EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                                             ClipboardHolder holder = new ClipboardHolder(clipboard);
                                             holder.setTransform(new AffineTransform().rotateY(90));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize) + 4, yLvl + 1, (startZ + (targetZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(true).build();
+                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize) + 4, yLvl + 1, (startZ + (targetZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
                                             try {
                                                 Operations.complete(operation);
                                             } catch (WorldEditException e) {
@@ -1371,7 +1609,7 @@ public class Grid {
                                             EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                                             ClipboardHolder holder = new ClipboardHolder(clipboard);
                                             holder.setTransform(new AffineTransform().rotateY(180));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 1), yLvl + 1, (startZ + (targetZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(true).build();
+                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 1), yLvl + 1, (startZ + (targetZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
                                             try {
                                                 Operations.complete(operation);
                                             } catch (WorldEditException e) {
@@ -1399,7 +1637,7 @@ public class Grid {
                                             EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
                                             ClipboardHolder holder = new ClipboardHolder(clipboard);
                                             holder.setTransform(new AffineTransform().rotateY(270));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 5), yLvl + 1, (startZ + (targetZ * -cellSize) - 4))).ignoreAirBlocks(true).build();
+                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 5), yLvl + 1, (startZ + (targetZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
                                             try {
                                                 Operations.complete(operation);
                                             } catch (WorldEditException e) {
@@ -1484,12 +1722,22 @@ public class Grid {
 
                     do {
                         Direction oDirection = (Direction) dirIter.next();
-                        if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection)) {
-                            Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
-                            pasteRepeatable(paste, remainingCells);
-                            getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
-                            pasted = true;
+                        if (cell.district != District.OUTSKIRTS) {
+                            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection)) {
+                                Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
+                                pasteRepeatable(paste, remainingCells);
+                                getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                                pasted = true;
 
+                            }
+                        } else {
+                            if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, oDirection)) {
+                                Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
+                                pasteRepeatable(paste, remainingCells);
+                                getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
+                                pasted = true;
+
+                            }
                         }
                     } while (dirIter.hasNext() && !pasted);
                 } while (schemIter.hasNext() && !pasted);
@@ -1512,11 +1760,20 @@ public class Grid {
                         x = schematic.zHeight;
                         z = schematic.xLength;
                     }
-                    if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
-                        Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                        pasteRepeatable(paste, remainingCells);
-                        pass = true;
+                    if (cell.district != District.OUTSKIRTS) {
+                        if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
+                            Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
+                            pasteRepeatable(paste, remainingCells);
+                            pass = true;
+                        }
+                    } else {
+                        if (schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
+                            Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
+                            pasteRepeatable(paste, remainingCells);
+                            pass = true;
+                        }
                     }
+
                 } while (schemIter.hasNext() && !pass);
             }
         } else {
@@ -1524,124 +1781,13 @@ public class Grid {
         }
 
     }
-    public void generateBuildingsHighway(Cell[][] grid, int count) throws DataException, IOException, WorldEditException, WorldEditException {
-        Random r = new Random();
-        List<List<Schematic>> schematicsByDistrict = new ArrayList<>();
-        schematicsByDistrict.add(this.schemHandler.slumsSchematics);
-        schematicsByDistrict.add(this.schemHandler.aristocracySchematics);
-        schematicsByDistrict.add(this.schemHandler.farmSchematics);
-        schematicsByDistrict.add(this.schemHandler.portSchematics);
-        //schematicsByDistrict.add(this.schemHandler.outskirtsSchematics);
-        List<Schematic> schematicList = schematicsByDistrict.get(count);
-            List<Cell> cells = new ArrayList<>();
-            if (schematicList.get(0).district == District.PORT) {
-                cells = this.portCells;
-            } else if (schematicList.get(0).district == District.SLUMS) {
-                cells = this.slumsCells;
-            } else if (schematicList.get(0).district == District.ARISTOCRACY) {
-                cells = this.aristocracyCells;
-            } else if (schematicList.get(0).district == District.FARM) {
-                cells = this.farmCells;
-            } //else if (schematicList.get(0).district == District.OUTSKIRTS) {
-                //cells = this.outskirtsCells;
-           // }
-
-
-        /*for (Cell cell : cellsForBuildings) {
-            List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x, cell.z);
-            Direction direction = null;
-            if (nearbyRoads.size() > 1) {
-                direction = nearbyRoads.get(r.nextInt(nearbyRoads.size()));
-            } else if (nearbyRoads.size() == 1) {
-                direction = nearbyRoads.get(0);
-            }
-            List<Schematic> schematicList = new ArrayList();
-            if (cell.district == District.SLUMS) {
-                schematicList.addAll(this.schemHandler.slumsSchematics);
-            } else if (cell.district == District.ARISTOCRACY) {
-                schematicList.addAll(this.schemHandler.aristocracySchematics);
-            } else if (cell.district == District.FARM) {
-                schematicList.addAll(this.schemHandler.farmSchematics);
-            } else if (cell.district == District.PORT) {
-                schematicList.addAll(this.schemHandler.portSchematics);
-            }
-            if (!schematicList.isEmpty()) {
-                if (direction != null) {
-                    boolean pass = false;
-                    do {
-                        if (schematicList.size() < 1) {
-                            pass = true;
-                        } else {
-                            Schematic schematic = schematicList.get(r.nextInt(schematicList.size()));
-                            int targetZ = cell.z;
-                            int targetX = cell.x;
-                            int x = schematic.xLength;
-                            int z = schematic.zHeight;
-                            if (direction == Direction.W || direction == Direction.E) {
-                                x = schematic.zHeight;
-                                z = schematic.xLength;
-                            }
-                            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
-                                EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, schematic.fileName + ".schematic"));
-                                ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, schematic.fileName + ".schematic")));
-                                Clipboard clipboard = reader.read();
-
-                                if (direction == Direction.S) {
-                                    Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize), yLvl+1, startZ + (targetZ * -cellSize))).ignoreAirBlocks(true).build();
-                                    Operations.complete(operation);
-                                    editSession.close();
-                                     markAsOccupied(x, z, targetX, targetZ, grid, direction, schematic.name);
-                                    pass=true;
-                                }else if (direction == Direction.E) {
-                                    ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                    holder.setTransform(new AffineTransform().rotateY(90));
-                                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize) + 4, yLvl+1, (startZ + (targetZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(true).build();
-                                    Operations.complete(operation);
-                                    editSession.close();
-                                    markAsOccupied(x, z, targetX, targetZ, grid, direction, schematic.name);
-                                    pass=true;
-                                } else if (direction == Direction.N) {
-                                    ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                    holder.setTransform(new AffineTransform().rotateY(180));
-                                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 1), yLvl+1, (startZ + (targetZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(true).build();
-                                    Operations.complete(operation);
-                                    editSession.close();
-                                    markAsOccupied(x, z, targetX, targetZ, grid, direction, schematic.name);
-                                    pass=true;
-                                } else if (direction == Direction.W) {
-                                    ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                    holder.setTransform(new AffineTransform().rotateY(270));
-                                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 5), yLvl+1, (startZ + (targetZ * -cellSize) - 4))).ignoreAirBlocks(true).build();
-                                    Operations.complete(operation);
-                                    editSession.close();
-                                    markAsOccupied(x, z, targetX, targetZ, grid, direction, schematic.name);
-                                    pass = true;
-                                }
-                                pass = true;
-                            } else {
-
-                                schematicList.remove(schematic);
-                            }
-                        }
-                    }while(!pass);
-
-                }
-            } else {
-                if (schematicList.isEmpty()) {
-                }
-
-            }
-
-        }*/
-    }
 
 
     public boolean schemFitsInBounds(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction) {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < this.size)) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size)) {
                         if (grid[gridX + x][gridZ + z].isOccupied) {
                             int xVal = gridX + x;
                             int zVal = gridZ + z;
@@ -1692,7 +1838,80 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < this.size)) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size)) {
+                        if (grid[gridX - x][gridZ + z].isOccupied) {
+                            int xVal = gridX - x;
+                            int zVal = gridZ + z;
+                            //Bukkit.broadcastMessage("Schematic won't fit! Cell " + xVal + ", " + zVal + " is already occupied.");
+                            return false;
+                        }
+                    } else {
+                        //Bukkit.broadcastMessage("Schematic won't fit! Outside of map bounds!");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public boolean schemFitsInBoundsOutskirts(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction) {
+        if (direction == Direction.S) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                        if (grid[gridX + x][gridZ + z].isOccupied) {
+                            int xVal = gridX + x;
+                            int zVal = gridZ + z;
+                            //Bukkit.broadcastMessage("Schematic won't fit! Cell " + xVal + ", " + zVal + " is already occupied.");
+                            return false;
+                        }
+                    } else {
+                        //Bukkit.broadcastMessage("Schematic won't fit! Outside of map bounds!");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (direction == Direction.W) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ - z) >= size)) {
+                        if (grid[gridX + x][gridZ - z].isOccupied) {
+                            int xVal = gridX + x;
+                            int zVal = gridZ - z;
+                            //Bukkit.broadcastMessage("Schematic won't fit! Cell " + xVal + ", " + zVal + " is already occupied.");
+                            return false;
+                        }
+                    } else {
+                        //Bukkit.broadcastMessage("Schematic won't fit! Outside of map bounds!");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (direction == Direction.N) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ - z) >= size)) {
+                        if (grid[gridX - x][gridZ - z].isOccupied) {
+                            int xVal = gridX - x;
+                            int zVal = gridZ - z;
+                            //Bukkit.broadcastMessage("Schematic won't fit! Cell " + xVal + ", " + zVal + " is already occupied.");
+                            return false;
+                        }
+                    } else {
+                        //Bukkit.broadcastMessage("Schematic won't fit! Outside of map bounds!");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (direction == Direction.E) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
                         if (grid[gridX - x][gridZ + z].isOccupied) {
                             int xVal = gridX - x;
                             int zVal = gridZ + z;
@@ -1716,7 +1935,7 @@ public class Grid {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < this.size)) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size)) {
                         int xVal = gridX + x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -1742,7 +1961,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < this.size)) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size)) {
                         int xVal = gridX - x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -1756,6 +1975,60 @@ public class Grid {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
                     if (((gridX - x) >= 0 ) && ((gridZ - z) >= 0)) {
+                        returnList.add(grid[gridX - x][gridZ - z]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        }
+        return returnList;
+    }
+    public List<Cell> toBeOccupiedCellsOutskirts(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction) {
+        List<Cell> returnList = new ArrayList<>();
+        if (direction == Direction.S) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                        int xVal = gridX + x;
+                        int zVal = gridZ + z;
+                        //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
+                        returnList.add(grid[gridX + x][gridZ + z]);
+
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.W) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ - z) >= size )) {
+                        int xVal = gridX + x;
+                        int zVal = gridZ - z;
+                        returnList.add(grid[xVal][zVal]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.E) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                        int xVal = gridX - x;
+                        int zVal = gridZ + z;
+                        //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
+                        returnList.add(grid[xVal][zVal]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.N) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ - z) >= size)) {
                         returnList.add(grid[gridX - x][gridZ - z]);
                     } else {
                         Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
@@ -1782,7 +2055,7 @@ public class Grid {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < this.size)) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size)) {
                         int xVal = gridX + x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -1811,7 +2084,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < this.size)) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size)) {
                         int xVal = gridX - x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -1827,6 +2100,67 @@ public class Grid {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
                     if (((gridX - x) >= 0 ) && ((gridZ - z) >= 0)) {
+                        grid[gridX - x][gridZ - z].isOccupied = true;
+                        grid[gridX - x][gridZ - z].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[gridX - x][gridZ - z]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        }
+        return cellsToRemove;
+    }
+    public List<Cell> markAsOccupiedOutskirts(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction, String schematicName) {
+        List<Cell> cellsToRemove = new ArrayList<>();
+        if (direction == Direction.S) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                        int xVal = gridX + x;
+                        int zVal = gridZ + z;
+                        //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
+                        grid[gridX + x][gridZ + z].isOccupied = true;
+                        grid[gridX + x][gridZ + z].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[gridX + x][gridZ + z]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.W) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX + x) < this.size ) && ((gridZ - z) >= size )) {
+                        int xVal = gridX + x;
+                        int zVal = gridZ - z;
+                        grid[xVal][zVal].isOccupied = true;
+                        grid[xVal][zVal].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[xVal][zVal]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.E) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                        int xVal = gridX - x;
+                        int zVal = gridZ + z;
+                        //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
+                        grid[xVal][zVal].isOccupied = true;
+                        grid[xVal][zVal].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[xVal][zVal]);
+                    } else {
+                        Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
+                    }
+                }
+            }
+        } else if (direction == Direction.N) {
+            for (int x = 0; x < xSize; x++) {
+                for (int z = 0; z < zSize; z++) {
+                    if (((gridX - x) >= 0 ) && ((gridZ - z) >= size)) {
                         grid[gridX - x][gridZ - z].isOccupied = true;
                         grid[gridX - x][gridZ - z].schematicAtCell = schematicName;
                         cellsToRemove.add(grid[gridX - x][gridZ - z]);

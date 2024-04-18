@@ -1,6 +1,9 @@
 package me.genn.thegrandtourney.item;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.dungeons.Room;
+import me.genn.thegrandtourney.dungeons.RoomGoal;
+import me.genn.thegrandtourney.skills.fishing.Fish;
 import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -10,9 +13,11 @@ import java.util.*;
 
 public class DropTable {
     public List<Drop> drops;
+    public List<Fish> fishDrops;
+    public List<Fish> fishCreatures;
     public boolean calculateDropsIndividually = false;
     public boolean overflowDrops = false;
-    public int moneyDropMin;
+    public int moneyDropMin = -1;
     public int moneyDropMax;
     public XpType xpDropType;
     public double xpDropMin;
@@ -22,6 +27,7 @@ public class DropTable {
     public DropTable(TGT plugin, boolean calculateDropsIndividually, boolean overflowDrops) {
         this.plugin = plugin;
         this.drops = new ArrayList<>();
+        this.fishCreatures = new ArrayList<>();
         this.calculateDropsIndividually = calculateDropsIndividually;
         this.overflowDrops = overflowDrops;
     }
@@ -42,6 +48,30 @@ public class DropTable {
             Drop dropObj = new Drop();
             if (type.equalsIgnoreCase("item")) {
                 dropObj = itemDrop(drop);
+                addDrop(dropObj);
+            }
+        }
+    }
+    public void addFishFromSection(ConfigurationSection section) {
+        Iterator iter = section.getKeys(false).iterator();
+        while (iter.hasNext()) {
+            String key = (String) iter.next();
+
+            ConfigurationSection drop = section.getConfigurationSection(key);
+            if (key.equalsIgnoreCase("money")) {
+                parseMoneyDrop(drop);
+                continue;
+            } else if (key.equalsIgnoreCase("xp")) {
+                parseXpDrop(drop);
+                continue;
+            }
+            String type = drop.getString("type", "item");
+            Fish dropObj = new Fish();
+            if (type.equalsIgnoreCase("item")) {
+                dropObj = fishDrop(drop);
+                addDrop(dropObj);
+            } else if (type.equalsIgnoreCase("mob")) {
+                dropObj = mobDrop(drop);
                 addDrop(dropObj);
             }
         }
@@ -93,19 +123,75 @@ public class DropTable {
         return drop;
     }
 
+    public Fish fishDrop(ConfigurationSection section) {
+        Fish drop = new Fish();
+        if (section.getString("item") != null) {
+            drop.drop = plugin.itemHandler.getMMOItemFromString(section.getString("item"));
+        }
+        if (drop.drop == null) {
+            return null;
+        }
+        drop.name = section.getName();
+        if (section.getString("quantity").contains("-")) {
+            String[] parts = section.getString("quantity").split("-");
+            drop.minQuantity = Integer.parseInt(parts[0]);
+            drop.maxQuantity = Integer.parseInt(parts[1]);
+        } else {
+            drop.minQuantity = section.getInt("quantity", 1);
+            drop.maxQuantity = section.getInt("quantity", 1);
+        }
+
+        drop.chance = section.getDouble("chance", 100);
+
+        drop.weight = section.getInt("weight", 1);
+
+        drop.minTime = section.getInt("min-time", 1);
+        drop.maxTime = section.getInt("max-time", 4);
+        return drop;
+    }
+    public Fish mobDrop(ConfigurationSection section) {
+        Fish drop = new Fish();
+        if (section.getString("mob") != null) {
+            drop.mob = plugin.mobHandler.getMobFromString(section.getString("mob"));
+        }
+        if (drop.mob == null) {
+            return null;
+        }
+        drop.name = section.getName();
+        if (section.getString("quantity").contains("-")) {
+            String[] parts = section.getString("quantity").split("-");
+            drop.minQuantity = Integer.parseInt(parts[0]);
+            drop.maxQuantity = Integer.parseInt(parts[1]);
+        } else {
+            drop.minQuantity = section.getInt("quantity", 1);
+            drop.maxQuantity = section.getInt("quantity", 1);
+        }
+
+        drop.chance = section.getDouble("chance", 100);
+
+        drop.weight = section.getInt("weight", 1);
+
+        drop.minTime = section.getInt("min-time", 1);
+        drop.maxTime = section.getInt("max-time", 4);
+        return drop;
+    }
+
     public void addDrop (Drop drop) {
         drops.add(drop);
     }
+    public void mobDrop (Fish drop) {
+        fishCreatures.add(drop);
+    }
 
-    public void calculateDrops(Player p) {
+    public void calculateDrops(Player p, float bonus) {
         if (calculateDropsIndividually) {
-            calculateDropsIndividual(p);
+            calculateDropsIndividual(p, bonus);
         } else {
-            calculateDropsNonIndividual(p);
+            calculateDropsNonIndividual(p, bonus);
         }
 
     }
-    public void calculateDropsNonIndividual(Player p) {
+    public void calculateDropsNonIndividual(Player p, float bonus) {
         if (drops.size() < 1) {
             return;
         }
@@ -119,10 +205,56 @@ public class DropTable {
         }
         Random r = new Random();
         Drop drop = dropsWithWeight.get(r.nextInt(dropsWithWeight.size()));
-        ItemStack bIteam = plugin.itemHandler.getItem(drop.drop).asQuantity(r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1));
-        p.getInventory().addItem(bIteam);
+
+        int bonusAmount = 0;
+        while (bonus > 100) {
+            bonusAmount++;
+            bonus-=100;
+        }
+        if (bonus > r.nextInt(100)) {
+            bonusAmount++;
+        }
+        int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1) + bonusAmount;
+        ItemStack bItem = plugin.itemHandler.getItem(drop.drop).asQuantity(quantity);
+        p.getInventory().addItem(bItem);
+        this.checkDungeonRoom(p, bItem, quantity);
+        grantXpAndGold(p, r);
     }
-    public void calculateDropsIndividual(Player p) {
+    public Fish getDropFish(Player p) {
+        if (drops.size() < 1 && fishCreatures.size() < 1) {
+            return null;
+        }
+        Random r = new Random();
+        List<Fish> dropsWithWeight = new ArrayList<>();
+        if (r.nextDouble() * 100 <= plugin.players.get(p.getUniqueId()).getSeaCreatureChance()) {
+            for (Fish fishCreature : this.fishCreatures) {
+                Fish drop = fishCreature;
+                for (int i = 0; i < drop.weight; i++) {
+                    dropsWithWeight.add(drop);
+                }
+            }
+        } else {
+            for (Drop fishCreature : this.drops) {
+                for (int i = 0; i < (fishCreature).weight; i++) {
+                    dropsWithWeight.add((Fish)fishCreature);
+                }
+            }
+        }
+
+        return dropsWithWeight.get(r.nextInt(dropsWithWeight.size()));
+        /*int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1);
+        ItemStack bItem = plugin.itemHandler.getItem(drop.drop).asQuantity(quantity);
+        p.getInventory().addItem(bItem);
+        this.checkDungeonRoom(p, bItem, quantity);
+        if (this.xpDropType != null) {
+            plugin.xpHandler.grantXp(xpDropType, p, r.nextDouble(this.xpDropMin, this.xpDropMax+0.1));
+        }
+        if (this.moneyDropMin != -1) {
+            plugin.players.get(p.getUniqueId()).addPurseGold(r.nextInt(this.moneyDropMin, this.moneyDropMax+1));
+
+        }*/
+    }
+    public void calculateDropsIndividual(Player p, float bonus) {
         if (drops.size() < 1) {
             return;
         }
@@ -131,10 +263,57 @@ public class DropTable {
         while (iter.hasNext()) {
             Drop drop = (Drop) iter.next();
             if (drop.chance >= (r.nextDouble() * 100)) {
-                ItemStack bIteam = plugin.itemHandler.getItem(drop.drop).asQuantity(r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1));
-                p.getInventory().addItem(bIteam);
-
+                int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1);
+                int bonusAmount = 0;
+                while (bonus > 100) {
+                    bonusAmount++;
+                    bonus-=100;
+                }
+                if (bonus > r.nextInt(100)) {
+                    bonusAmount++;
+                }
+                ItemStack bItem = plugin.itemHandler.getItem(drop.drop).asQuantity(quantity + bonusAmount);
+                p.getInventory().addItem(bItem);
+                this.checkDungeonRoom(p, bItem,quantity+ bonusAmount);
             }
+        }
+        grantXpAndGold(p, r);
+
+    }
+
+    public void grantXpAndGold(Player p, Random r) {
+        if (this.xpDropType != null) {
+            if (this.xpDropMin == this.xpDropMax) {
+                plugin.xpHandler.grantXp(xpDropType, p, this.xpDropMax);
+            } else {
+                plugin.xpHandler.grantXp(xpDropType, p, r.nextDouble(this.xpDropMin, this.xpDropMax+0.1));
+            }
+        }
+        if (this.moneyDropMin != -1) {
+            if (this.moneyDropMin == this.moneyDropMax) {
+                plugin.players.get(p.getUniqueId()).addPurseGold(this.moneyDropMax);
+            } else {
+                plugin.players.get(p.getUniqueId()).addPurseGold(r.nextInt(this.moneyDropMin, this.moneyDropMax+1));
+            }
+
+        }
+    }
+    public void checkDungeonRoom(Player player, ItemStack item, int quantity) {
+        if (plugin.playerAndDungeonRoom.containsKey(player.getUniqueId())) {
+            Room room = plugin.playerAndDungeonRoom.get(player.getUniqueId());
+            if (room.goal != RoomGoal.COLLECTION) {
+                return;
+            }
+            if (room.itemToCollect != null) {
+                if (plugin.itemHandler.itemIsMMOItemOfName(item, room.itemToCollect.internalName)) {
+                    if (room.withinBounds(player.getLocation())) {
+                        for (int i = 0; i < quantity; i++) {
+                            room.incrementPlayerProgress(player);
+                        }
+                    }
+                }
+            }
+
         }
     }
 }

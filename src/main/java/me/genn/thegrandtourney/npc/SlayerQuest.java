@@ -89,8 +89,7 @@ public class SlayerQuest extends Quest {
                     this.denyQuest(player);
                 }
             } else if (step.stepName.contains("accept")) {
-                this.playSound(player, "random.orb", 1.0F, 1.5F);
-                this.playSound(player, "random.levelup", 1.0F, 2.0F);
+                this.playSound(player, "entity.experience_orb.pickup", 1.0F, 0F);
                 if (plugin.players.containsKey(player.getUniqueId()) && !plugin.players.get(player.getUniqueId()).slayerMap.containsKey(this.questName)) {
                     IntMap map = new IntMap();
                     map.put(plugin.mobHandler.getMobFromString(this.mobToKill), 0);

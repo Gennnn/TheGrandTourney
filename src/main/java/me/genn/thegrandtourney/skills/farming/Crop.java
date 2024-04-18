@@ -3,44 +3,47 @@ package me.genn.thegrandtourney.skills.farming;
 import com.nisovin.magicspells.MagicSpells;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
+import me.genn.thegrandtourney.skills.TournamentObject;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Skull;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import scala.concurrent.impl.FutureConvertersImpl;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-public class Crop implements Listener {
+public class Crop implements Listener, TournamentObject {
     public Location loc;
     TGT plugin;
     CropTemplate template;
     Block block;
     Random r;
     boolean isGrown = true;
+    BukkitTask regenerationTask;
     public Crop(TGT plugin, CropTemplate template) {
         this.plugin = plugin;
         this.template = template;
         this.r = new Random();
     }
-    public void spawn(Location loc, boolean exactLocation) {
+    @Override
+    public void spawn(Location loc) {
         this.loc = loc.toCenterLocation();
 
-        if (!exactLocation) {
-            this.loc = new Location(loc.getWorld(), loc.getX(), loc.getY() + 1, loc.getZ());
-        }
         this.block = this.loc.getBlock();
         block.setType(template.block);
 
@@ -59,6 +62,22 @@ public class Crop implements Listener {
         plugin.cropHandler.allSpawnedCrops.add(this);
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
+    @Override
+    public void paste(Location loc) {
+        this.spawn(loc);
+    }
+
+    @Override
+    public void remove() {
+        plugin.cropHandler.allSpawnedCrops.remove(this);
+        this.block.setType(Material.AIR);
+        if (this.regenerationTask != null) {
+            this.regenerationTask.cancel();
+        }
+        HandlerList.unregisterAll(this);
+        this.loc = null;
+    }
+
     @EventHandler
     public void onCropBreak2(PlayerInteractEvent e) {
         if (e.getAction() == Action.LEFT_CLICK_BLOCK) {
@@ -109,11 +128,7 @@ public class Crop implements Listener {
             }
         }
     }
-    @EventHandler
 
-    public void onCropBreak(BlockBreakEvent e) {
-
-    }
     public void breakEvents(Player player) {
         calculateDrops(player);
         this.isGrown = false;
@@ -134,7 +149,7 @@ public class Crop implements Listener {
             plugin.cropHandler.getHeadFrom64(template.regeneratingBase64String, skull);
 
         }
-        new BukkitRunnable() {
+        this.regenerationTask = new BukkitRunnable() {
 
             @Override
             public void run() {
@@ -162,7 +177,7 @@ public class Crop implements Listener {
     }
 
     public void calculateDrops(Player p) {
-        template.drops.calculateDrops(p);
+        template.drops.calculateDrops(p, plugin.players.get(p.getUniqueId()).getFarmingFortune());
     }
     public String getName() {
         return this.template.name;

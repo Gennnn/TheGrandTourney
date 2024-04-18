@@ -201,6 +201,19 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/src/main/resources/spectraldamage-2.5.1.jar</systemPath>
         </dependency>
+        <dependency>
+            <groupId>me.genn.gennsgym</groupId>
+            <artifactId>gennsgym</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+            <systemPath>${project.basedir}/src/main/resources/GennsGym1.19Check.jar</systemPath>
+        </dependency>
         <!--
         <dependency>
             <groupId>com.fastasyncworldedit</groupId>
