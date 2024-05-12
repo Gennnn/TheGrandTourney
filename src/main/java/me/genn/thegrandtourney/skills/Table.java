@@ -1,4 +1,4 @@
-package me.genn.thegrandtourney.skills.tailoring;
+package me.genn.thegrandtourney.skills;
 
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.shaded.effectlib.util.ParticleOptions;

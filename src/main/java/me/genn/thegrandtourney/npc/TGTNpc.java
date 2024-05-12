@@ -40,9 +40,7 @@ public class TGTNpc {
     public QuestType questType;
     public String skin;
     public String skinSig;
-    public double spawnX;
-    public double spawnY;
-    public double spawnZ;
+
     public TGTNpc childNpc;
     public List<Step> steps;
     public String internalName;
@@ -79,7 +77,7 @@ public class TGTNpc {
         TGT plugin = JavaPlugin.getPlugin(TGT.class);
         npc.internalName = config.getName();
         npc.name = config.getString("name");
-        npc.entityType = EntityType.valueOf(config.getString("entity-type").toUpperCase());
+        npc.entityType = EntityType.valueOf(config.getString("entity-type", "player").toUpperCase());
         if (npc.entityType == null) {
             npc.entityType = EntityType.PLAYER;
         }
@@ -107,10 +105,6 @@ public class TGTNpc {
             citizenNpc.getOrAddTrait(LookClose.class).setPerPlayer(true);
             citizenNpc.getOrAddTrait(LookClose.class).lookClose(true);
         }
-        String[] coords = (config.getString("relative-position")).split(", ");
-        npc.spawnX = Double.parseDouble(coords[0]);
-        npc.spawnY = Double.parseDouble(coords[1]);
-        npc.spawnZ = Double.parseDouble(coords[2]);
 
         npc.npc = citizenNpc;
         npc.steps = new ArrayList<Step>();
@@ -218,10 +212,15 @@ public class TGTNpc {
                 }
             }
             List<String> rewards = stepContent.getStringList("rewards");
+            List<String> commands = stepContent.getStringList("commands");
+
             String objectiveLocation = "";
             List<String> status = new ArrayList<>();
             String trackingText = "";
             boolean completingStep = false;
+            XpType requirementType = null;
+            int requirementLvl = 0;
+            String failStepToJump = null;
             ObjectiveUpdate objectiveUpdate = new ObjectiveUpdate(status, objectiveLocation, trackingText, completingStep);
             if (stepContent.contains("objective")) {
                 ConfigurationSection objectiveSection = stepContent.getConfigurationSection("objective");
@@ -241,12 +240,19 @@ public class TGTNpc {
                 }
                 objectiveUpdate.completingStep = objectiveSection.getBoolean("completing-step", false);
             }
+            if (stepContent.contains("requirement")) {
+                ConfigurationSection requirementSection = stepContent.getConfigurationSection("requirement");
+                String[] parts = requirementSection.getString("level").split(" ");
+                requirementType = Xp.parseXpType(parts[0]);
+                requirementLvl = Integer.parseInt(parts[1]);
+                failStepToJump = requirementSection.getString("fail-step");
+            }
 
             if (narration.getText().length() == 0) {
-                Step stepObj = new Step(stepKey, dialogue, null, ranged, jumpTo, rewards, objectiveUpdate);
+                Step stepObj = new Step(stepKey, dialogue, null, ranged, jumpTo, rewards, objectiveUpdate,commands,requirementType,requirementLvl,failStepToJump);
                 npc.steps.add(stepObj);
             } else {
-                Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate);
+                Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate,commands,requirementType,requirementLvl,failStepToJump);
                 npc.steps.add(stepObj);
             }
 

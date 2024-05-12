@@ -6,8 +6,10 @@ import com.destroystokyo.paper.event.player.PlayerRecipeBookClickEvent;
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.Spell;
 import com.nisovin.magicspells.events.SpellApplyDamageEvent;
+import com.nisovin.magicspells.events.SpellCastEvent;
 import com.nisovin.magicspells.events.SpellTargetEvent;
 import de.tr7zw.nbtapi.NBTItem;
+import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.bukkit.events.MythicMobDeathEvent;
 import io.lumine.mythic.bukkit.events.MythicMobSpawnEvent;
 import me.genn.thegrandtourney.TGT;
@@ -18,29 +20,23 @@ import me.genn.thegrandtourney.mobs.MMOMob;
 import me.genn.thegrandtourney.npc.ItemRetrievalQuest;
 import me.genn.thegrandtourney.npc.Quest;
 import me.genn.thegrandtourney.npc.SlayerQuest;
-import me.genn.thegrandtourney.player.CritDamageIndicator;
-import me.genn.thegrandtourney.player.MMOPlayer;
-import me.genn.thegrandtourney.player.NormalDamageIndicator;
-import me.genn.thegrandtourney.player.StatUpdates;
+import me.genn.thegrandtourney.player.*;
+import me.genn.thegrandtourney.skills.fishing.Fish;
+import me.genn.thegrandtourney.skills.fishing.FishingZoneTemplate;
 import me.genn.thegrandtourney.skills.mining.Ore;
+import me.genn.thegrandtourney.tournament.MiniGame;
 import me.genn.thegrandtourney.util.IntMap;
 import me.genn.thegrandtourney.xp.Xp;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
+import org.bukkit.*;
 
-import org.bukkit.Material;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Damageable;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
@@ -67,6 +63,7 @@ public class EventListener implements Listener {
     public Map<Entity, Ore> ores;
     public Map<MMOMob, IntMap<Player>> slayerTracker;
     public Map<UUID, Map<EquipmentSlot, Long>> cantUseMsgCd;
+    Map<Player, Fish> queuedFish;
 
     public EventListener(TGT plugin) {
         this.plugin = plugin;
@@ -76,6 +73,7 @@ public class EventListener implements Listener {
         this.ores = new HashMap();
         this.slayerTracker = new HashMap<>();
         this.cantUseMsgCd = new HashMap<>();
+        this.queuedFish = new HashMap<>();
     }
 
 
@@ -87,16 +85,41 @@ public class EventListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent e) {
+        if (plugin.players.containsKey(e.getPlayer().getUniqueId())) {
+            plugin.players.get(e.getPlayer().getUniqueId()).buffs.clear();
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerTakeDam(EntityDamageEvent e) {
         double damage = e.getDamage();
 
         if (e.getEntity() instanceof Player) {
             Player p = (Player) e.getEntity();
-            if (plugin.players.keySet().contains(p.getUniqueId())) {
+            if (plugin.players.containsKey(p.getUniqueId())) {
+                MMOPlayer mmoPlayer = plugin.players.get(p.getUniqueId());
+                if (mmoPlayer.getEvasiveness() > 0.0) {
+                    if (r.nextDouble() < (mmoPlayer.getEvasiveness()/(mmoPlayer.getEvasiveness()+100))) {
+                        e.setCancelled(true);
+                        Location target = p.getLocation();
+                        target.add(1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)));
+                        Entity damageIndicator = this.spectralDamage.spawnDamageIndicator(target, new DodgeIndicator(), 1, true);
+                        new BukkitRunnable() {
+
+                            @Override
+                            public void run() {
+                                damageIndicator.remove();
+                            }
+                        }.runTaskLater(plugin, 30L);
+                        e.setDamage(0.0D);
+                        return;
+                    }
+                }
                 damage = plugin.calculateDefenseDamage((float) plugin.players.get(p.getUniqueId()).getDefense(), (float) damage);
                 e.setDamage(0.0D);
-                plugin.updatePlayerHealth(plugin.players.get(p.getUniqueId()), (float) -damage);
+                plugin.players.get(p.getUniqueId()).takeDamage((float)damage);
 
             }
         }
@@ -105,9 +128,12 @@ public class EventListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
-        if (plugin.players.keySet().contains(p.getUniqueId())) {
-            plugin.updatePlayerHealth(plugin.players.get(p.getUniqueId()), plugin.players.get(p.getUniqueId()).getMaxHealth());
+        if (!plugin.tournament) {
+            if (plugin.players.keySet().contains(p.getUniqueId())) {
+                plugin.updatePlayerHealth(plugin.players.get(p.getUniqueId()), plugin.players.get(p.getUniqueId()).getMaxHealth());
+            }
         }
+
     }
     @EventHandler
     public void onInventoryPickupItem(PlayerAttemptPickupItemEvent event) {
@@ -232,11 +258,22 @@ public class EventListener implements Listener {
                     if (defense != 0) {
                         damage = plugin.calculateDefenseDamage((float)defense, (float)damage);
                     }
+                    Entity indicator = null;
                     if (crit) {
-                        spectralDamage.spawnDamageIndicator(p, target, new CritDamageIndicator(), (int)damage);
+                        indicator = spectralDamage.spawnDamageIndicator(p, target, new CritDamageIndicator(), (int)damage);
                     } else {
-                        spectralDamage.spawnDamageIndicator(p, target, new NormalDamageIndicator(), (int)damage);
+                        indicator = spectralDamage.spawnDamageIndicator(p, target, new NormalDamageIndicator(), (int)damage);
                     }
+                    Entity finalIndicator = indicator;
+                    new BukkitRunnable() {
+
+                        @Override
+                        public void run() {
+                            if (finalIndicator.isValid()) {
+                                finalIndicator.remove();
+                            }
+                        }
+                    }.runTaskLater(plugin, 30L);
                     e.setDamage((int) damage);
 
                     /*if (this.mobs.keySet().contains(e.getEntity()) && (int)damage >= ((Damageable)e.getEntity()).getHealth()) {
@@ -286,11 +323,22 @@ public class EventListener implements Listener {
                     if (defense != 0) {
                         damage = plugin.calculateDefenseDamage((float) defense, (float) damage);
                     }
+                    Entity indicator = null;
                     if (crit) {
-                        spectralDamage.spawnDamageIndicator(p, target, new CritDamageIndicator(), (int) damage);
+                        indicator = spectralDamage.spawnDamageIndicator(p, target, new CritDamageIndicator(), (int) damage);
                     } else {
-                        spectralDamage.spawnDamageIndicator(p, target, new NormalDamageIndicator(), (int) damage);
+                        indicator = spectralDamage.spawnDamageIndicator(p, target, new NormalDamageIndicator(), (int) damage);
                     }
+                    Entity finalIndicator = indicator;
+                    new BukkitRunnable() {
+
+                        @Override
+                        public void run() {
+                            if (finalIndicator.isValid()) {
+                                finalIndicator.remove();
+                            }
+                        }
+                    }.runTaskLater(plugin, 30L);
                     e.setDamage((int) damage);
                 }
             }
@@ -535,8 +583,23 @@ public class EventListener implements Listener {
             }
             MMOItem item = plugin.itemHandler.getMMOItemFromString(id.toLowerCase());
             if (item != null && item.spellName != null) {
+                e.setCancelled(true);
                 Spell spell = MagicSpells.getSpellByInternalName(item.spellName);
-                spell.cast(e.getPlayer());
+                Spell.SpellCastResult result = spell.cast(e.getPlayer());
+                if (result.success()) {
+                    if (result.action != Spell.PostCastAction.ALREADY_HANDLED) {
+                        if (spell.getReagents().getMana() > 0) {
+                            plugin.actionBarMessenger.queueCastMessage(e.getPlayer(), spell.getName(), spell.getReagents().getMana());
+                        }
+                        if (item.consumable) {
+                            if (e.getPlayer().getItemInHand() != null && e.getPlayer().getItemInHand().getAmount() <= 1) {
+                                e.getPlayer().setItemInHand(new ItemStack(Material.AIR));
+                            } else {
+                                e.getPlayer().setItemInHand(e.getPlayer().getItemInHand().asQuantity(e.getPlayer().getItemInHand().getAmount()-1));
+                            }
+                        }
+                    }
+                }
             }
         } else if ((e.getAction() == Action.LEFT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK) && e.hasItem() && e.getItem().hasItemMeta()) {
             NBTItem nbtI = new NBTItem(e.getItem());
@@ -556,7 +619,16 @@ public class EventListener implements Listener {
             MMOItem item = plugin.itemHandler.getMMOItemFromString(id.toLowerCase());
             if (item != null && item.lSpellName != null) {
                 Spell spell = MagicSpells.getSpellByInternalName(item.lSpellName);
-                spell.cast(e.getPlayer());
+                Spell.SpellCastResult result = spell.cast(e.getPlayer());
+                if (result.success()) {
+                    if (spell.getReagents().getMana() > 0) {
+                        plugin.actionBarMessenger.queueCastMessage(e.getPlayer(), spell.getName(), spell.getReagents().getMana());
+                    }
+                    if (item.consumable) {
+                        MMOItem.removeItem(e.getPlayer(), item, 1);
+                    }
+                }
+
             }
         }
 
@@ -621,7 +693,16 @@ public class EventListener implements Listener {
             MMOItem item = plugin.itemHandler.getMMOItemFromString(id.toLowerCase());
             if (item != null && item.activateSpellName != null) {
                 Spell spell = MagicSpells.getSpellByInternalName(item.activateSpellName);
-                spell.cast(e.getPlayer());
+                Spell.SpellCastResult result = spell.cast(e.getPlayer());
+                if (result.success()) {
+                    if (spell.getReagents().getMana() > 0) {
+                        plugin.actionBarMessenger.queueCastMessage(e.getPlayer(), spell.getName(), spell.getReagents().getMana());
+                    }
+                    if (item.consumable) {
+                        MMOItem.removeItem(e.getPlayer(), item, 1);
+                    }
+                }
+
             }
         }
     }
@@ -640,14 +721,109 @@ public class EventListener implements Listener {
     }
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
+
         e.setCancelled(true);
         MMOPlayer mmoPlayer = plugin.players.get(e.getPlayer().getUniqueId());
-        e.getPlayer().teleport(mmoPlayer.getRespawnLocation());
-        mmoPlayer.removePurseGold((int)(mmoPlayer.getPurseGold()/2));
         mmoPlayer.setHealth(mmoPlayer.getMaxHealth());
-        e.getPlayer().sendMessage(ChatColor.RED + "You died and lost " + (int)(mmoPlayer.getPurseGold()/2) + " Dosh!");
-        e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
-        e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
+        if (!plugin.tournament) {
+            e.getPlayer().teleport(mmoPlayer.getRespawnLocation());
+            mmoPlayer.removePurseGold((int)(mmoPlayer.getPurseGold()/2));
+            e.getPlayer().sendMessage(ChatColor.RED + "You died and lost " + (int)(mmoPlayer.getPurseGold()/2) + " Dosh!");
+            e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
+            e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
+        } else {
+            MiniGame game = this.plugin.getCurrentGame();
+            if (game != null) {
+                game.playerDeath(e.getEntity());
+                final Player player = e.getPlayer();
+                player.teleport(game.getInitSpawn());
+                e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
+                e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
+                Bukkit.getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
+                    public void run() {
+                        game.playerJoin(player);
+                    }
+                }, 1L);
+            }
+
+
+        }
+    }
+    private boolean fishingInOcean(Location loc) {
+        if (loc.getX() < plugin.grid.oceanXMin
+        || loc.getX() > plugin.grid.oceanXMax
+        || loc.getZ() < plugin.grid.oceanZMin
+        || loc.getZ() > plugin.grid.oceanZMax) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    @EventHandler
+    public void onFish(PlayerFishEvent e) {
+        Location hookLoc = e.getHook().getLocation().toCenterLocation();
+        if (e.getState() == PlayerFishEvent.State.FISHING && fishingInOcean(hookLoc)) {
+            FishHook hook = e.getHook();
+            Player player = e.getPlayer();
+            hook.setApplyLure(false);
+            hook.setRainInfluenced(false);
+            hook.setSkyInfluenced(false);
+            if (!plugin.fishingZoneHandler.containsName(plugin.fishingZoneHandler.allZones, "ocean")) {
+                e.setCancelled(true);
+                return;
+            }
+            FishingZoneTemplate template = plugin.fishingZoneHandler.getTemplateWithName("ocean");
+            int min = (int)((int)100 + (template.minTimeModifier*20L) - (plugin.players.get(player.getUniqueId()).getLure() * 5L));
+            int max = (int)(600 + (template.minTimeModifier*20L) - (plugin.players.get(player.getUniqueId()).getLure() * 5L));
+            if (min < 0) {
+                min = 0;
+            }
+            if (max < 0 || max < min) {
+                max = min + 1;
+            }
+            hook.setWaitTime(min, max);
+            me.genn.thegrandtourney.skills.fishing.Fish fish = template.selectDrop(e.getPlayer());
+            this.queuedFish.put(e.getPlayer(), fish);
+            min = (int)((fish.minTime*20L) - (plugin.players.get(player.getUniqueId()).getFlash() * 1L));
+            max = (int)((fish.maxTime*20L) - (plugin.players.get(player.getUniqueId()).getFlash() * 1L));
+            if (min < 5) {
+                min = 5;
+            }
+            if (max < 5 || max < min) {
+                max = min + 1;
+            }
+            hook.setLureTime(min, max);
+        } else if (e.getState() == PlayerFishEvent.State.CAUGHT_FISH && fishingInOcean(hookLoc) && this.queuedFish.containsKey(e.getPlayer())) {
+            Fish fish = this.queuedFish.get(e.getPlayer());
+            if (!plugin.fishingZoneHandler.containsName(plugin.fishingZoneHandler.allZones, "ocean")) {
+                e.setCancelled(true);
+                return;
+            }
+            FishingZoneTemplate template = plugin.fishingZoneHandler.getTemplateWithName("ocean");
+            if (fish.mob != null) {
+                e.setExpToDrop(0);
+                e.getCaught().remove();
+                e.getHook().setHookedEntity(MythicBukkit.inst().getMobManager().spawnMob(fish.mob.mythicmob.getInternalName(), e.getHook().getLocation()).getEntity().getBukkitEntity());
+                template.drops.grantXpAndGold(e.getPlayer(), r);
+                e.getHook().pullHookedEntity();
+            } else if (fish.drop != null) {
+                e.setExpToDrop(0);
+                int quantity = r.nextInt((int) fish.minQuantity, (int) (fish.maxQuantity+1));
+                float bonus = plugin.players.get(e.getPlayer().getUniqueId()).getFishingFortune();
+                int bonusQuantity = 0;
+                while (bonus > 100) {
+                    bonusQuantity++;
+                    bonus-=100;
+                }
+                if (bonus > r.nextInt(100)) {
+                    bonusQuantity++;
+                }
+                ((Item)e.getCaught()).setItemStack(plugin.itemHandler.getItem(fish.drop).asQuantity(quantity+bonusQuantity));
+                e.getHook().pullHookedEntity();
+                template.drops.grantXpAndGold(e.getPlayer(), r);
+                template.drops.checkDungeonRoom(e.getPlayer(), plugin.itemHandler.getItem(fish.drop), quantity+bonusQuantity);
+            }
+        }
     }
     @EventHandler
     public void openVanillaRecipeBook(PlayerRecipeBookClickEvent e) {
@@ -662,6 +838,25 @@ public class EventListener implements Listener {
     public void leafDecayCancel(LeavesDecayEvent e) {
         e.setCancelled(true);
 
+    }
+    @EventHandler
+    public void onSpellCast(SpellCastEvent e) {
+        if (!(e.getCaster() instanceof Player)) {
+            return;
+        }
+        if (e.getSpellCastState() == Spell.SpellCastState.MISSING_REAGENTS) {
+            plugin.actionBarMessenger.queueOutOfManaMessage((Player)e.getCaster());
+        }
+    }
+
+    @EventHandler
+    public void onConsume(PlayerItemConsumeEvent e) {
+        e.setCancelled(true);
+    }
+    @EventHandler
+    public void onFoodChange(FoodLevelChangeEvent e) {
+        e.setCancelled(true);
+        e.setFoodLevel(20);
     }
 
     /*@EventHandler
@@ -760,6 +955,17 @@ public class EventListener implements Listener {
     @EventHandler
     public void onJoin (PlayerJoinEvent e) {
         plugin.connectTime.put(e.getPlayer().getUniqueId(), System.currentTimeMillis());
+        if (!plugin.tournament) {
+            return;
+        }
+        MiniGame game = this.plugin.getCurrentGame();
+        if (game != null) {
+            game.playerJoin(e.getPlayer());
+        } else {
+            Location loc = new Location((World)Bukkit.getWorlds().get(0), 0.0, 0.0, 0.0);
+            loc.setY((double)(loc.getWorld().getHighestBlockYAt(loc) + 1));
+            e.getPlayer().teleport(loc);
+        }
     }
 
 

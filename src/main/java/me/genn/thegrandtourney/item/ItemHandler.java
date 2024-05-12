@@ -2,15 +2,13 @@ package me.genn.thegrandtourney.item;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTItem;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.npc.TGTNpc;
+import me.genn.thegrandtourney.player.StatUpdates;
 import me.genn.thegrandtourney.skills.Recipe;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -18,16 +16,19 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import net.citizensnpcs.api.npc.NPC;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class ItemHandler {
 
     public List<MMOItem> allItems;
     public List<Recipe> allRecipes;
+    TGT plugin;
 
 
 
-    public ItemHandler() {
+    public ItemHandler(TGT plugin) {
     }
     public void registerItems(TGT plugin, ConfigurationSection config) throws IOException {
         this.allItems = new ArrayList<>();
@@ -97,6 +98,68 @@ public class ItemHandler {
         }
         returnItem = nbtI.getItem();
         return returnItem;
+    }
+    public ItemStack getItemWithQuality(MMOItem mmoItem, String quality) {
+        if (mmoItem == null) {
+            return new ItemStack(Material.AIR);
+        }
+        ItemStack returnItem = mmoItem.bukkitItem;
+        returnItem = applyItemQuality(returnItem,mmoItem,quality);
+        NBTItem nbtI = new NBTItem(returnItem);
+        NBTCompound comp = nbtI.getCompound("ExtraAttributes");
+        if (mmoItem.unique) {
+            comp.setString("uuid", UUID.randomUUID().toString());
+        }
+        returnItem = nbtI.getItem();
+        return returnItem;
+    }
+    private ItemStack applyItemQuality(ItemStack item, MMOItem mmoItem, String quality) {
+        if (quality.equalsIgnoreCase("good")) {
+            item = updateStatsFromItem(item, mmoItem.qualityScaling[0], mmoItem);
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = meta.getLore();
+            lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.RED + "✯" );
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", mmoItem.qualityScaling[0]);
+            item = nbtI.getItem();
+            return item;
+        } else if (quality.equalsIgnoreCase("great")) {
+            item = updateStatsFromItem(item, mmoItem.qualityScaling[1], mmoItem);
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = meta.getLore();
+            lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.WHITE + "✯✯" );
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", mmoItem.qualityScaling[1]);
+            item = nbtI.getItem();
+            return item;
+        } else if (quality.equalsIgnoreCase("superb")) {
+            item = updateStatsFromItem(item, mmoItem.qualityScaling[2], mmoItem);
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = meta.getLore();
+            lore.add(0, ChatColor.GRAY + "Quality: " + ChatColor.GOLD + "✯✯✯" );
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            NBTItem nbtI = new NBTItem(item);
+            Objects.requireNonNull(nbtI.getCompound("ExtraAttributes")).setFloat("statBoost", mmoItem.qualityScaling[2]);
+            item = nbtI.getItem();
+            return item;
+        } else {
+            return item;
+        }
+    }
+    public ItemStack updateStatsFromItem(ItemStack item, float multiplier, MMOItem mmoItem) {
+        if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
+            return item;
+        }
+        List<String> statBlock = StatUpdates.getUpdatedStatBlock(new ArrayList<>(mmoItem.statBlock), multiplier);
+        ItemMeta meta = item.getItemMeta();
+        meta.setLore(MMOItem.assembleFullLore(mmoItem,statBlock,mmoItem.abilityBlock));
+        item.setItemMeta(meta);
+        return item;
     }
 
     public boolean itemIsMMOItemOfName(ItemStack item, String name) {

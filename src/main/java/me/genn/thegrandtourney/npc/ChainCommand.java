@@ -6,35 +6,18 @@ import scala.concurrent.impl.FutureConvertersImpl;
 import java.util.List;
 
 public class ChainCommand {
-    String[] args;
+    List<String> commands;
     Player player;
-    public ChainCommand(String[] args, Player player) {
-        this.args = args;
-        this.player = player;
-    }
 
     public void run() {
-        String str = String.join(" ", this.args);
-        String[] seperatedCommands = str.split("\\|");
-        for (String command : seperatedCommands) {
+        for (String command : commands) {
             this.player.performCommand(command.trim());
         }
     }
 
     public ChainCommand(List<String> list, Player player) {
 
-        String startString = "";
-        for (int i = 0; i < list.size(); i++) {
-            String str = list.get(i);
-            String[] partsOfCmd =  str.split(" ");
-            for (String part : partsOfCmd) {
-                startString = startString.concat(part + " ");
-            }
-            if (i < list.size()-1) {
-                startString = startString.concat("| ");
-            }
-        }
-        this.args = startString.split(" ");
+        this.commands = list;
 
         this.player = player;
     }

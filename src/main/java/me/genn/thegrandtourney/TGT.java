@@ -13,7 +13,6 @@ import com.comphenix.protocol.ProtocolManager;
 
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.mana.ManaChangeReason;
-import com.nisovin.magicspells.util.Util;
 import com.sk89q.worldedit.EmptyClipboardException;
 import com.sk89q.worldedit.MaxChangedBlocksException;
 
@@ -38,8 +37,11 @@ import me.genn.thegrandtourney.mobs.Spawner;
 import me.genn.thegrandtourney.mobs.SpawnerHandler;
 import me.genn.thegrandtourney.mobs.SpawnerTemplate;
 import me.genn.thegrandtourney.npc.*;
+import me.genn.thegrandtourney.player.ActionBarDisplay;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.StatUpdates;
+import me.genn.thegrandtourney.shops.Shop;
+import me.genn.thegrandtourney.shops.ShopHandler;
 import me.genn.thegrandtourney.skills.*;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.farming.CropHandler;
@@ -53,7 +55,6 @@ import me.genn.thegrandtourney.skills.foraging.ForagingZoneTemplate;
 import me.genn.thegrandtourney.skills.mining.Ore;
 import me.genn.thegrandtourney.skills.mining.OreHandler;
 import me.genn.thegrandtourney.skills.mining.OreTemplate;
-import me.genn.thegrandtourney.skills.tailoring.Table;
 import me.genn.thegrandtourney.tournament.MiniGame;
 import me.genn.thegrandtourney.tournament.MiniGameListener;
 import me.genn.thegrandtourney.tournament.MiniGameMonitor;
@@ -80,13 +81,13 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.*;
-import scala.Int;
 
 import static org.bukkit.scoreboard.Team.OptionStatus.NEVER;
 
@@ -102,7 +103,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public SchematicCreator schematicCreator;
     public CropHandler cropHandler;
     public FishingZoneHandler fishingZoneHandler;
-    Grid grid;
+    public Grid grid;
     public Map<String, Integer> npcMap;
     public Map<String, Float> defaultStatValues;
     public NPCRegistry registry;
@@ -123,14 +124,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public Map<Location, ForagingZone> foragingZoneLocList;
     public Map<Location, Dungeon> dungeonLocList;
     public List<FishingZone> fishingZoneList;
-    public Score daysRemainingScore;
-    public Score timeScore;
-    public Score locationScore;
 
-    public Score purseScore;
-    public Score objectiveScore;
-    public Score objectiveDescriptionScore;
-    public Score websiteScore;
     public Economy econ;
     public MenuManager menus;
 
@@ -140,7 +134,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public Map<Player, BossBar> currentlyDisplayedBossBar;
     public TableHandler tableHandler;
     public Map<Location, Station> stationList;
-    public int toastMessageCounter = 0;
     public StatUpdates statUpdates;
 
     public ForagingZoneHandler foragingZoneHandler;
@@ -157,8 +150,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     int daysBeforeTournament = 3;
     int day = 1;
     Random random = new Random();
-    Map<String, MiniGame> games = new HashMap();
-    List<MiniGame> gameList = new ArrayList();
+    Map<String, MiniGame> games = new HashMap<>();
+    List<MiniGame> gameList = new ArrayList<>();
     boolean override = false;
     int totalGameCount = 5;
     int gameCount = 0;
@@ -170,7 +163,22 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public boolean awardsCeremony = false;
     boolean dayAnnouncement = false;
     public CasterSpeak gameCaster;
+    public List<UUID> debugEnabled;
 
+    public Map<UUID, District> lastDistrict;
+    public ActionBarDisplay actionBarMessenger;
+
+    public ShopHandler shopHandler;
+    String[] statNames = new String[]{"strength", "defense","health","crit-damage","crit-chance","speed","vigor","stamina-regen","health-regen","ability-damage","mining-fortune","farming-fortune","foraging-fortune","fishing-speed","lure","sea-creature-chance","dialogue-speed","shop-discount","focus","stamina","absorption","evasiveness"};
+    String[] potionNames = new String[]{"restoration", "adrenaline","agility","critical","dodge","spirit","regeneration","speed","strength","heal","absorption","resistance","spelunker","angler","harvester"};
+
+    int autoStartTime = 90;
+    int minPlayers = 4;
+    int endTimerDuration = 300;
+
+    public static TGT getInstance() {
+        return plugin;
+    }
 
     public void onEnable() {
         plugin = this;
@@ -196,8 +204,11 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.selectedMiniGames = new ArrayList<>();
         this.gameScore = new HashMap<>();
         this.gameList = new ArrayList<>();
+        this.debugEnabled = new ArrayList<>();
         this.gameCaster = new CasterSpeak(this);
         defaultStatValues = new HashMap<>();
+        this.lastDistrict = new HashMap<>();
+        this.actionBarMessenger = new ActionBarDisplay(this);
         players = new HashMap<>();
         File configFile = new File(this.getDataFolder(), "config.yml");
         if (!configFile.exists()) {
@@ -218,23 +229,42 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             this.setEnabled(false);
             return;
         }
-        this.defaultStatValues.put("health", (float) defaultStats.getDouble("health"));
-        this.defaultStatValues.put("defense", (float) defaultStats.getDouble("defense"));
-        this.defaultStatValues.put("damage", (float) defaultStats.getDouble("damage"));
-        this.defaultStatValues.put("crit-damage", (float) defaultStats.getDouble("crit-damage"));
-        this.defaultStatValues.put("speed", (float) defaultStats.getDouble("speed"));
-        this.defaultStatValues.put("crit-chance", (float) defaultStats.getDouble("crit-chance"));
-        this.defaultStatValues.put("mana", (float) defaultStats.getDouble("mana"));
-        this.defaultStatValues.put("ability-damage", (float) defaultStats.getDouble("ability-damage"));
-        this.defaultStatValues.put("shop-discount", (float) defaultStats.getDouble("shop-discount"));
-        this.defaultStatValues.put("dialogue-speed", (float) defaultStats.getDouble("dialogue-speed"));
-        this.defaultStatValues.put("gold", (float) defaultStats.getDouble("gold"));
-        this.defaultStatValues.put("health-regen", (float) defaultStats.getDouble("health-regen"));
-        this.defaultStatValues.put("mana-regen", (float) defaultStats.getDouble("mana-regen"));
-        this.defaultStatValues.put("attack-speed", (float) defaultStats.getDouble("attack-speed"));
-        this.defaultStatValues.put("lure", (float) defaultStats.getDouble("lure"));
-        this.defaultStatValues.put("flash", (float) defaultStats.getDouble("flash"));
+        this.defaultStatValues.put("health", (float) defaultStats.getDouble("health",0.0));
+        this.defaultStatValues.put("defense", (float) defaultStats.getDouble("defense",0.0));
+        this.defaultStatValues.put("strength", (float) defaultStats.getDouble("strength",0.0));
+        this.defaultStatValues.put("crit-damage", (float) defaultStats.getDouble("crit-damage",0.0));
+        this.defaultStatValues.put("speed", (float) defaultStats.getDouble("speed",0.0));
+        this.defaultStatValues.put("crit-chance", (float) defaultStats.getDouble("crit-chance",0.0));
+        this.defaultStatValues.put("stamina", (float) defaultStats.getDouble("stamina",0.0));
+        this.defaultStatValues.put("ability-damage", (float) defaultStats.getDouble("ability-damage",0.0));
+        this.defaultStatValues.put("shop-discount", (float) defaultStats.getDouble("shop-discount",0.0));
+        this.defaultStatValues.put("dialogue-speed", (float) defaultStats.getDouble("dialogue-speed",0.0));
+        this.defaultStatValues.put("dosh", (float) defaultStats.getDouble("dosh", 0.0));
+        this.defaultStatValues.put("health-regen", (float) defaultStats.getDouble("health-regen", 0.0f));
+        this.defaultStatValues.put("stamina-regen", (float) defaultStats.getDouble("stamina-regen", 0.0f));
+        this.defaultStatValues.put("fishing-speed", (float) defaultStats.getDouble("fishing-speed", 0.0f));
+        this.defaultStatValues.put("lure", (float) defaultStats.getDouble("lure", 0.0f));
+        this.defaultStatValues.put("vigor", (float) defaultStats.getDouble("vigor", 0.0f));
+        this.defaultStatValues.put("mining-fortune", (float)defaultStats.getDouble("mining-fortune", 0.0f));
+        this.defaultStatValues.put("foraging-fortune", (float)defaultStats.getDouble("foraging-fortune", 0.0f));
+        this.defaultStatValues.put("farming-fortune", (float)defaultStats.getDouble("farming-fortune", 0.0f));
+        this.defaultStatValues.put("focus", (float)defaultStats.getDouble("focus", 0.0f));
+        this.dayLength = config.getInt("day-length", 600);
+        this.nightLength = config.getInt("night-length", 300);
+        this.daysBeforeTournament = config.getInt("days-before-tournament", 3);
+        this.totalGameCount = config.getInt("tournament-games", 5);
+        this.autoStartTime = config.getInt("auto-start-time", 0);
+        this.minPlayers = config.getInt("min-players");
+        this.endTimerDuration = config.getInt("end-timer-duration");
 
+        Bukkit.getWorlds().get(0).setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
+        Bukkit.getWorlds().get(0).setGameRule(GameRule.DO_MOB_LOOT, false);
+        Bukkit.getWorlds().get(0).setGameRule(GameRule.DO_MOB_SPAWNING, false);
+        Bukkit.getWorlds().get(0).setGameRule(GameRule.NATURAL_REGENERATION, false);
+        List<String> blacklistedCells = new ArrayList<>();
+        if (config.contains("blacklisted-cells")) {
+            blacklistedCells.addAll(config.getStringList("blacklisted-cells"));
+        }
         this.registry = CitizensAPI.getNPCRegistry();
 
 
@@ -272,7 +302,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             return;
         }
 
-        this.itemHandler = new ItemHandler();
+        this.itemHandler = new ItemHandler(this);
         try {
             this.itemHandler.registerItems(this, itemsSection);
         } catch (IOException e) {
@@ -817,6 +847,58 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         this.schematicCreator = new SchematicCreator(this);
         this.grid = new Grid(this.schematicHandler, this);
+        this.grid.registerBlackList(blacklistedCells);
+        this.grid.oceanXMin = config.getInt("ocean-fishing-min-x",0);
+        this.grid.oceanXMax = config.getInt("ocean-fishing-max-x",640);
+        this.grid.oceanZMin = config.getInt("ocean-fishing-min-z", -46);
+        this.grid.oceanZMax = config.getInt("ocean-fishing-min", -960);
+
+        /*
+        SHOP REGISTER
+         */
+
+        if (!config.contains("shops")) {
+            config.createSection("shops");
+        }
+        File shopsFile = new File(this.getDataFolder(), "shops.yml");
+
+        if (!shopsFile.exists()) {
+            this.saveResource("shops.yml", false);
+        }
+        YamlConfiguration shops = new YamlConfiguration();
+        sec = config.getConfigurationSection("shops");
+        if (sec == null) {
+            sec = config.createSection("shops");
+        }
+        try {
+            shops.load(shopsFile);
+            Set<String> keys = shops.getKeys(true);
+            Iterator i$ = keys.iterator();
+            while(i$.hasNext()) {
+                String key = (String)i$.next();
+                sec.set(key, shops.get(key));
+            }
+        } catch (Exception var5) {
+            this.getLogger().severe("FAILED TO LOAD SHOPS FILE");
+            var5.printStackTrace();
+            this.setEnabled(false);
+            return;
+        }
+        ConfigurationSection shopSection = config.getConfigurationSection("shops");
+        if (shopSection == null) {
+            this.getLogger().severe(ChatColor.RED.toString() + "SHOPS CONFIG IS NULL!");
+            this.setEnabled(false);
+            return;
+        }
+
+        this.shopHandler = new ShopHandler(this);
+        this.shopHandler.registerShops(shopSection);
+
+        /*
+
+         */
+
+
         this.listener = new EventListener(this);
         if (!this.setupEconomy()) {
             this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
@@ -843,11 +925,22 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.registerTrait();
         GennsGym.initializeGameMode(this);
         this.initializeScoreboard();
-        GennsGym.startCountdown(90, 5);
+        if (this.autoStartTime > 0) {
+            GennsGym.startCountdown(this.autoStartTime, this.minPlayers);
+        }
     }
+
+
     private int parseInt(String string) {
         try {
             return Integer.parseInt(string);
+        } catch (NumberFormatException var3) {
+            return 0;
+        }
+    }
+    private float parseFloat(String string) {
+        try {
+            return Float.parseFloat(string);
         } catch (NumberFormatException var3) {
             return 0;
         }
@@ -1131,7 +1224,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 objectiveText.setScore(counter);
                 counter++;
                 double progress = (players.get(player.getUniqueId()).currentCraftObj.totalCraftScore-players.get(player.getUniqueId()).currentCraftObj.totalProgress)/players.get(player.getUniqueId()).currentCraftObj.totalCraftScore;
-                Score objectTitle = obj.getScore(ChatColor.WHITE + "Craft Progress: "  + ChatColor.YELLOW.toString() + String.format("%,.2f", progress) + "%");
+                Score objectTitle = obj.getScore(ChatColor.WHITE + "Craft Progress: "  + ChatColor.YELLOW.toString() + String.format("%,.1f", 100-(progress*100)) + "%");
                 objectTitle.setScore(counter);
                 counter++;
                 Score blankScore2 = obj.getScore("  ");
@@ -1157,8 +1250,14 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             Score blankScore3 = obj.getScore("   ");
             blankScore3.setScore(counter);
             counter++;
-            Score locationScore = obj.getScore(" " + ChatColor.GRAY + "◆ " + getKingdomDistrictForScoreboard(player.getLocation()));
+            this.lastDistrict.putIfAbsent(player.getUniqueId(), District.getDistrict(getKingdomDistrictForScoreboard(player.getLocation())));
+            String locationString = " " + ChatColor.GRAY + "◆ " + getKingdomDistrictForScoreboard(player.getLocation());
+            Score locationScore = obj.getScore(locationString);
             locationScore.setScore(counter);
+            if (this.lastDistrict.get(player.getUniqueId()) != District.getDistrict(getKingdomDistrictForScoreboard(player.getLocation()))) {
+                this.actionBarMessenger.queueLocationMessage(player, locationString.trim());
+            }
+            this.lastDistrict.put(player.getUniqueId(), District.getDistrict(getKingdomDistrictForScoreboard(player.getLocation())));
             counter++;
             Score timeScore = obj.getScore(" " + getTimeForScoreboard(player.getLocation()));
             timeScore.setScore(counter);
@@ -1171,108 +1270,116 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
 
         } else {
             if (this.currentGame == null || !this.currentGame.gameRunning) {
+
                 Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + players.get(player.getUniqueId()).getPurseGold());
                 purseScore.setScore(counter);
                 counter++;
+
                 Score blankScore2 = obj.getScore("   ");
                 blankScore2.setScore(counter);
                 counter++;
-                Map<UUID, Integer> values = sortByValue(this.gameScore);
-                Iterator<UUID> iter = values.keySet().iterator();
-                while (iter.hasNext()) {
-                    UUID id = iter.next();
-                    Score playerGameScore = obj.getScore("  " + ChatColor.WHITE + Bukkit.getPlayer(id).getName() + ": " + values.get(id));
-                    playerGameScore.setScore(counter);
-                    counter++;
-                }
+
+                counter = formatTournamentScoresBlock(player, obj, counter);
+
+
                 Score scoresTitle = obj.getScore(ChatColor.GOLD + ChatColor.BOLD.toString() + "Tournament Scores:");
                 scoresTitle.setScore(counter);
                 counter++;
+
                 Score blankScore3 = obj.getScore("    ");
                 blankScore3.setScore(counter);
                 counter++;
-                if (this.selectedMiniGames.size() == 0) {
-                    Score finalGameScore = obj.getScore(ChatColor.YELLOW + "Final Round");
+                if (currentGame.gameStartTime - System.currentTimeMillis() > 0) {
+                    Score prepTimeRemaining = obj.getScore(ChatColor.RED + ChatColor.BOLD.toString() + "Round Begins: " + ChatColor.RESET + ChatColor.WHITE + formatRemainingGameTime(currentGame.gameStartTime - System.currentTimeMillis()));
+                    prepTimeRemaining.setScore(counter);
+                    counter++;
+                }
+
+                Score nextGameScore = obj.getScore(ChatColor.GREEN + ChatColor.BOLD.toString() + "Next Game: " + ChatColor.RESET + ChatColor.stripColor(this.currentGame.name));
+                nextGameScore.setScore(counter);
+                counter++;
+                if (this.gameCount-1 >= this.totalGameCount) {
+                    Score finalGameScore = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Final Round");
                     finalGameScore.setScore(counter);
                     counter++;
                 } else {
-                    Score remainingGameScore = obj.getScore(ChatColor.YELLOW + "Games Remaining" + ChatColor.WHITE + ": " + (this.selectedMiniGames.size()));
+                    Score remainingGameScore = obj.getScore(ChatColor.YELLOW +ChatColor.BOLD.toString() + "Game" + " " + (this.gameCount-1) + "/" + this.totalGameCount );
                     remainingGameScore.setScore(counter);
-                    counter++;
-                }
-                Score nextGameScore = obj.getScore(ChatColor.YELLOW + "Next Game: " +ChatColor.RESET + this.currentGame.name);
-                nextGameScore.setScore(counter);
-                counter++;
-                if (currentGame.gameStartTime - System.currentTimeMillis() > 0) {
-                    Score prepTimeRemaining = obj.getScore(ChatColor.YELLOW + "Preparation Time: " + ChatColor.WHITE + formatRemainingGameTime(currentGame.gameStartTime - System.currentTimeMillis()));
-                    prepTimeRemaining.setScore(counter);
                     counter++;
                 }
                 Score blankScore4 = obj.getScore("     ");
                 blankScore4.setScore(counter);
                 counter++;
+
             } else {
                 if (this.currentGame.type == MiniGame.MiniGameType.LAST_MAN_STANDING) {
                     MiniGame game = this.currentGame;
-                    if (game.teamsEnabled) {
-                        for (String name : game.teamNames) {
 
-                            List<String> playersOnTeam = game.teamPlayers.get(name);
-                            for (String playerName : playersOnTeam) {
-                                if (game.participants.contains(playerName)) {
-                                    Score pScore = obj.getScore(" " + ChatColor.WHITE + playerName);
-                                    pScore.setScore(counter);
-                                    counter++;
-                                } else {
-                                    Score pScore = obj.getScore(" " + ChatColor.DARK_GRAY + playerName);
-                                    pScore.setScore(counter);
-                                    counter++;
-                                }
-                            }
-                            Score teamName = obj.getScore(game.scoreboard.getTeam(name).getPrefix() + name /*+ ChatColor.WHITE + ": " + game.teamScores.get(name).getScore()*/);
-                            teamName.setScore(counter);
-                            counter++;
+                    Score playersAliveScore = obj.getScore(ChatColor.GREEN + ChatColor.BOLD.toString() + "Players Alive: " + ChatColor.RESET + ChatColor.WHITE + game.participants.size() + "/" + game.playerScores.size());
+                    playersAliveScore.setScore(counter);
+                    counter++;
+
+                    if (game.teamsEnabled) {
+
+                        Score teamsAliveScore = obj.getScore(ChatColor.GREEN + ChatColor.BOLD.toString() + "Teams Alive: " + ChatColor.RESET + ChatColor.WHITE + game.getRemainingTeamNames().size() + "/" + game.teamNames.size());
+                        teamsAliveScore.setScore(counter);
+                        counter++;
+
+                        Score playerTeam = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Your Team: " + ChatColor.RESET + game.scoreboard.getTeam(game.playerTeams.get(player.getName())).getPrefix() + game.playerTeams.get(player.getName()));
+                        playerTeam.setScore(counter);
+                        counter++;
+
+
+                        Score blankScore1point5 = obj.getScore("        ");
+                        blankScore1point5.setScore(counter);
+                        counter++;
+
+                        counter = formatTeamRoundScoresBlock(player, obj, counter, game);
+
+                        String roundScoreTitleString = ChatColor.GOLD + ChatColor.BOLD.toString() + "Round Score: ";
+                        if (game.multiplier != 1.0f) {
+                            roundScoreTitleString = roundScoreTitleString + ChatColor.RESET + ChatColor.WHITE + "(" + ChatColor.YELLOW + "x" + String.format("%.1f", game.multiplier) + ChatColor.WHITE + ")";
                         }
+                        Score roundScoreTitle = obj.getScore(roundScoreTitleString);
+                        roundScoreTitle.setScore(counter);
+                        counter++;
+
                         Score blankScore2 = obj.getScore("   ");
                         blankScore2.setScore(counter);
                         counter++;
 
-                        Score timeRemaining = obj.getScore(ChatColor.YELLOW + "Time Remaining" + ChatColor.WHITE + ": " + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
+                        Score timeRemaining = obj.getScore(ChatColor.RED + ChatColor.BOLD.toString() + "Time Remaining" + ChatColor.WHITE + ": " + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
                         timeRemaining.setScore(counter);
                         counter++;
-                        Score gameName = obj.getScore(game.name);
+                        Score gameName = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Game " + (this.gameCount-1) + "/" + this.totalGameCount + ": " + ChatColor.RESET + game.name);
                         gameName.setScore(counter);
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
                         counter++;
                     } else {
-                        for (Player gamePlayer : Bukkit.getOnlinePlayers()) {
-                            /*if (gamePlayer.isOp()) {
-                                continue;
-                            }*/
-                            String playerName = gamePlayer.getName();
-                            if (game.participants.contains(playerName)) {
-                                Score pScore = obj.getScore(" " + ChatColor.WHITE + playerName);
-                                pScore.setScore(counter);
-                                counter++;
-                            } else {
-                                Score pScore = obj.getScore(" " + ChatColor.GRAY + playerName);
-                                pScore.setScore(counter);
-                                counter++;
-                            }
-                        }
-                        Score contestants = obj.getScore(ChatColor.YELLOW + "Contestants:");
-                        contestants.setScore(counter);
+                        Score blankScore1point5 = obj.getScore("        ");
+                        blankScore1point5.setScore(counter);
                         counter++;
+
+                        counter = formatIndividualRoundScoresBlock(player, obj, counter, game);
+
+                        String roundScoreTitleString = ChatColor.GOLD + ChatColor.BOLD.toString() + "Round Score: ";
+                        if (game.multiplier != 1.0f) {
+                            roundScoreTitleString = roundScoreTitleString + ChatColor.RESET + ChatColor.WHITE + "(" + ChatColor.YELLOW + "x" + String.format("%.1f", game.multiplier) + ChatColor.WHITE + ")";
+                        }
+                        Score roundScoreTitle = obj.getScore(roundScoreTitleString);
+                        roundScoreTitle.setScore(counter);
+                        counter++;
+
                         Score blankScore2 = obj.getScore("   ");
                         blankScore2.setScore(counter);
                         counter++;
 
-                        Score timeRemaining = obj.getScore(ChatColor.YELLOW + "Time Remaining" + ChatColor.WHITE + ": " + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
+                        Score timeRemaining = obj.getScore(ChatColor.RED + ChatColor.BOLD.toString() + "Time Remaining: " + ChatColor.WHITE + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
                         timeRemaining.setScore(counter);
                         counter++;
-                        Score gameName = obj.getScore(game.name);
+                        Score gameName = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Game " + (this.gameCount-1) + "/" + this.totalGameCount + ": " + ChatColor.RESET + game.name);
                         gameName.setScore(counter);
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
@@ -1282,64 +1389,60 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 } else if (this.currentGame.type == MiniGame.MiniGameType.TIMED) {
                     MiniGame game = this.currentGame;
                     if (game.teamsEnabled) {
-                        for (String name : game.teamNames) {
+                        Score playerTeam = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Your Team: " + ChatColor.RESET + game.scoreboard.getTeam(game.playerTeams.get(player.getName())).getPrefix() + game.playerTeams.get(player.getName()));
+                        playerTeam.setScore(counter);
+                        counter++;
 
-                            List<String> playersOnTeam = game.teamPlayers.get(name);
-                            for (String playerName : playersOnTeam) {
-                                if (game.participants.contains(playerName)) {
-                                    Score pScore = obj.getScore(" " + ChatColor.WHITE + playerName);
-                                    pScore.setScore(counter);
-                                    counter++;
-                                } else {
-                                    Score pScore = obj.getScore(" " + ChatColor.DARK_GRAY + playerName);
-                                    pScore.setScore(counter);
-                                    counter++;
-                                }
-                            }
-                            Score teamName = obj.getScore(game.scoreboard.getTeam(name).getPrefix() + name + ChatColor.WHITE + ": " + game.teamScores.get(name).getScore());
-                            teamName.setScore(counter);
-                            counter++;
+                        Score blankScore1point5 = obj.getScore("        ");
+                        blankScore1point5.setScore(counter);
+                        counter++;
+
+                        counter = formatTeamRoundScoresBlock(player, obj, counter, game);
+                        String roundScoreTitleString = ChatColor.GOLD + ChatColor.BOLD.toString() + "Round Score: ";
+                        if (game.multiplier != 1.0f) {
+                            roundScoreTitleString = roundScoreTitleString + ChatColor.RESET + ChatColor.WHITE + "(" + ChatColor.YELLOW + "x" + String.format("%.1f", game.multiplier) + ChatColor.WHITE + ")";
                         }
+                        Score roundScoreTitle = obj.getScore(roundScoreTitleString);
+                        roundScoreTitle.setScore(counter);
+                        counter++;
+
                         Score blankScore2 = obj.getScore("   ");
                         blankScore2.setScore(counter);
                         counter++;
 
-                        Score timeRemaining = obj.getScore(ChatColor.YELLOW + "Time Remaining" + ChatColor.WHITE + ": " + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
+                        Score timeRemaining = obj.getScore(ChatColor.RED + ChatColor.BOLD.toString() + "Time Remaining: " + ChatColor.RESET + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
                         timeRemaining.setScore(counter);
                         counter++;
-                        Score gameName = obj.getScore(game.name);
+                        Score gameName = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Game " + (this.gameCount-1) + "/" + this.totalGameCount + ": " + ChatColor.RESET + game.name);
                         gameName.setScore(counter);
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
                         counter++;
                     } else {
-                        for (Player gamePlayer : Bukkit.getOnlinePlayers()) {
-                            /*if (gamePlayer.isOp()) {
-                                continue;
-                            }*/
-                            String playerName = gamePlayer.getName();
-                            if (game.participants.contains(playerName)) {
-                                Score pScore = obj.getScore(" " + ChatColor.WHITE + playerName + ": " + game.objective.getScore(playerName).getScore());
-                                pScore.setScore(counter);
-                                counter++;
-                            } else {
-                                Score pScore = obj.getScore(" " + ChatColor.DARK_GRAY + playerName);
-                                pScore.setScore(counter);
-                                counter++;
-                            }
-                        }
-                        Score contestants = obj.getScore(ChatColor.YELLOW + "Contestants:");
-                        contestants.setScore(counter);
+
+                        Score blankScore1point5 = obj.getScore("        ");
+                        blankScore1point5.setScore(counter);
                         counter++;
+
+                        counter = formatIndividualRoundScoresBlock(player, obj, counter, game);
+
+                        String roundScoreTitleString = ChatColor.GOLD + ChatColor.BOLD.toString() + "Round Score: ";
+                        if (game.multiplier != 1.0f) {
+                            roundScoreTitleString = roundScoreTitleString + ChatColor.RESET + ChatColor.WHITE + "(" + ChatColor.YELLOW + "x" + String.format("%.1f", game.multiplier) + ChatColor.WHITE + ")";
+                        }
+                        Score roundScoreTitle = obj.getScore(roundScoreTitleString);
+                        roundScoreTitle.setScore(counter);
+                        counter++;
+
                         Score blankScore2 = obj.getScore("   ");
                         blankScore2.setScore(counter);
                         counter++;
 
-                        Score timeRemaining = obj.getScore(ChatColor.YELLOW + "Time Remaining" + ChatColor.WHITE + ": " + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
+                        Score timeRemaining = obj.getScore(ChatColor.RED + ChatColor.BOLD.toString() + "Time Remaining: " + ChatColor.RESET + formatRemainingGameTime(game.endTime - System.currentTimeMillis()));
                         timeRemaining.setScore(counter);
                         counter++;
-                        Score gameName = obj.getScore(game.name);
+                        Score gameName = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Game " + (this.gameCount-1) + "/" + this.totalGameCount + ": " + ChatColor.RESET + game.name);
                         gameName.setScore(counter);
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
@@ -1352,6 +1455,337 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         player.setScoreboard(playerScoreboard);
 
     }
+    public int formatTournamentScoresBlock(Player player, Objective obj, int counter) {
+        Map<UUID, Integer> values = sortByValue(this.gameScore);
+        List<UUID> sortedValues = new ArrayList<>(values.keySet());
+        UUID firstId = null;
+        UUID secondId = null;
+        UUID thirdId = null;
+        UUID fourthId = null;
+        int fourthNum = 4;
+        if (sortedValues.size() > 0) {
+            firstId = sortedValues.get(sortedValues.size()-1);
+        }
+        if (sortedValues.size() > 1) {
+            secondId = sortedValues.get(sortedValues.size()-2);
+        }
+        if (sortedValues.size() > 2) {
+            thirdId = sortedValues.get(sortedValues.size()-3);
+        }
+        if (sortedValues.size() > 3) {
+            if (firstId.equals(player.getUniqueId()) || secondId.equals(player.getUniqueId()) || thirdId.equals(player.getUniqueId())) {
+                fourthId = sortedValues.get(sortedValues.size()-4);
+            } else {
+                fourthNum = -sortedValues.indexOf(player.getUniqueId()) + sortedValues.size() + 1;
+                fourthId = player.getUniqueId();
+            }
+        }
+        List<String> placingTexts = new ArrayList<>();
+        String fourthText = null;
+        String thirdText = null;
+        String secondText = null;
+        String firstText = null;
+        if (fourthId != null) {
+            fourthText = "  " + fourthNum + ". " + ChatColor.GRAY + Bukkit.getPlayer(fourthId).getName() + ChatColor.YELLOW + Math.round(values.get(fourthId));
+            placingTexts.add(fourthText);
+        }
+        if (thirdId != null) {
+            thirdText ="  3. " + ChatColor.RED + Bukkit.getPlayer(thirdId).getName() +  ChatColor.YELLOW +Math.round(values.get(thirdId));
+            placingTexts.add(thirdText);
+        }
+        if (secondId != null) {
+            secondText ="  2. " + ChatColor.WHITE + Bukkit.getPlayer(secondId).getName() +  ChatColor.YELLOW +Math.round(values.get(secondId));
+            placingTexts.add(secondText);
+        }
+        if (firstId != null) {
+            firstText = "  1. " + ChatColor.GOLD + Bukkit.getPlayer(firstId).getName() +  ChatColor.YELLOW +Math.round(values.get(firstId));
+            placingTexts.add(firstText);
+        }
+        int targetLength = ("Tournament Scores:").length();
+
+        if (fourthText != null) {
+            String text = formatScoreString("  " + fourthNum + ". " + ChatColor.GRAY + Bukkit.getPlayer(fourthId).getName() , ChatColor.YELLOW.toString() + Math.round(values.get(fourthId)), targetLength);
+            Score fourthScore = obj.getScore(text);
+            fourthScore.setScore(counter);
+            counter++;
+        }
+        if (thirdText != null) {
+            String text = formatScoreString("  3. " + ChatColor.RED + Bukkit.getPlayer(thirdId).getName() , ChatColor.YELLOW.toString() + Math.round(values.get(thirdId)), targetLength);
+            Score thirdScore = obj.getScore(text);
+            thirdScore.setScore(counter);
+            counter++;
+        }
+        if (secondText != null) {
+            String text = formatScoreString("  2. " + ChatColor.WHITE + Bukkit.getPlayer(secondId).getName() , ChatColor.YELLOW.toString() + Math.round(values.get(secondId)), targetLength);
+            Score secondScore = obj.getScore(text);
+            secondScore.setScore(counter);
+            counter++;
+        }
+        if (firstText != null) {
+            String text = formatScoreString("  1. " + ChatColor.GOLD + Bukkit.getPlayer(firstId).getName() , ChatColor.YELLOW.toString() + Math.round(values.get(firstId)), targetLength);
+            Score firstScore = obj.getScore(text);
+            firstScore.setScore(counter);
+            counter++;
+        }
+        return counter;
+    }
+    public int formatIndividualRoundScoresBlock(Player player, Objective obj, int counter, MiniGame game) {
+        Map<UUID, Float> values = sortByValue(game.playerScores);
+        List<UUID> sortedValues = new ArrayList<>(values.keySet());
+        UUID firstId = null;
+        UUID secondId = null;
+        UUID thirdId = null;
+        UUID fourthId = null;
+        int fourthNum = 4;
+        if (sortedValues.size() > 0) {
+            firstId = sortedValues.get(sortedValues.size()-1);
+        }
+        if (sortedValues.size() > 1) {
+            secondId = sortedValues.get(sortedValues.size()-2);
+        }
+        if (sortedValues.size() > 2) {
+            thirdId = sortedValues.get(sortedValues.size()-3);
+        }
+        if (sortedValues.size() > 3) {
+            if (firstId.equals(player.getUniqueId()) || secondId.equals(player.getUniqueId()) || thirdId.equals(player.getUniqueId())) {
+                fourthId = sortedValues.get(sortedValues.size()-4);
+            } else {
+                fourthNum = -sortedValues.indexOf(player.getUniqueId()) + sortedValues.size() + 1;
+                fourthId = player.getUniqueId();
+            }
+        }
+        List<String> placingTexts = new ArrayList<>();
+        String fourthText = null;
+        String thirdText = null;
+        String secondText = null;
+        String firstText = null;
+        if (fourthId != null) {
+            fourthText = "  " + fourthNum + ". ";
+            if (!game.participants.contains(Bukkit.getPlayer(fourthId).getName())) {
+                fourthText = fourthText + ChatColor.GRAY; 
+            } else {
+                fourthText = fourthText + ChatColor.WHITE;
+            }
+            fourthText = fourthText + Bukkit.getPlayer(fourthId).getName() +  ChatColor.YELLOW + Math.round(values.get(fourthId));
+            placingTexts.add(fourthText);
+        }
+        if (thirdId != null) {
+            thirdText = "  3. ";
+            if (!game.participants.contains(Bukkit.getPlayer(thirdId).getName())) {
+                thirdText = thirdText + ChatColor.GRAY;
+            } else {
+                thirdText = thirdText + ChatColor.WHITE;
+            }
+            thirdText = thirdText + Bukkit.getPlayer(thirdId).getName() +   ChatColor.YELLOW + Math.round(values.get(thirdId));
+            placingTexts.add(thirdText);
+        }
+        if (secondId != null) {
+            secondText = "  2. ";
+            if (!game.participants.contains(Bukkit.getPlayer(secondId).getName())) {
+                secondText = secondText + ChatColor.GRAY;
+            } else {
+                secondText = secondText + ChatColor.WHITE;
+            }
+            secondText = secondText + Bukkit.getPlayer(secondId).getName() +   ChatColor.YELLOW + Math.round(values.get(secondId));
+            placingTexts.add(secondText);
+        }
+        if (firstId != null) {
+            firstText = "  1. ";
+            if (!game.participants.contains(Bukkit.getPlayer(firstId).getName())) {
+                firstText = firstText + ChatColor.GRAY;
+            } else {
+                firstText = firstText + ChatColor.WHITE;
+            }
+            firstText = firstText + Bukkit.getPlayer(firstId).getName() + ChatColor.YELLOW + Math.round(values.get(firstId));
+            placingTexts.add(firstText);
+        }
+        int targetLength = ("Round Score:").length();
+        if (game.multiplier != 1.0f) {
+            targetLength = ChatColor.stripColor(("Round Score:" + ChatColor.RESET + ChatColor.WHITE + "(" + ChatColor.YELLOW + "x" + String.format("%.1f", game.multiplier) + ChatColor.WHITE + ")")).length();
+        }
+
+        if (fourthText != null) {
+            String leftText = "  " + fourthNum + ". ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(fourthId));
+            if (!game.participants.contains(Bukkit.getPlayer(fourthId).getName())) {
+                leftText = leftText + ChatColor.GRAY + Bukkit.getPlayer(fourthId).getName();
+            } else {
+                leftText = leftText + ChatColor.WHITE + Bukkit.getPlayer(fourthId).getName();
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score fourthScore = obj.getScore(text);
+            fourthScore.setScore(counter);
+            counter++;
+        }
+        if (thirdText != null) {
+            String leftText = "  3. ";
+            String rightText = ChatColor.YELLOW.toString() + values.get(thirdId);
+            if (!game.participants.contains(Bukkit.getPlayer(thirdId).getName())) {
+                leftText = leftText + ChatColor.GRAY + Bukkit.getPlayer(thirdId).getName();
+            } else {
+                leftText = leftText + ChatColor.WHITE + Bukkit.getPlayer(thirdId).getName();
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score thirdScore = obj.getScore(text);
+            thirdScore.setScore(counter);
+            counter++;
+        }
+        if (secondText != null) {
+            String leftText = "  2. ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(secondId));
+            if (!game.participants.contains(Bukkit.getPlayer(secondId).getName())) {
+                leftText = leftText + ChatColor.GRAY + Bukkit.getPlayer(secondId).getName();
+            } else {
+                leftText = leftText + ChatColor.WHITE + Bukkit.getPlayer(secondId).getName();
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score secondScore = obj.getScore(text);
+            secondScore.setScore(counter);
+            counter++;
+        }
+        if (firstText != null) {
+            String leftText = "  1. ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(firstId));
+            if (!game.participants.contains(Bukkit.getPlayer(firstId).getName())) {
+                leftText = leftText + ChatColor.GRAY + Bukkit.getPlayer(firstId).getName();
+            } else {
+                leftText = leftText + ChatColor.WHITE + Bukkit.getPlayer(firstId).getName();
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score firstScore = obj.getScore(text);
+            firstScore.setScore(counter);
+            counter++;
+        }
+        return counter;
+    }
+
+    public int formatTeamRoundScoresBlock(Player player, Objective obj, int counter, MiniGame game) {
+        Map<String, Float> values = sortByValue(game.teamScores);
+        List<String> sortedValues = new ArrayList<>(values.keySet());
+        String firstId = null;
+        String secondId = null;
+        String thirdId = null;
+        String fourthId = null;
+        int fourthNum = 4;
+        if (sortedValues.size() > 0) {
+            firstId = sortedValues.get(sortedValues.size()-1);
+        }
+        if (sortedValues.size() > 1) {
+            secondId = sortedValues.get(sortedValues.size()-2);
+        }
+        if (sortedValues.size() > 2) {
+            thirdId = sortedValues.get(sortedValues.size()-3);
+        }
+        if (sortedValues.size() > 3) {
+            if (firstId.equals(game.playerTeams.get(player.getName())) || secondId.equals(game.playerTeams.get(player.getName())) || thirdId.equals(game.playerTeams.get(player.getName()))) {
+                fourthId = sortedValues.get(sortedValues.size()-4);
+            } else {
+                fourthNum = -sortedValues.indexOf(game.playerTeams.get(player.getName())) + sortedValues.size() + 1;
+                fourthId = game.playerTeams.get(player.getName());
+            }
+        }
+        List<String> placingTexts = new ArrayList<>();
+        String fourthText = null;
+        String thirdText = null;
+        String secondText = null;
+        String firstText = null;
+        if (fourthId != null) {
+            fourthText = "  " + fourthNum + ". ";
+            if (!game.getRemainingTeamNames().contains(fourthId)) {
+                fourthText = fourthText + ChatColor.GRAY;
+            } else {
+                fourthText = fourthText + game.scoreboard.getTeam(fourthId).getPrefix();
+            }
+            fourthText = fourthText + fourthId +  "" + ChatColor.YELLOW + Math.round(values.get(fourthId));
+            placingTexts.add(fourthText);
+        }
+        if (thirdId != null) {
+            thirdText = "  3. ";
+            if (!game.getRemainingTeamNames().contains(thirdId)) {
+                thirdText = thirdText + ChatColor.GRAY;
+            } else {
+                thirdText = thirdText + game.scoreboard.getTeam(thirdId).getPrefix();
+            }
+            thirdText = thirdText + thirdId +  "" + ChatColor.YELLOW + Math.round(values.get(thirdId));
+            placingTexts.add(thirdText);
+        }
+        if (secondId != null) {
+            secondText = "  2. ";
+            if (!game.getRemainingTeamNames().contains(secondId)) {
+                secondText = secondText + ChatColor.GRAY;
+            } else {
+                secondText = secondText + game.scoreboard.getTeam(secondId).getPrefix();
+            }
+            secondText = secondText + secondId +  "" + ChatColor.YELLOW + Math.round(values.get(secondId));
+            placingTexts.add(secondText);
+        }
+        if (firstId != null) {
+            firstText = "  2. ";
+            if (!game.getRemainingTeamNames().contains(firstId)) {
+                firstText = firstText + ChatColor.GRAY;
+            } else {
+                firstText = firstText + game.scoreboard.getTeam(firstId).getPrefix();
+            }
+            firstText = firstText + firstId +  "" + ChatColor.YELLOW + Math.round(values.get(firstId));
+            placingTexts.add(firstText);
+        }
+        int targetLength = getLongestString(placingTexts);
+
+        if (fourthText != null) {
+            String leftText = "  " + fourthNum + ". ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(fourthId));
+            if (!game.getRemainingTeamNames().contains(fourthId)) {
+                leftText = leftText + ChatColor.GRAY + fourthId +  "";
+            } else {
+                leftText = leftText + game.scoreboard.getTeam(fourthId).getPrefix() + fourthId +  "";
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score fourthScore = obj.getScore(text);
+            fourthScore.setScore(counter);
+            counter++;
+        }
+        if (thirdText != null) {
+            String leftText = "  3. ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(thirdId));
+            if (!game.getRemainingTeamNames().contains(thirdId)) {
+                leftText = leftText + ChatColor.GRAY + thirdId +  "";
+            } else {
+                leftText = leftText + game.scoreboard.getTeam(thirdId).getPrefix() + thirdId +  "";
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score thirdScore = obj.getScore(text);
+            thirdScore.setScore(counter);
+            counter++;
+        }
+        if (secondText != null) {
+            String leftText = "  2. ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(secondId));
+            if (!game.getRemainingTeamNames().contains(secondId)) {
+                leftText = leftText + ChatColor.GRAY + secondId +  "";
+            } else {
+                leftText = leftText + game.scoreboard.getTeam(secondId).getPrefix() + secondId +  "";
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score secondScore = obj.getScore(text);
+            secondScore.setScore(counter);
+            counter++;
+        }
+        if (firstText != null) {
+            String leftText = "  1. ";
+            String rightText = ChatColor.YELLOW.toString() + Math.round(values.get(firstId));
+            if (!game.getRemainingTeamNames().contains(firstId)) {
+                leftText = leftText + ChatColor.GRAY + firstId +  "";
+            } else {
+                leftText = leftText + game.scoreboard.getTeam(firstId).getPrefix() + firstId +  "";
+            }
+            String text = formatScoreString(leftText ,rightText , targetLength);
+            Score firstScore = obj.getScore(text);
+            firstScore.setScore(counter);
+            counter++;
+        }
+        return counter;
+    }
+    
     public String formatRemainingGameTime(long time) {
         long mins = TimeUnit.MILLISECONDS.toMinutes(time);
         time -= TimeUnit.MINUTES.toMillis(mins);
@@ -1484,10 +1918,29 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             }
             return true;
         } else if (command.getName().equalsIgnoreCase("checkcell")) {
-            if (args.length < 2) {
+            if (args.length != 2 && args.length != 0) {
                 sender.sendMessage("You need an x and a z!");
-            } else {
+            } else if (args.length == 2) {
                 sender.sendMessage(grid.schematicAtCell(Integer.parseInt(args[0]), Integer.parseInt(args[1])));
+            } else if (sender instanceof Player) {
+                Cell cell = getCellFromLocation(((Player)sender).getLocation());
+                if (cell != null) {
+                    String schematicAtCell = cell.schematicAtCell;
+                    if (schematicAtCell == null) {
+                        schematicAtCell = "null";
+                    }
+                    sender.sendMessage("You are standing on cell " + cell.x + "," + cell.z + ": ISOCCUPIED=" + cell.isOccupied + ", ISROAD=" + cell.isRoad + ", DISTRICT=" + cell.district + ", SCHEMATIC=" + schematicAtCell);
+                    if (cell.pasteDetails != null) {
+                        String additionalDetails = "ISOMNI=" + cell.pasteDetails.isOmni + ", DIR=" + cell.pasteDetails.schematicFacing + ", TIME=" + cell.pasteDetails.pasteTime + ", CELLS=";
+                        for (Cell pasteCell : cell.pasteDetails.cellsOccupied) {
+                            additionalDetails = additionalDetails + "[" + pasteCell.x + "," + pasteCell.z + "]";
+                        }
+                        sender.sendMessage(additionalDetails);
+                    }
+                } else {
+                    sender.sendMessage("You are not standing on a cell.");
+                }
+
             }
         } else if (command.getName().equalsIgnoreCase("zap")) {
             if (getServer().getPluginManager().getPlugin("Citizens") == null || !getServer().getPluginManager().getPlugin("Citizens").isEnabled()) {
@@ -1646,7 +2099,17 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         } else if (command.getName().equals("chain")) {
             if (sender instanceof Player) {
                 Player player = (Player)sender;
-                ChainCommand chain = new ChainCommand(args, player);
+                String fullStr = "";
+                for (int i = 0; i < args.length; i++ ) {
+                    fullStr = fullStr + args[i] + " ";
+                }
+                fullStr = fullStr.trim();
+                String[] parts = fullStr.split(" \\| ");
+                List<String> commands = new ArrayList<>();
+                for (String part : parts) {
+                    commands.add(part);
+                }
+                ChainCommand chain = new ChainCommand(commands, player);
                 chain.run();
             }
 
@@ -1759,7 +2222,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             } else {
                 sender.sendMessage(ChatColor.RED + "Only players can perform this command!");
             }
-        } else if (command.getName().equalsIgnoreCase("fishingzone")) {
+        } else if (command.getName().equalsIgnoreCase("fishing-zone")) {
             if (sender instanceof Player) {
                 if (args.length > 0) {
                     this.createFishingZone((Player)sender, args);
@@ -1810,13 +2273,13 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                     int num = Integer.parseInt(args[1]);
                     if (args[0].equalsIgnoreCase("storage")) {
                         this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
-                        if (player.isOp()) {
+                        if (player.isOp() && debugEnabled(player)) {
                             sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
 
                         }
                     } else if (args[0].equalsIgnoreCase("accessory")) {
                         this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
-                        if (player.isOp()) {
+                        if (player.isOp() && debugEnabled(player)) {
                             sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
 
                         }
@@ -1897,7 +2360,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                     sender.sendMessage(ChatColor.RED + "You must input a number!");
                 }
             }
-        } else if (command.getName().equalsIgnoreCase("grantrecipe")) {
+        } else if (command.getName().equalsIgnoreCase("grant-recipe")) {
             if (args.length == 1) {
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
@@ -1915,7 +2378,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
                 mmoPlayer.recipeBook.add(recipe);
                 ToastMessage.displayTo(player, recipe.reward.bukkitItem.getType().toString().toLowerCase(), recipe.displayName + ChatColor.GRAY + " recipe discovered.", ToastMessage.Style.GOAL);
-                if (sender.isOp()) {
+                if (sender.isOp() && debugEnabled(player)) {
                     sender.sendMessage(ChatColor.GREEN + "Added recipe for " + recipe.reward.internalName + " to " + Bukkit.getPlayer(mmoPlayer.getMinecraftUUID()).getName() + ChatColor.GREEN + ".");
                 }
             } else if (args.length >= 2) {
@@ -1935,7 +2398,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
                 mmoPlayer.recipeBook.add(recipe);
                 ToastMessage.displayTo(player, recipe.reward.bukkitItem.getType().toString().toLowerCase(), recipe.displayName + ChatColor.GRAY + " recipe discovered.", ToastMessage.Style.GOAL);
-                if (sender.isOp()) {
+                if (sender.isOp() && debugEnabled(player)) {
                     sender.sendMessage(ChatColor.GREEN + "Added recipe for " + recipe.reward.internalName + " to " + Bukkit.getPlayer(mmoPlayer.getMinecraftUUID()).getName() + ChatColor.GREEN + ".");
                 }
             }
@@ -1952,7 +2415,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
                 try {
                     boolean success = baseStatChange(args[0].toLowerCase(), Double.parseDouble(args[1]), mmoPlayer);
-                    if (sender.isOp()) {
+                    if (sender.isOp() && debugEnabled(player)) {
                         if (success) {
                             sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[0].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[1] + ChatColor.GREEN + ".");
                         } else {
@@ -1977,7 +2440,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
                 try {
                     boolean success = baseStatChange(args[1].toLowerCase(), Double.parseDouble(args[2]), mmoPlayer);
-                    if (sender.isOp()) {
+                    if (sender.isOp() && debugEnabled(player)) {
                         if (success) {
                             sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[1].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + ".");
                         } else {
@@ -1992,7 +2455,158 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             } else {
                 sender.sendMessage(ChatColor.RED + "Not enough arguments.");
             }
-        } else if (command.getName().equalsIgnoreCase("foragingtest")) {
+        } else if (command.getName().equalsIgnoreCase("potion-effect")) {
+            if (args.length == 4) {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = this.players.get(player.getUniqueId());
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = potionEffect(args[0].toLowerCase(), Integer.parseInt(args[1]),mmoPlayer, Integer.parseInt(args[2]),args[3]);
+                    if (sender.isOp() && debugEnabled(player)) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Applied " + ChatColor.YELLOW + args[0].toUpperCase() + ChatColor.GREEN + " to player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " level " + ChatColor.YELLOW + args[1] + ChatColor.GREEN + " for " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + " seconds.");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid potion type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else if (args.length >= 5) {
+
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = this.players.get(player.getUniqueId());
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = potionEffect(args[1].toLowerCase(),Integer.parseInt(args[2]),mmoPlayer,Integer.parseInt(args[3]),args[4]);
+                    if (sender.isOp() && debugEnabled(player)) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Applied " + ChatColor.YELLOW + args[1].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " level " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + " for " + ChatColor.YELLOW + args[3] + ChatColor.GREEN + " seconds.");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid stat type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else {
+                sender.sendMessage(ChatColor.RED + "Not enough arguments.");
+            }
+        } else if (command.getName().equalsIgnoreCase("temp-stat")) {
+            if (args.length == 3) {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = this.players.get(player.getUniqueId());
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = tempStatChange(args[0].toLowerCase(), Double.parseDouble(args[1]), mmoPlayer, Integer.parseInt(args[2]));
+                    if (sender.isOp() && debugEnabled(player)) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[0].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[1] + ChatColor.GREEN + " for " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + "seconds.");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid stat type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else if (args.length >= 4) {
+
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                MMOPlayer mmoPlayer = this.players.get(player.getUniqueId());
+                if (mmoPlayer == null) {
+                    return true;
+                }
+                try {
+                    boolean success = tempStatChange(args[1].toLowerCase(), Double.parseDouble(args[2]), mmoPlayer, Integer.parseInt(args[3]));
+                    if (sender.isOp() && debugEnabled(player)) {
+                        if (success) {
+                            sender.sendMessage(ChatColor.GREEN + "Modified " + ChatColor.YELLOW + args[1].toUpperCase() + ChatColor.GREEN + " for player " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + " by " + ChatColor.YELLOW + args[2] + ChatColor.GREEN + " for " + ChatColor.YELLOW + args[3] + ChatColor.GREEN + ".");
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must enter a valid stat type!");
+                        }
+                    }
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must enter a valid number!");
+                    return true;
+                }
+            } else {
+                sender.sendMessage(ChatColor.RED + "Not enough arguments.");
+            }
+        } else if (command.getName().equalsIgnoreCase("debug")) {
+            if (args.length == 0) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "Only players may execute that command!");
+                    return true;
+                }
+                if (debugEnabled((Player)sender)) {
+                    disableDebug((Player)sender);
+                    sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.RED + "DISABLED" + ChatColor.GREEN + ".");
+                } else {
+                    enableDebug((Player)sender);
+                    sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.YELLOW + "ENABLED" + ChatColor.GREEN + ".");
+                }
+                return true;
+            } else if (args.length == 1) {
+                if (args[0].equalsIgnoreCase("on") || args[0].equalsIgnoreCase("enable")) {
+                    if (!(sender instanceof Player)) {
+                        sender.sendMessage(ChatColor.RED + "Only players may execute that command!");
+                        return true;
+                    }
+                    enableDebug((Player)sender);
+                    sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.YELLOW + "ENABLED" + ChatColor.GREEN + ".");
+                    return true;
+                } else if (args[0].equalsIgnoreCase("off") || args[0].equalsIgnoreCase("disable")) {
+                    if (!(sender instanceof Player)) {
+                        sender.sendMessage(ChatColor.RED + "Only players may execute that command!");
+                        return true;
+                    }
+                    disableDebug((Player)sender);
+                    sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.RED + "DISABLED" + ChatColor.GREEN + ".");
+                    return true;
+                } else {
+                    Player player = Bukkit.getPlayerExact(args[0]);
+                    if (player == null) {
+                        sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                        return true;
+                    }
+                    if (debugEnabled(player)) {
+                        disableDebug(player);
+                        sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.RED + "DISABLED" + ChatColor.GREEN + " for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
+                    } else {
+                        enableDebug(player);
+                        sender.sendMessage(ChatColor.GREEN + "Set debug to " + ChatColor.YELLOW + "ENABLED" + ChatColor.GREEN + " for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
+                    }
+                    return true;
+                }
+            }
+        } else if (command.getName().equalsIgnoreCase("foraging-zone")) {
             if (sender instanceof Player) {
                 if (args.length > 0) {
                     this.createForagingZone((Player)sender, args);
@@ -2003,7 +2617,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             } else {
                 sender.sendMessage(ChatColor.RED + "Only players can perform this command!");
             }
-        } else if (command.getName().equalsIgnoreCase("create-dungeon")) {
+        } else if (command.getName().equalsIgnoreCase("dungeon")) {
             if (!(sender instanceof Player)){
                 sender.sendMessage(ChatColor.RED + "Only players can use this command!");
                 return true;
@@ -2037,7 +2651,16 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 spawnExit((Player)sender, args);
             }
 
-        }else if (command.getName().equalsIgnoreCase("startgame")) {
+        } else if (command.getName().equalsIgnoreCase("reward-chest")) {
+            if (!(sender instanceof Player)){
+                sender.sendMessage(ChatColor.RED + "Only players can use this command!");
+                return true;
+            }
+            if (args.length >= 1) {
+                spawnRewardChest((Player)sender, args);
+            }
+
+        } else if (command.getName().equalsIgnoreCase("startgame")) {
             if (!this.gameRunning && !this.gameEnded) {
                 GennsGym.stopCountdown();
                 this.startGame();
@@ -2050,6 +2673,11 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 sender.sendMessage("Game must be started!");
             } else {
                 this.startTournament();
+            }
+        } else if (command.getName().equalsIgnoreCase("invshop") && args.length == 2 && args[0].equalsIgnoreCase("open") && sender.hasPermission("invshop.open") && sender instanceof Player) {
+            Shop shop = (Shop)this.shopHandler.shops.get(args[1]);
+            if (shop != null) {
+                this.shopHandler.invShops.openShop((Player)sender, shop);
             }
         } else if (command.getName().equals("nextgame")) {
             if (args.length == 0) {
@@ -2083,19 +2711,21 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             int points;
             Player player;
             if (command.getName().equals("roundscoreadd")) {
+                float pointsF = 0;
                 if (this.currentGame != null) {
                     player = Bukkit.getPlayerExact(args[0]);
                     if (player != null) {
-                        points = this.parseInt(args[1]);
-                        this.currentGame.addScore(player, points);
+                        pointsF = this.parseFloat(args[1]);
+                        this.currentGame.addScore(player, pointsF);
                     }
                 }
             } else if (command.getName().equals("roundscoreset")) {
+                float pointsF = 0;
                 if (this.currentGame != null) {
                     player = Bukkit.getPlayerExact(args[0]);
                     if (player != null) {
-                        points = this.parseInt(args[1]);
-                        this.currentGame.setScore(player, points);
+                        pointsF = this.parseFloat(args[1]);
+                        this.currentGame.setScore(player, pointsF);
                     }
                 }
             } else if (command.getName().equals("gamescoreadd")) {
@@ -2127,6 +2757,12 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 if (player != null) {
                     this.currentGame.setPlayerOut(player);
                 }
+            } else if (command.getName().equals("points-multiplier") && this.currentGame != null) {
+                if (this.parseFloat(args[0]) > 0.0f) {
+                    this.currentGame.multiplier = this.parseFloat(args[0]);
+                } else {
+                    this.currentGame.multiplier = 1.0f;
+                }
             }
         }
         return true;
@@ -2135,6 +2771,35 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     void startTournament() {
         this.tournament = true;
         this.nextGame();
+    }
+    public boolean tempStatChange(String statName, double value, MMOPlayer mmoPlayer, int timeInSecs) {
+        if (Arrays.stream(this.statNames).toList().contains(statName)) {
+            this.statUpdates.temporaryStatUpdate(mmoPlayer,statName,(float)value,timeInSecs);
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+    public boolean potionEffect(String effectName, int lvl, MMOPlayer mmoPlayer, int timeInSecs, String itemName) {
+        ItemStack item = new ItemStack(Material.GRAY_DYE);
+        if (this.itemHandler.containsName(this.itemHandler.allItems, itemName)) {
+            item = this.itemHandler.getItemFromString(itemName);
+        } else {
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName(ChatColor.GREEN + "Unknown Source");
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "This potion effect comes from places unknown");
+            lore.add(ChatColor.GRAY + "with values unknown...");
+            lore.add(ChatColor.GRAY + "(You should probably bug God about it.)");
+        }
+        if (Arrays.stream(this.potionNames).toList().contains(effectName)) {
+            mmoPlayer.addPotionEffect(effectName,lvl,timeInSecs,item);
+            return true;
+        } else {
+            return false;
+        }
+
     }
     public boolean baseStatChange(String statName, double value, MMOPlayer mmoPlayer) {
         if (statName.equalsIgnoreCase("strength")) {
@@ -2194,6 +2859,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         } else if (statName.equalsIgnoreCase("sea-creature-chance")) {
             mmoPlayer.setBaseSeaCreatureChance((float) (mmoPlayer.getBaseSeaCreatureChance() + value));
             return true;
+        } else if (statName.equalsIgnoreCase("health-regen")) {
+            mmoPlayer.setBaseHealthRegen((float) (mmoPlayer.getBaseHealthRegen() + value));
+            return true;
         }
         return false;
     }
@@ -2221,6 +2889,23 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 return;
             }
             dungeon.createDoor(player, args[0]);
+        } else {
+            player.sendMessage(ChatColor.RED + "Invalid arguments.");
+        }
+    }
+    public void spawnRewardChest(Player player, String[] args) {
+        if (args.length > 0) {
+            Dungeon dungeon = this.dungeonHandler.getDungeonForRoom(player.getLocation());
+            if (dungeon == null) {
+                player.sendMessage(ChatColor.RED + "You must be standing in a valid dungeon!");
+                return;
+            }
+            if (!dungeon.template.containsRoomWithName(args[0])){
+                player.sendMessage(ChatColor.RED + "You must specify one of the dungeon's defined rooms!");
+                return;
+            }
+            dungeon.createRewardChest(player, args[0]);
+            return;
         } else {
             player.sendMessage(ChatColor.RED + "Invalid arguments.");
         }
@@ -2402,7 +3087,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         mmoPlayer.setBaseMaxHealth(mmoPlayer.getHealth());
         mmoPlayer.setDefense(plugin.defaultStatValues.get("defense"));
         mmoPlayer.setBaseDefense(mmoPlayer.getDefense());
-        mmoPlayer.setDamage(plugin.defaultStatValues.get("damage"));
+        mmoPlayer.setStrength(plugin.defaultStatValues.get("strength"));
         mmoPlayer.setBaseStrength(mmoPlayer.getDamage());
         mmoPlayer.setCritDamage(plugin.defaultStatValues.get("crit-damage"));
         mmoPlayer.setBaseCritDamage(mmoPlayer.getCritDamage());
@@ -2410,7 +3095,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         mmoPlayer.setBaseSpeed(mmoPlayer.getSpeed());
         mmoPlayer.setCritChance(plugin.defaultStatValues.get("crit-chance"));
         mmoPlayer.setBaseCritChance(mmoPlayer.getCritChance());
-        mmoPlayer.setMaxMana(plugin.defaultStatValues.get("mana"));
+        mmoPlayer.setMaxMana(plugin.defaultStatValues.get("stamina"));
         mmoPlayer.setBaseMaxMana(mmoPlayer.getMaxMana());
         mmoPlayer.setMana(mmoPlayer.getMaxMana());
         mmoPlayer.setAbilityDamage(plugin.defaultStatValues.get("ability-damage"));
@@ -2421,14 +3106,20 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         mmoPlayer.setBaseDialogueSpeed(mmoPlayer.getDialogueSpeed());
         mmoPlayer.setHealthRegen(plugin.defaultStatValues.get("health-regen"));
         mmoPlayer.setBaseHealthRegen(mmoPlayer.getHealthRegen());
-        mmoPlayer.setManaRegen(plugin.defaultStatValues.get("mana-regen"));
+        mmoPlayer.setManaRegen(plugin.defaultStatValues.get("stamina-regen"));
         mmoPlayer.setBaseManaRegen(mmoPlayer.getManaRegen());
-        mmoPlayer.setAttackSpeed(defaultStatValues.get("attack-speed"));
-        mmoPlayer.setBaseAttackSpeed(mmoPlayer.getAttackSpeed());
-        mmoPlayer.setLure(defaultStatValues.get("lure"));
+        mmoPlayer.setLure(defaultStatValues.get("fishing-speed"));
         mmoPlayer.setBaseLure(mmoPlayer.getLure());
-        mmoPlayer.setFlash(defaultStatValues.get("flash"));
+        mmoPlayer.setFlash(defaultStatValues.get("lure"));
         mmoPlayer.setBaseFlash(mmoPlayer.getFlash());
+        mmoPlayer.setFarmingFortune(defaultStatValues.get("farming-fortune"));
+        mmoPlayer.setBaseFarmingFortune(mmoPlayer.getBaseFarmingFortune());
+        mmoPlayer.setMiningFortune(defaultStatValues.get("mining-fortune"));
+        mmoPlayer.setBaseMiningFortune(mmoPlayer.getMiningFortune());
+        mmoPlayer.setLoggingFortune(defaultStatValues.get("foraging-fortune"));
+        mmoPlayer.setBaseLoggingFortune(mmoPlayer.getLoggingFortune());
+        mmoPlayer.setVigor(defaultStatValues.get("vigor"));
+        mmoPlayer.setBaseVigor(mmoPlayer.getVigor());
         MagicSpells.getManaHandler().setMaxMana(player, (int)mmoPlayer.getMaxMana());
         MagicSpells.getManaHandler().setMana(player, (int)mmoPlayer.getMaxMana(), ManaChangeReason.OTHER);
         mmoPlayer.setCombatLvl(0);
@@ -2454,6 +3145,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         plugin.econ.createBank("Bank." + player.getName(), Bukkit.getOfflinePlayer(player.getUniqueId()));
         mmoPlayer.removeBankGold(mmoPlayer.getBankGold());
         this.gameScore.put(player.getUniqueId(), 0);
+        player.setLevel(0);
+        player.setExp(0.0f);
+        mmoPlayer.addPurseGold(defaultStatValues.get("dosh"));
         return mmoPlayer;
     }
 
@@ -2469,7 +3163,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 plugin.updatePlayerMaxMana(plugin.players.get(p.getUniqueId()));
                 plugin.updatePlayerSpeed(plugin.players.get(p.getUniqueId()));
                 this.statUpdates.updateFullInventory(p, plugin.players.get(p.getUniqueId()));
-                p.sendActionBar(ChatColor.RED.toString() + (int)players.get(p.getUniqueId()).getHealth() + "/" + (int)players.get(p.getUniqueId()).getMaxHealth() + "❤    " + ChatColor.AQUA.toString() + (int)players.get(p.getUniqueId()).getDefense() + "❈ Defense    " + ChatColor.GREEN.toString() + this.ms.getManaHandler().getMana(p) + "/" + this.ms.getManaHandler().getMaxMana(p) + "⚡ Stamina");
+                this.actionBarMessenger.display(p);
                 plugin.questHandler.checkInvForFulfillingItems(p);
                 plugin.questHandler.updateTrackingDetails(p);
                 if (plugin.itemHandler.getItemFromString("tgt_menu") != null) {
@@ -2504,10 +3198,10 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
 
                 double healthToAdd = ((players.get(p.getUniqueId()).getMaxHealth() * 0.01) + 1.5) * (players.get(p.getUniqueId()).getHealthRegen() / 100);
-                if (players.get(p.getUniqueId()).getHealth() + healthToAdd >= players.get(p.getUniqueId()).getMaxHealth()) {
+                /*if (players.get(p.getUniqueId()).getHealth() + healthToAdd >= players.get(p.getUniqueId()).getMaxHealth()) {
                     players.get(p.getUniqueId()).setHealth(players.get(p.getUniqueId()).getMaxHealth());
                     return;
-                }
+                }*/
                 this.updatePlayerHealth(players.get(p.getUniqueId()), (float)healthToAdd);
 
             } else {
@@ -2518,7 +3212,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public void updatePlayerHealth(MMOPlayer player, float change) {
         float newHealth = player.getHealth() + change;
         Player bukkitPlayer = Bukkit.getPlayer(player.getMinecraftUUID());
-        if (bukkitPlayer.isDead()) {
+        float absorptionHealth = player.getAbsorptionHealth();
+        if (bukkitPlayer == null || bukkitPlayer.isDead()) {
             return;
         }
         if (newHealth <= 0) {
@@ -2526,6 +3221,18 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             bukkitPlayer.setHealth(0.0D);
             return;
         }
+        int hearts = getHeartsToDisplay(player.getMaxHealth());
+        bukkitPlayer.setMaxHealth(hearts);
+
+        if (absorptionHealth > 0) {
+            bukkitPlayer.setAbsorptionAmount(getAbsorptionHeartsToDisplay(absorptionHealth));
+            player.takeDamage(0.0f);
+        } else if (absorptionHealth <= 0 && bukkitPlayer.getAbsorptionAmount() != 0) {
+            bukkitPlayer.setAbsorptionAmount(0);
+            player.takeDamage(0.0f);
+        }
+        bukkitPlayer.sendHealthUpdate();
+
         if (newHealth > player.getMaxHealth()) {
             player.setHealth(player.getMaxHealth());
             bukkitPlayer.setHealth(bukkitPlayer.getMaxHealth());
@@ -2533,7 +3240,58 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
 
         player.setHealth(newHealth);
-        bukkitPlayer.setHealth((player.getHealth()/player.getMaxHealth()) * bukkitPlayer.getMaxHealth());
+        bukkitPlayer.setHealth((player.getHealth()/player.getMaxHealth()) * hearts);
+    }
+
+    public int getHeartsToDisplay(float health) {
+        if (health >= 1250) {
+            return 40;
+        } else if (health >= 1000) {
+            return 38;
+        } else if (health >= 800) {
+            return 36;
+        } else if (health >= 650) {
+            return 34;
+        } else if (health >= 500) {
+            return 32;
+        } else if (health >= 400) {
+            return 30;
+        } else if (health >= 300) {
+            return 28;
+        } else if (health >= 230) {
+            return 26;
+        } else if (health >= 165) {
+            return 24;
+        } else if (health >= 125) {
+            return 22;
+        } else {
+            return 20;
+        }
+    }
+    public int getAbsorptionHeartsToDisplay(float health) {
+        if (health <= 0) {
+            return 0;
+        }else if (health <= 100) {
+            return 2;
+        } else if (health <= 200) {
+            return 4;
+        } else if (health <= 300) {
+            return 6;
+        } else if (health <= 400) {
+            return 8;
+        } else if (health <= 500) {
+            return 10;
+        } else if (health <= 600) {
+            return 12;
+        } else if (health <= 700) {
+            return 14;
+        } else if (health <= 800) {
+            return 16;
+        } else if (health <= 900) {
+            return 18;
+        } else {
+            return 20;
+        }
     }
 
     public double calculateDamage(MMOPlayer player, ItemStack item, boolean isCrit) {
@@ -2551,10 +3309,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
             }
         }
-        double returnDam = (5+damage) * (1+(player.getDamage()/100));
-        if (isCrit) {
-            returnDam = returnDam * (1+player.getCritDamage()/100);
-        }
+        double returnDam = statUpdates.calculateNormalDamage(damage, player, isCrit);
         return returnDam;
     }
 
@@ -2615,7 +3370,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
 
     public int getPlayerManaRegen(MMOPlayer mmoPlayer, Player player) {
         float regen = ((float) (MagicSpells.getManaHandler().getMaxMana(player) * 0.02)) + mmoPlayer.getManaRegen();
-        return (int) (regen * (1 + (mmoPlayer.getManaRegen()/100)));
+        return (int) regen;
     }
 
     public void updatePlayerSpeed(MMOPlayer player) {
@@ -2691,11 +3446,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
                 if (day > daysBeforeTournament && !tournament && !dayAnnouncement) {
                     TGT.this.startTournament();
-                    Bukkit.broadcastMessage(ChatColor.WHITE + "<" + ChatColor.YELLOW + "Herald" + ChatColor.WHITE + "> " + ChatColor.WHITE + "The day of "+ ChatColor.GOLD + "The Tournament " + ChatColor.WHITE + "has arrived! Competitors, prepare yourselves...");
+                    gameCaster.speakHerald(ChatColor.WHITE + "The day of "+ ChatColor.GOLD + "The Tournament " + ChatColor.WHITE + "has arrived! Competitors, prepare yourselves...", 0);
                     dayAnnouncement = true;
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.playSound(player.getLocation(), "entity.villager.trade", 5.0f, 1.25f);
-                    }
                 } else if (day <= daysBeforeTournament && !tournament && !dayAnnouncement) {
                     if (daysBeforeTournament-day+1 == 1) {
                         gameCaster.speakHerald(ChatColor.WHITE + "Hear ye, hear ye! "+ ChatColor.GOLD + "The Tournament " + ChatColor.WHITE + "will take place in " + (daysBeforeTournament-day+1) + " day!", 0);
@@ -2785,22 +3537,73 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         folder.delete();
     }
 
+    public boolean debugEnabled(Player player) {
+        return this.debugEnabled.contains(player.getUniqueId());
+    }
+    public boolean debugEnabled(UUID uuid) {
+        return this.debugEnabled.contains(uuid);
+    }
+    public void enableDebug(Player player) {
+        this.debugEnabled.add(player.getUniqueId());
+    }
+    public void disableDebug(Player player) {
+        this.debugEnabled.remove(player.getUniqueId());
+    }
+    public String trimCasterDialogue(String string) {
+        if (string.startsWith("h:")) {
+            return string.replaceFirst("h:","");
+        } else if (string.startsWith("Herald:")) {
+            return string.replaceFirst("Herald:", "");
+        } else if (string.startsWith("herald:")) {
+            return string.replaceFirst("herald:", "");
+        } else if (string.startsWith("k:")) {
+            return string.replaceFirst("k:", "");
+        } else if (string.startsWith("King:")) {
+            return string.replaceFirst("King:","");
+        } else if (string.startsWith("king:")) {
+            return string.replaceFirst("king:","");
+        } else {
+            return string;
+        }
+    }
+
     @Override
     public void endGame() {
         this.gameRunning = false;
     }
 
 
-        public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
-            List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
-            list.sort(Map.Entry.comparingByValue());
-
-            Map<K, V> result = new LinkedHashMap<>();
-            for (Map.Entry<K, V> entry : list) {
-                result.put(entry.getKey(), entry.getValue());
-            }
-
-            return result;
+    public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
+        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        list.sort(Map.Entry.comparingByValue());
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
         }
+        return result;
+    }
+
+    private int getTrueStringLength(String string) {
+        return ChatColor.stripColor(string).length();
+    }
+    private int getLongestString(List<String> list) {
+        String longestString = list.get(0);
+        int longestLength = getTrueStringLength(longestString);
+        for (int i = 1; i < list.size(); i++) {
+            String str = list.get(i);
+            if (str.length() > longestLength) {
+                longestString = str;
+                longestLength = str.length();
+            }
+        }
+        return longestLength;
+    }
+
+    private String formatScoreString(String leftSide, String rightSide, int longest) {
+        while (leftSide.length() + rightSide.length() < longest) {
+            leftSide = leftSide + " ";
+        }
+        return leftSide + rightSide;
+    }
 
 }

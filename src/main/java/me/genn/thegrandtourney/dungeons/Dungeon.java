@@ -53,8 +53,8 @@ public class Dungeon implements Listener, TournamentZone {
     BukkitTask doorOpenTask;
     BukkitTask exitWarpTask;
     BukkitTask exitWarpEffectTask;
-    Location exitWarpLocation;
-    Location exitWarpTarget;
+    public Location exitWarpLocation;
+    public Location exitWarpTarget;
     ArmorStand exitLabelArmorStand;
 
 
@@ -86,6 +86,7 @@ public class Dungeon implements Listener, TournamentZone {
 
         this.minLoc = new Location(p.getWorld(), min.getX(), min.getY(), min.getZ()).toCenterLocation();
         this.maxLoc = new Location(p.getWorld(), max.getX(), max.getY(), max.getZ()).toCenterLocation();
+        Location centerLoc = new Location(p.getWorld(), region.getCenter().getX(), region.getCenter().getY(), region.getCenter().getZ());
         if (this.maxLoc.getX() < this.minLoc.getX()) {
             double minX = this.maxLoc.getX();
             double maxX = this.minLoc.getX();
@@ -104,6 +105,8 @@ public class Dungeon implements Listener, TournamentZone {
             this.maxLoc.setZ(maxZ);
             this.minLoc.setZ(minZ);
         }
+        this.centerLoc = centerLoc.toCenterLocation();
+        plugin.dungeonLocList.put(this.centerLoc,this);
         this.name = template.name + "." + (plugin.dungeonLocList.size()+1);
         Bukkit.getPluginManager().registerEvents(this, plugin);
         plugin.dungeonHandler.allDungeons.add(this);
@@ -133,10 +136,11 @@ public class Dungeon implements Listener, TournamentZone {
         } else if (goal == RoomGoal.COLLECTION) {
             addCollectionRoom(p, name, minLoc, maxLoc, quantity, collectName,preventAbilities);
         } else if (goal == RoomGoal.THRU) {
-            addThroughRoom(p, name, minLoc, maxLoc, doorClosed, preventAbilities);
+            addThroughRoom(name, minLoc, maxLoc, doorClosed, preventAbilities);
         }
 
     }
+
     public void createDoor(org.bukkit.entity.Player p, String name) {
         if (getRoomWithName(name) == null) {
             p.sendMessage(ChatColor.RED + "You must specify a valid room name!");
@@ -184,9 +188,23 @@ public class Dungeon implements Listener, TournamentZone {
         Location minLoc = new Location(p.getWorld(), min.getX(), min.getY(), min.getZ()).toCenterLocation();
         Location maxLoc = new Location(p.getWorld(), max.getX(), max.getY(), max.getZ()).toCenterLocation();
 
-        setDoorForDungeon(p, name, minLoc, maxLoc);
+        setDoorForDungeon(p.getLocation(), name, minLoc, maxLoc);
     }
-
+    public void createRewardChest(Player player, String name) {
+        Room room = getRoomWithName(name);
+        RoomData data = this.template.getRoomWithName(name);
+        if (room == null) {
+            player.sendMessage(ChatColor.RED + "You must specify a valid room name!");
+            return;
+        }
+        if (data.rewardChestDrops == null || data.rewardChestBase64 == null || data.rewardChestBase == null || data.rewardChestMid == null) {
+            player.sendMessage(ChatColor.RED + "The configuration for this reward chest isn't set up properly!");
+            return;
+        }
+        RewardChest chest = new RewardChest(plugin, data.rewardChestBase, data.rewardChestMid, data.rewardChestBase64, data.rewardChestDrops, data.chestParticle, data.chestParticleCount);
+        room.rewardChest = chest;
+        chest.spawn(player.getLocation());
+    }
     public void createExitWarp(Player player) {
         this.exitWarpLocation = player.getLocation();
         this.exitLabelArmorStand = player.getWorld().spawn(this.exitWarpLocation.clone().add(0,2.0,0), ArmorStand.class);
@@ -194,11 +212,25 @@ public class Dungeon implements Listener, TournamentZone {
         this.exitLabelArmorStand.setGravity(false);
         this.exitLabelArmorStand.setCustomNameVisible(true);
         this.exitLabelArmorStand.setMarker(true);
-        this.exitLabelArmorStand.setCustomName(ChatColor.LIGHT_PURPLE + "Return to Entrance");
+        this.exitLabelArmorStand.setCustomName(ChatColor.DARK_PURPLE + "✦ " + ChatColor.LIGHT_PURPLE + "Return to Entrance");
+        startExitWarpTask();
+    }
+    public void createExitWarp(Location location) {
+        this.exitWarpLocation = location;
+        this.exitLabelArmorStand = location.getWorld().spawn(this.exitWarpLocation.clone().add(0,2.0,0), ArmorStand.class);
+        this.exitLabelArmorStand.setVisible(false);
+        this.exitLabelArmorStand.setGravity(false);
+        this.exitLabelArmorStand.setCustomNameVisible(true);
+        this.exitLabelArmorStand.setMarker(true);
+        this.exitLabelArmorStand.setCustomName(ChatColor.DARK_PURPLE + "✦ " + ChatColor.LIGHT_PURPLE + "Return to Entrance");
         startExitWarpTask();
     }
     public void createExitTarget(Player player) {
         this.exitWarpTarget = player.getLocation();
+        startExitWarpTask();
+    }
+    public void createExitTarget(Location location) {
+        this.exitWarpTarget = location;
         startExitWarpTask();
     }
     public void startExitWarpTask() {
@@ -280,7 +312,40 @@ public class Dungeon implements Listener, TournamentZone {
 
 
     }
-
+    public void addSlayerRoom(String name, Location minLoc, Location maxLoc, int quantity, String mobName, boolean preventAbilities) {
+        minLoc = minLoc.toCenterLocation();
+        maxLoc = maxLoc.toCenterLocation();
+        if (maxLoc.getX() < minLoc.getX()) {
+            double minX = maxLoc.getX();
+            double maxX = minLoc.getX();
+            maxLoc.setX(maxX);
+            minLoc.setX(minX);
+        }
+        if (maxLoc.getY() < minLoc.getY()) {
+            double minY = maxLoc.getY();
+            double maxY = minLoc.getY();
+            maxLoc.setY(maxY);
+            minLoc.setY(minY);
+        }
+        if (maxLoc.getZ() < minLoc.getZ()) {
+            double minZ = maxLoc.getZ();
+            double maxZ = minLoc.getZ();
+            maxLoc.setZ(maxZ);
+            minLoc.setZ(minZ);
+        }
+        MMOMob mob = plugin.mobHandler.getMobFromString(mobName);
+        if (mob == null) {
+            return;
+        }
+        Room room = new Room(plugin);
+        room.mobToKill = mob;
+        room.quantity = quantity;
+        room.preventAbilities = preventAbilities;
+        room.name = name;
+        room.goal = RoomGoal.SLAYER;
+        room.initializeRoom(minLoc,maxLoc);
+        this.rooms.add(room);
+    }
     public void addSlayerRoom(Player p, String name, Location minLoc, Location maxLoc, int quantity, String mobName, boolean preventAbilities) {
         minLoc = minLoc.toCenterLocation();
         maxLoc = maxLoc.toCenterLocation();
@@ -350,7 +415,41 @@ public class Dungeon implements Listener, TournamentZone {
         room.initializeRoom(minLoc,maxLoc);
         this.rooms.add(room);
     }
-    public void addThroughRoom(Player p, String name, Location minLoc, Location maxLoc, boolean doorClosed, boolean preventAbilities) {
+    public void addCollectionRoom(String name, Location minLoc, Location maxLoc, int quantity, String itemName, boolean preventAbilities) {
+        minLoc = minLoc.toCenterLocation();
+        maxLoc = maxLoc.toCenterLocation();
+        if (maxLoc.getX() < minLoc.getX()) {
+            double minX = maxLoc.getX();
+            double maxX = minLoc.getX();
+            maxLoc.setX(maxX);
+            minLoc.setX(minX);
+        }
+        if (maxLoc.getY() < minLoc.getY()) {
+            double minY = maxLoc.getY();
+            double maxY = minLoc.getY();
+            maxLoc.setY(maxY);
+            minLoc.setY(minY);
+        }
+        if (maxLoc.getZ() < minLoc.getZ()) {
+            double minZ = maxLoc.getZ();
+            double maxZ = minLoc.getZ();
+            maxLoc.setZ(maxZ);
+            minLoc.setZ(minZ);
+        }
+        MMOItem item = plugin.itemHandler.getMMOItemFromString(itemName);
+        if (item == null) {
+            return;
+        }
+        Room room = new Room(plugin);
+        room.itemToCollect = item;
+        room.quantity = quantity;
+        room.preventAbilities = preventAbilities;
+        room.name = name;
+        room.goal = RoomGoal.COLLECTION;
+        room.initializeRoom(minLoc,maxLoc);
+        this.rooms.add(room);
+    }
+    public void addThroughRoom(String name, Location minLoc, Location maxLoc, boolean doorClosed, boolean preventAbilities) {
         minLoc = minLoc.toCenterLocation();
         maxLoc = maxLoc.toCenterLocation();
         if (maxLoc.getX() < minLoc.getX()) {
@@ -379,6 +478,55 @@ public class Dungeon implements Listener, TournamentZone {
         room.initializeRoom(minLoc,maxLoc);
         this.rooms.add(room);
     }
+    public void setDoorForRoom(Location asLoc, String name, Location minLoc, Location maxLoc) {
+        Room room = getRoomWithName(name);
+        RoomData data = this.template.getRoomWithName(name);
+        if (room == null) {
+            //p.sendMessage(ChatColor.RED + "You must specify a valid room name!");
+            return;
+        }
+        minLoc = minLoc.toCenterLocation();
+        maxLoc = maxLoc.toCenterLocation();
+        if (maxLoc.getX() < minLoc.getX()) {
+            double minX = maxLoc.getX();
+            double maxX = minLoc.getX();
+            maxLoc.setX(maxX);
+            minLoc.setX(minX);
+        }
+        if (maxLoc.getY() < minLoc.getY()) {
+            double minY = maxLoc.getY();
+            double maxY = minLoc.getY();
+            maxLoc.setY(maxY);
+            minLoc.setY(minY);
+        }
+        if (maxLoc.getZ() < minLoc.getZ()) {
+            double minZ = maxLoc.getZ();
+            double maxZ = minLoc.getZ();
+            maxLoc.setZ(maxZ);
+            minLoc.setZ(minZ);
+        }
+        Door door = new Door(plugin, data.doorMat, room, asLoc, data.goalText, minLoc, maxLoc);
+        Vector max = Vector.getMaximum(minLoc.toVector(), maxLoc.toVector());
+        Vector min = Vector.getMinimum(minLoc.toVector(), maxLoc.toVector());
+        for (int i = min.getBlockX(); i <= max.getBlockX();i++) {
+            for (int j = min.getBlockY(); j <= max.getBlockY(); j++) {
+                for (int k = min.getBlockZ(); k <= max.getBlockZ();k++) {
+                    door.blocks.add(minLoc.getWorld().getBlockAt(i,j,k));
+
+                    //p.sendMessage("Adding door block at" + i +"," + j +"," + k);
+                }
+            }
+        }
+        /*for (int x = minLoc.getBlockX(); x < maxLoc.getBlockX(); x++) {
+            for (int y = (int)minLoc.getBlockY(); y < (int)maxLoc.getBlockY(); y++) {
+                for (int z = (int)minLoc.getBlockZ(); z < (int)maxLoc.getBlockZ(); z++) {
+
+                }
+            }
+        }*/
+        room.door = door;
+
+    }
     public void setDoorForRoom(Player p, String name, Location minLoc, Location maxLoc) {
         Room room = getRoomWithName(name);
         RoomData data = this.template.getRoomWithName(name);
@@ -406,7 +554,7 @@ public class Dungeon implements Listener, TournamentZone {
             maxLoc.setZ(maxZ);
             minLoc.setZ(minZ);
         }
-        Door door = new Door(plugin, data.doorMat, room, p.getLocation(), data.goalText);
+        Door door = new Door(plugin, data.doorMat, room, p.getLocation(), data.goalText, minLoc, maxLoc);
         Vector max = Vector.getMaximum(minLoc.toVector(), maxLoc.toVector());
         Vector min = Vector.getMinimum(minLoc.toVector(), maxLoc.toVector());
         for (int i = min.getBlockX(); i <= max.getBlockX();i++) {
@@ -414,7 +562,7 @@ public class Dungeon implements Listener, TournamentZone {
                 for (int k = min.getBlockZ(); k <= max.getBlockZ();k++) {
                     door.blocks.add(minLoc.getWorld().getBlockAt(i,j,k));
 
-                    p.sendMessage("Adding door block at" + i +"," + j +"," + k);
+                    //p.sendMessage("Adding door block at" + i +"," + j +"," + k);
                 }
             }
         }
@@ -428,7 +576,7 @@ public class Dungeon implements Listener, TournamentZone {
         room.door = door;
 
     }
-    public void setDoorForDungeon(Player p, String name, Location minLoc, Location maxLoc) {
+    public void setDoorForDungeon(Location asLoc, String name, Location minLoc, Location maxLoc) {
         minLoc = minLoc.toCenterLocation();
         maxLoc = maxLoc.toCenterLocation();
         if (maxLoc.getX() < minLoc.getX()) {
@@ -449,14 +597,14 @@ public class Dungeon implements Listener, TournamentZone {
             maxLoc.setZ(maxZ);
             minLoc.setZ(minZ);
         }
-        Door door = new Door(plugin, template.doorMat, null, p.getLocation(), template.enterText);
+        Door door = new Door(plugin, template.doorMat, null, asLoc, template.enterText, minLoc, maxLoc);
         Vector max = Vector.getMaximum(minLoc.toVector(), maxLoc.toVector());
         Vector min = Vector.getMinimum(minLoc.toVector(), maxLoc.toVector());
         for (int i = min.getBlockX(); i <= max.getBlockX();i++) {
             for (int j = min.getBlockY(); j <= max.getBlockY(); j++) {
                 for (int k = min.getBlockZ(); k <= max.getBlockZ();k++) {
                     door.blocks.add(minLoc.getWorld().getBlockAt(i,j,k));
-                    p.sendMessage("Adding door block at" + i +"," + j +"," + k);
+                    //p.sendMessage("Adding door block at" + i +"," + j +"," + k);
                 }
             }
         }

@@ -195,7 +195,7 @@ public class StationMasterRecipeBook implements Listener {
         while (iter.hasNext()) {
             MMOItem item = (MMOItem) iter.next();
 
-            list.add("  " + MMOItem.getRarityColor(item.rarity) + recipe.components.get(item) + "x " + item.bukkitItem.getItemMeta().getDisplayName());
+            list.add("  " + item.bukkitItem.getItemMeta().getDisplayName() +ChatColor.DARK_GRAY + " x" + recipe.components.get(item) );
         }
         list.add("");
         long time = recipe.timeLimit;

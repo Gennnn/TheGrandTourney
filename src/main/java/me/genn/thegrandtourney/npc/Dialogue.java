@@ -1,5 +1,6 @@
 package me.genn.thegrandtourney.npc;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Level;
@@ -38,11 +39,12 @@ public class Dialogue {
 
     TGTNpc tgtNpc;
     ObjectiveUpdate objectiveUpdate;
+    List<String> commands;
 
 
 
 
-    Dialogue(List<String> lines, int delay, boolean useWordCt, String talkSound, float talkVolume, float talkPitch, NPC npc, TGT tgt, QuestType questType, long wordCountMult, BaseComponent postDialogueText, List<String> rewards, String questName, TGTNpc tgtNpc, ObjectiveUpdate objectiveUpdate) {
+    Dialogue(List<String> lines, int delay, boolean useWordCt, String talkSound, float talkVolume, float talkPitch, NPC npc, TGT tgt, QuestType questType, long wordCountMult, BaseComponent postDialogueText, List<String> rewards, String questName, TGTNpc tgtNpc, ObjectiveUpdate objectiveUpdate, List<String> commands) {
         this.lines = lines;
         this.delayBetweenLines = delay;
         this.useWordCountForDelay = useWordCt;
@@ -59,6 +61,7 @@ public class Dialogue {
         this.objectiveUpdate = objectiveUpdate;
         this.questName = questName;
         this.tgtNpc = tgtNpc;
+        this.commands = commands;
     }
 
     public void speak(Player player, boolean isRanged) {
@@ -129,18 +132,27 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
+
             }
 
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
-                    if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                    if ((Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty())) {
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
+
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
 
                 }
@@ -186,18 +198,25 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
 
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
                 }
             }, delay * 1L);
@@ -230,17 +249,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
 
                 }
@@ -283,17 +309,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
                 }
             }, delay * 1L);
@@ -327,17 +360,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
 
                 }
@@ -379,17 +419,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
                 }
             }, delay * 1L);
@@ -422,17 +469,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
                 }
             }, delay * 1L);
@@ -473,17 +527,24 @@ public class Dialogue {
             }
             if (this.postDialogueComponentText == null) {
                 trait.setNotTalkingToPlayer(player);
-                return;
+                if ((this.rewards == null || this.rewards.isEmpty()) && (this.commands == null || this.commands.isEmpty())) {
+                    return;
+                }
             }
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
                 @Override
                 public void run() {
                     if (Dialogue.this.rewards == null || Dialogue.this.rewards.isEmpty()) {
-                        player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        if (Dialogue.this.postDialogueComponentText != null) {
+                            player.spigot().sendMessage(Dialogue.this.postDialogueComponentText);
+                        }
                     }
                     trait.setNotTalkingToPlayer(player);
                     if (Dialogue.this.rewards != null && !Dialogue.this.rewards.isEmpty()) {
                         Dialogue.this.giveRewards(player);
+                    }
+                    if (Dialogue.this.commands != null && !Dialogue.this.commands.isEmpty()) {
+                        Dialogue.this.runCommands(player);
                     }
                 }
             }, delay * 1L);
@@ -512,8 +573,11 @@ public class Dialogue {
         player.sendMessage("\n" + ChatColor.GOLD + "■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■");
         ChainCommand chain = new ChainCommand(this.rewards, player);
         chain.run();
+    }
+    private void runCommands(Player player) {
 
-
+        ChainCommand chain = new ChainCommand(this.commands, player);
+        chain.run();
     }
 
 

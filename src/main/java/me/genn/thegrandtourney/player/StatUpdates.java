@@ -21,24 +21,7 @@ public class StatUpdates {
     }
 
     public static void updateStatsFromItem(ItemStack item, Map<String, Map<String, Float>> fullChangeList) {
-        float strChange = 0;
-        float critDamChange = 0;
-        float speedChange = 0;
-        float critChanceChange = 0;
-        float healthChange = 0;
-        float defenseChange = 0;
-        float manaChange = 0;
-        float abilityPowerChange = 0;
-        float discountChange = 0;
-        float talkSpeedChange = 0;
-        float healthRegenChange = 0;
-        float manaRegenChange = 0;
-        float attackSpeedChange = 0;
-        float lureChange = 0;
-        float flashChange = 0;
-        float focusChange = 0;
-        float vigorChange = 0;
-        float seaCreatureChance = 0;
+        float change;
         Map<String, Float> changes = new HashMap<>();
         if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
             return;
@@ -48,156 +31,182 @@ public class StatUpdates {
             String line = ChatColor.stripColor((String) loreIter.next());
             if (ChatColor.stripColor(line).startsWith("Strength: +")) {
                 line = line.replaceFirst("(Strength: +\\+)", "");
-                strChange = Float.parseFloat(line);
-                changes.put("strength", strChange);
+                change = Float.parseFloat(line);
+                changes.put("strength", change);
             } else if (ChatColor.stripColor(line).startsWith("Strength: -")) {
                 line = line.replaceFirst("(Strength: +\\-)", "");
-                strChange = -Float.parseFloat(line);
-                changes.put("strength", strChange);
+                change = -Float.parseFloat(line);
+                changes.put("strength", change);
             } else if (ChatColor.stripColor(line).startsWith("Crit Damage: +")) {
                 line = line.replaceFirst("(Crit Damage: +\\+)", "");
                 line = line.replaceFirst("(%)", "");
-                critDamChange = Float.parseFloat(line);
-                changes.put("critDamage", critDamChange);
+                change = Float.parseFloat(line);
+                changes.put("critDamage", change);
             } else if (ChatColor.stripColor(line).startsWith("Crit Damage: -")) {
                 line = line.replaceFirst("(Crit Damage: +\\-)", "");
                 line = line.replaceFirst("(%)", "");
-                critDamChange = -Float.parseFloat(line);
-                changes.put("critDamage", critDamChange);
+                change = -Float.parseFloat(line);
+                changes.put("critDamage", change);
             } else if (ChatColor.stripColor(line).startsWith("Speed: +")) {
                 line = line.replaceFirst("(Speed: +\\+)", "");
-                speedChange = Float.parseFloat(line);
-                changes.put("speed", speedChange);
+                change = Float.parseFloat(line);
+                changes.put("speed", change);
             } else if (ChatColor.stripColor(line).startsWith("Speed: -")) {
                 line = line.replaceFirst("(Speed: +\\-)", "");
-                speedChange = -Float.parseFloat(line);
-                changes.put("speed", speedChange);
+                change = -Float.parseFloat(line);
+                changes.put("speed", change);
             } else if (ChatColor.stripColor(line).startsWith("Crit Chance: +")) {
                 line = line.replaceFirst("(Crit Chance: +\\+)", "");
                 line = line.replaceFirst("(%)", "");
-                critChanceChange = Float.parseFloat(line);
-                changes.put("critChance", critChanceChange);
+                change = Float.parseFloat(line);
+                changes.put("critChance", change);
             } else if (ChatColor.stripColor(line).startsWith("Crit Chance: -")) {
                 line = line.replaceFirst("(Crit Chance: +\\-)", "");
                 line = line.replaceFirst("(%)", "");
-                critChanceChange = -Float.parseFloat(line);
-                changes.put("critChance", critChanceChange);
+                change = -Float.parseFloat(line);
+                changes.put("critChance", change);
             } else if (ChatColor.stripColor(line).startsWith("Health: +")) {
                 line = line.replaceFirst("(Health: +\\+)", "");
-                healthChange = Float.parseFloat(line);
-                changes.put("health", healthChange);
+                change = Float.parseFloat(line);
+                changes.put("health", change);
             } else if (ChatColor.stripColor(line).startsWith("Health: -")) {
                 line = line.replaceFirst("(Health: +\\-)", "");
-                healthChange = -Float.parseFloat(line);
-                changes.put("health", healthChange);
+                change = -Float.parseFloat(line);
+                changes.put("health", change);
             } else if (ChatColor.stripColor(line).startsWith("Defense: +")) {
                 line = line.replaceFirst("(Defense: +\\+)", "");
-                defenseChange = Float.parseFloat(line);
-                changes.put("defense", defenseChange);
+                change = Float.parseFloat(line);
+                changes.put("defense", change);
             } else if (ChatColor.stripColor(line).startsWith("Defense: -")) {
                 line = line.replaceFirst("(Defense: +\\-)", "");
-                defenseChange = -Float.parseFloat(line);
-                changes.put("defense", defenseChange);
+                change = -Float.parseFloat(line);
+                changes.put("defense", change);
             } else if (ChatColor.stripColor(line).startsWith("Stamina: +")) {
                 line = line.replaceFirst("(Stamina: +\\+)", "");
-                manaChange = Float.parseFloat(line);
-                changes.put("mana", manaChange);
+                change = Float.parseFloat(line);
+                changes.put("mana", change);
             } else if (ChatColor.stripColor(line).startsWith("Stamina: -")) {
                 line = line.replaceFirst("(Stamina: +\\-)", "");
-                manaChange = -Float.parseFloat(line);
-                changes.put("mana", manaChange);
+                change = -Float.parseFloat(line);
+                changes.put("mana", change);
             } else if (ChatColor.stripColor(line).startsWith("Ability Damage: +")) {
                 line = line.replaceFirst("(Ability Damage: +\\+)", "");
                 line = line.replaceFirst("(%)", "");
-                abilityPowerChange = Float.parseFloat(line);
-                changes.put("abilityPower", abilityPowerChange);
+                change = Float.parseFloat(line);
+                changes.put("abilityPower", change);
             } else if (ChatColor.stripColor(line).startsWith("Ability Damage: -")) {
                 line = line.replaceFirst("(Ability Damage: +\\-)", "");
                 line = line.replaceFirst("(%)", "");
-                abilityPowerChange = -Float.parseFloat(line);
-                changes.put("abilityPower", abilityPowerChange);
+                change = -Float.parseFloat(line);
+                changes.put("abilityPower", change);
             } else if (ChatColor.stripColor(line).startsWith("Shop Discount: +")) {
                 line = line.replaceFirst("(Shop Discount: +\\+)", "");
                 line = line.replaceFirst("(%)", "");
-                discountChange = Float.parseFloat(line);
-                changes.put("discount", discountChange);
+                change = Float.parseFloat(line);
+                changes.put("discount", change);
             } else if (ChatColor.stripColor(line).startsWith("Shop Discount: -")) {
                 line = line.replaceFirst("(Shop Discount: +\\-)", "");
                 line = line.replaceFirst("(%)", "");
-                discountChange = -Float.parseFloat(line);
-                changes.put("discount", discountChange);
+                change = -Float.parseFloat(line);
+                changes.put("discount", change);
             } else if (ChatColor.stripColor(line).startsWith("Dialogue Speed: +")) {
                 line = line.replaceFirst("(Dialogue Speed: +\\+)", "");
-                talkSpeedChange = Float.parseFloat(line);
-                changes.put("talkSpeed", talkSpeedChange);
+                change = Float.parseFloat(line);
+                changes.put("talkSpeed", change);
             } else if (ChatColor.stripColor(line).startsWith("Dialogue Speed: -")) {
                 line = line.replaceFirst("(Dialogue Speed: +\\-)", "");
-                talkSpeedChange = -Float.parseFloat(line);
-                changes.put("talkSpeed", talkSpeedChange);
+                change = -Float.parseFloat(line);
+                changes.put("talkSpeed", change);
             } else if (ChatColor.stripColor(line).startsWith("Health Regen: +")) {
                 line = line.replaceFirst("(Health Regen: +\\+)", "");
-                healthRegenChange = Float.parseFloat(line);
-                changes.put("healthRegen", healthRegenChange);
+                change = Float.parseFloat(line);
+                changes.put("healthRegen", change);
             } else if (ChatColor.stripColor(line).startsWith("Health Regen: -")) {
                 line = line.replaceFirst("(Health Regen: +\\-)", "");
-                healthRegenChange = -Float.parseFloat(line);
-                changes.put("healthRegen", healthRegenChange);
+                change = -Float.parseFloat(line);
+                changes.put("healthRegen", change);
             } else if (ChatColor.stripColor(line).startsWith("Mana Regen: +")) {
                 line = line.replaceFirst("(Mana Regen: +\\+)", "");
-                manaRegenChange = Float.parseFloat(line);
-                changes.put("manaRegen", manaRegenChange);
+                change = Float.parseFloat(line);
+                changes.put("manaRegen", change);
             } else if (ChatColor.stripColor(line).startsWith("Mana Regen: -")) {
                 line = line.replaceFirst("(Mana Regen: +\\-)", "");
-                manaRegenChange = -Float.parseFloat(line);
-                changes.put("manaRegen", manaRegenChange);
+                change = -Float.parseFloat(line);
+                changes.put("manaRegen", change);
             } else if (ChatColor.stripColor(line).startsWith("Attack Speed: +")) {
                 line = line.replaceFirst("(Attack Speed: +\\+)", "");
-                attackSpeedChange = Float.parseFloat(line);
-                changes.put("attackSpeed", attackSpeedChange);
+                change = Float.parseFloat(line);
+                changes.put("attackSpeed", change);
             } else if (ChatColor.stripColor(line).startsWith("Attack Speed: -")) {
                 line = line.replaceFirst("(Attack Speed: +\\-)", "");
-                attackSpeedChange = -Float.parseFloat(line);
-                changes.put("attackSpeed", attackSpeedChange);
+                change = -Float.parseFloat(line);
+                changes.put("attackSpeed", change);
             } else if (ChatColor.stripColor(line).startsWith("Fishing Speed: +")) {
                 line = line.replaceFirst("(Fishing Speed: +\\+)", "");
-                lureChange = Float.parseFloat(line);
-                changes.put("lure", lureChange);
+                change = Float.parseFloat(line);
+                changes.put("lure", change);
             } else if (ChatColor.stripColor(line).startsWith("Fishing Speed: -")) {
                 line = line.replaceFirst("(Fishing Speed: +\\-)", "");
-                lureChange = -Float.parseFloat(line);
-                changes.put("lure", lureChange);
+                change = -Float.parseFloat(line);
+                changes.put("lure", change);
             } else if (ChatColor.stripColor(line).startsWith("Lure: +")) {
                 line = line.replaceFirst("(Lure: +\\+)", "");
-                flashChange = Float.parseFloat(line);
-                changes.put("flash", flashChange);
+                change = Float.parseFloat(line);
+                changes.put("flash", change);
             } else if (ChatColor.stripColor(line).startsWith("Lure: -")) {
                 line = line.replaceFirst("(Lure: +\\-)", "");
-                flashChange = -Float.parseFloat(line);
-                changes.put("flash", flashChange);
+                change = -Float.parseFloat(line);
+                changes.put("flash", change);
             } else if (ChatColor.stripColor(line).startsWith("Focus: +")) {
                 line = line.replaceFirst("(Focus: +\\+)", "");
-                focusChange = Float.parseFloat(line);
-                changes.put("focus", focusChange);
+                change = Float.parseFloat(line);
+                changes.put("focus", change);
             } else if (ChatColor.stripColor(line).startsWith("Focus: -")) {
                 line = line.replaceFirst("(Focus: +\\-)", "");
-                focusChange = -Float.parseFloat(line);
-                changes.put("focus", focusChange);
+                change = -Float.parseFloat(line);
+                changes.put("focus", change);
             } else if (ChatColor.stripColor(line).startsWith("Vigor: +")) {
                 line = line.replaceFirst("(Vigor: +\\+)", "");
-                vigorChange = Float.parseFloat(line);
-                changes.put("vigor", vigorChange);
+                change = Float.parseFloat(line);
+                changes.put("vigor", change);
             } else if (ChatColor.stripColor(line).startsWith("Vigor: -")) {
                 line = line.replaceFirst("(Vigor: +\\-)", "");
-                vigorChange = -Float.parseFloat(line);
-                changes.put("vigor", vigorChange);
+                change = -Float.parseFloat(line);
+                changes.put("vigor", change);
             } else if (ChatColor.stripColor(line).startsWith("Sea Creature Chance: +")) {
                 line = line.replaceFirst("(Sea Creature Chance: +\\+)", "");
-                seaCreatureChance = Float.parseFloat(line);
-                changes.put("seaCreatureChance", seaCreatureChance);
+                line = line.replaceFirst("(%)", "");
+                change = Float.parseFloat(line);
+                changes.put("seaCreatureChance", change);
             } else if (ChatColor.stripColor(line).startsWith("Sea Creature Chance: -")) {
                 line = line.replaceFirst("(Sea Creature Chance: +\\-)", "");
-                seaCreatureChance = -Float.parseFloat(line);
-                changes.put("seaCreatureChance", seaCreatureChance);
+                line = line.replaceFirst("(%)", "");
+                change = -Float.parseFloat(line);
+                changes.put("seaCreatureChance", change);
+            } else if (ChatColor.stripColor(line).startsWith("Farming Fortune: +")) {
+                line = line.replaceFirst("(Farming Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                changes.put("farmingFortune", change);
+            } else if (ChatColor.stripColor(line).startsWith("Farming Fortune: -")) {
+                line = line.replaceFirst("(Farming Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                changes.put("farmingFortune", change);
+            } else if (ChatColor.stripColor(line).startsWith("Foraging Fortune: +")) {
+                line = line.replaceFirst("(Foraging Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                changes.put("foragingFortune", change);
+            } else if (ChatColor.stripColor(line).startsWith("Foraging Fortune: -")) {
+                line = line.replaceFirst("(Foraging Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                changes.put("foragingFortune", change);
+            } else if (ChatColor.stripColor(line).startsWith("Mining Fortune: +")) {
+                line = line.replaceFirst("(Mining Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                changes.put("miningFortune", change);
+            } else if (ChatColor.stripColor(line).startsWith("Mining Fortune: -")) {
+                line = line.replaceFirst("(Mining Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                changes.put("miningFortune", change);
             }
 
         }
@@ -307,9 +316,12 @@ public class StatUpdates {
         float focusChange = 0;
         float vigorChange = 0;
         float seaCreatureChance = 0;
+        float miningFortuneChange = 0;
+        float farmingFortuneChange = 0;
+        float foragingFortuneChange = 0;
+        float evasivenessChange = 0;
         if (plugin.listener.checkWieldingItemForLvlRequirements(player)) {
             updateStatsFromItem(player.getInventory().getItemInMainHand(), changeMap);
-
         }
 
         if (player.getInventory().getHelmet() != null ) {
@@ -332,7 +344,152 @@ public class StatUpdates {
                 updateStatsFromItem(player.getInventory().getBoots(), changeMap);
             }
         }
+        if (mmoPlayer.buffs.size() > 0) {
+            for (StatBuff buff : mmoPlayer.buffs) {
+                if (buff.expiryTime < System.currentTimeMillis()) {
+                    mmoPlayer.buffs.remove(buff);
+                    if (buff.statName.equalsIgnoreCase("absorption")) {
+                        if (buff.amount > 0 && buff.added) {
+                            mmoPlayer.setAbsorptionHealth(mmoPlayer.getAbsorptionHealth() - buff.amount);
+                            if (mmoPlayer.getAbsorptionHealth() < 0) {
+                                mmoPlayer.setAbsorptionHealth(0);
+                            }
+                        }
+                        mmoPlayer.absorptionLayers.stream().filter(o -> o.expiryTime == buff.expiryTime).findFirst().ifPresent(removal -> mmoPlayer.absorptionLayers.remove(removal));
+                        mmoPlayer.sortLayers();
+                    }
+                    if (buff.statName.equalsIgnoreCase("absorption") || buff.statName.equalsIgnoreCase("health")) {
+                        plugin.updatePlayerHealth(mmoPlayer,0);
+                    }
 
+                    continue;
+                }
+                String statName = buff.statName;
+                float amount = buff.amount;
+                if (statName.equalsIgnoreCase("strength")) {
+                    strChange = strChange + amount;
+                } else if (statName.equalsIgnoreCase("defense")) {
+                    defenseChange = defenseChange + amount;
+                } else if (statName.equalsIgnoreCase("health")) {
+                    healthChange = healthChange + amount;
+                } else if (statName.equalsIgnoreCase("crit-damage")) {
+                    critDamChange = critDamChange + amount;
+                } else if (statName.equalsIgnoreCase("crit-chance")) {
+                    critChanceChange = critChanceChange + amount;
+                } else if (statName.equalsIgnoreCase("speed")) {
+                    speedChange = speedChange + amount;
+                } else if (statName.equalsIgnoreCase("vigor")) {
+                    vigorChange = vigorChange + amount;
+                } else if (statName.equalsIgnoreCase("stamina-regen")) {
+                    manaRegenChange = manaRegenChange + amount;
+                } else if (statName.equalsIgnoreCase("health-regen")) {
+                    healthRegenChange = healthRegenChange + amount;
+                } else if (statName.equalsIgnoreCase("ability-damage")) {
+                    abilityPowerChange = abilityPowerChange + amount;
+                } else if (statName.equalsIgnoreCase("mining-fortune")) {
+                    miningFortuneChange = miningFortuneChange + amount;
+                } else if (statName.equalsIgnoreCase("farming-fortune")) {
+                    farmingFortuneChange = farmingFortuneChange + amount;
+                } else if (statName.equalsIgnoreCase("foraging-fortune")) {
+                    foragingFortuneChange = foragingFortuneChange + amount;
+                } else if (statName.equalsIgnoreCase("fishing-speed")) {
+                    lureChange = lureChange + amount;
+                } else if (statName.equalsIgnoreCase("lure")) {
+                    flashChange = flashChange + amount;
+                } else if (statName.equalsIgnoreCase("dialogue-speed")) {
+                    talkSpeedChange = talkSpeedChange + amount;
+                } else if (statName.equalsIgnoreCase("shop-discount")) {
+                    discountChange = discountChange + amount;
+                } else if (statName.equalsIgnoreCase("focus")) {
+                    focusChange = focusChange + amount;
+                } else if (statName.equalsIgnoreCase("stamina")) {
+                    manaChange = manaChange + amount;
+                } else if (statName.equalsIgnoreCase("sea-creature-chance")) {
+                    seaCreatureChance = seaCreatureChance + amount;
+                } else if (statName.equalsIgnoreCase("absorption")) {
+                    if (!buff.added) {
+                        mmoPlayer.setAbsorptionHealth(mmoPlayer.getAbsorptionHealth() + amount);
+                        buff.added = true;
+                    }
+                } else if (statName.equalsIgnoreCase("evasiveness")) {
+                    evasivenessChange = evasivenessChange + amount;
+                }
+            }
+        }
+        if (mmoPlayer.potionEffects.size() > 0) {
+            for (PotionEffect buff : mmoPlayer.potionEffects) {
+                if (buff.expiryTime < System.currentTimeMillis()) {
+                    mmoPlayer.potionEffects.remove(buff);
+                    for (StatBuff stat : buff.statsImpacted) {
+                        String name = stat.statName;
+                        if (name.equalsIgnoreCase("absorption")) {
+                            if (stat.amount > 0 && buff.added) {
+                                mmoPlayer.setAbsorptionHealth(mmoPlayer.getAbsorptionHealth() - stat.amount);
+                                if (mmoPlayer.getAbsorptionHealth() < 0) {
+                                    mmoPlayer.setAbsorptionHealth(0);
+                                }
+                            }
+                        }
+                        if (name.equalsIgnoreCase("absorption") || name.equalsIgnoreCase("health")) {
+                            plugin.updatePlayerHealth(mmoPlayer,0);
+                        }
+                    }
+                    continue;
+                }
+                for (StatBuff stat : buff.statsImpacted) {
+                    String statName = stat.statName;
+                    float amount = stat.amount;
+                    if (statName.equalsIgnoreCase("strength")) {
+                        strChange = strChange + amount;
+                    } else if (statName.equalsIgnoreCase("defense")) {
+                        defenseChange = defenseChange + amount;
+                    } else if (statName.equalsIgnoreCase("health")) {
+                        healthChange = healthChange + amount;
+                    } else if (statName.equalsIgnoreCase("crit-damage")) {
+                        critDamChange = critDamChange + amount;
+                    } else if (statName.equalsIgnoreCase("crit-chance")) {
+                        critChanceChange = critChanceChange + amount;
+                    } else if (statName.equalsIgnoreCase("speed")) {
+                        speedChange = speedChange + amount;
+                    } else if (statName.equalsIgnoreCase("vigor")) {
+                        vigorChange = vigorChange + amount;
+                    } else if (statName.equalsIgnoreCase("stamina-regen")) {
+                        manaRegenChange = manaRegenChange + amount;
+                    } else if (statName.equalsIgnoreCase("health-regen")) {
+                        healthRegenChange = healthRegenChange + amount;
+                    } else if (statName.equalsIgnoreCase("ability-damage")) {
+                        abilityPowerChange = abilityPowerChange + amount;
+                    } else if (statName.equalsIgnoreCase("mining-fortune")) {
+                        miningFortuneChange = miningFortuneChange + amount;
+                    } else if (statName.equalsIgnoreCase("farming-fortune")) {
+                        farmingFortuneChange = farmingFortuneChange + amount;
+                    } else if (statName.equalsIgnoreCase("foraging-fortune")) {
+                        foragingFortuneChange = foragingFortuneChange + amount;
+                    } else if (statName.equalsIgnoreCase("fishing-speed")) {
+                        lureChange = lureChange + amount;
+                    } else if (statName.equalsIgnoreCase("lure")) {
+                        flashChange = flashChange + amount;
+                    } else if (statName.equalsIgnoreCase("dialogue-speed")) {
+                        talkSpeedChange = talkSpeedChange + amount;
+                    } else if (statName.equalsIgnoreCase("shop-discount")) {
+                        discountChange = discountChange + amount;
+                    } else if (statName.equalsIgnoreCase("focus")) {
+                        focusChange = focusChange + amount;
+                    } else if (statName.equalsIgnoreCase("stamina")) {
+                        manaChange = manaChange + amount;
+                    } else if (statName.equalsIgnoreCase("sea-creature-chance")) {
+                        seaCreatureChance = seaCreatureChance + amount;
+                    } else if (statName.equalsIgnoreCase("absorption")) {
+                        if (!buff.added) {
+                            mmoPlayer.setAbsorptionHealth(mmoPlayer.getAbsorptionHealth() + amount);
+                            buff.added = true;
+                        }
+                    } else if (statName.equalsIgnoreCase("evasiveness")) {
+                        evasivenessChange = evasivenessChange + amount;
+                    }
+                }
+            }
+        }
         Iterator<ItemStack> invIter = player.getInventory().iterator();
         while (invIter.hasNext()) {
             ItemStack item = (ItemStack) invIter.next();
@@ -357,6 +514,7 @@ public class StatUpdates {
         while (statsIter.hasNext()) {
             Map<String, Float> map = changeMap.get(statsIter.next());
             for (Map.Entry<String, Float> itr : map.entrySet()) {
+
                 if (itr.getKey().equalsIgnoreCase("strength")) {
                     strChange = strChange + itr.getValue();
                 } else if (itr.getKey().equalsIgnoreCase("critDamage")) {
@@ -393,6 +551,12 @@ public class StatUpdates {
                     vigorChange = vigorChange + itr.getValue();
                 } else if (itr.getKey().equalsIgnoreCase("seaCreatureChance")) {
                     seaCreatureChance = seaCreatureChance + itr.getValue();
+                } else if (itr.getKey().equalsIgnoreCase("miningFortune")) {
+                    miningFortuneChange = miningFortuneChange + itr.getValue();
+                } else if (itr.getKey().equalsIgnoreCase("foragingFortune")) {
+                    foragingFortuneChange = foragingFortuneChange + itr.getValue();
+                } else if (itr.getKey().equalsIgnoreCase("farmingFortune")) {
+                    farmingFortuneChange = farmingFortuneChange + itr.getValue();
                 }
             }
         }
@@ -410,11 +574,14 @@ public class StatUpdates {
         mmoPlayer.setManaRegen(mmoPlayer.getBaseManaRegen() + manaRegenChange);
         mmoPlayer.setHealthRegen(mmoPlayer.getBaseHealthRegen() + healthRegenChange);
         mmoPlayer.setAttackSpeed(mmoPlayer.getAttackSpeed() + attackSpeedChange);
-
+        mmoPlayer.setEvasiveness(0.0f + evasivenessChange);
         mmoPlayer.setFlash(mmoPlayer.getBaseFlash() + flashChange);
         mmoPlayer.setLure(mmoPlayer.getBaseLure() + lureChange);
         mmoPlayer.setFocus(mmoPlayer.getBaseFocus() + focusChange);
         mmoPlayer.setSeaCreatureChance(mmoPlayer.getBaseSeaCreatureChance() + seaCreatureChance);
+        mmoPlayer.setMiningFortune(mmoPlayer.getBaseMiningFortune() + miningFortuneChange);
+        mmoPlayer.setLoggingFortune(mmoPlayer.getBaseLoggingFortune() + foragingFortuneChange);
+        mmoPlayer.setFarmingFortune(mmoPlayer.getBaseFarmingFortune() + farmingFortuneChange);
         Iterator<ItemStack> iter = player.getInventory().iterator();
         while (iter.hasNext()) {
             ItemStack item = (ItemStack) iter.next();
@@ -685,12 +852,64 @@ public class StatUpdates {
                 change = -Float.parseFloat(line);
                 change = change - (change * (multiplier-1));
                 lore.set(i, ChatColor.GRAY + "Vigor: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Sea Creature Chance: +")) {
+                line = line.replaceFirst("(Sea Creature Chance: +\\+)", "");
+                line = line.replaceFirst("(%)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Sea Creature Chance: " + ChatColor.GREEN + "+" + String.format("%.1f", change) + "%");
+            } else if (line.startsWith("Sea Creature Chance: -")) {
+                line = line.replaceFirst("(Sea Creature Chance: +\\-)", "");
+                line = line.replaceFirst("(%)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Sea Creature Chance: " + ChatColor.RED + "-" + String.format("%.1f", change) + "%");
+            } else if (line.startsWith("Farming Fortune: +")) {
+                line = line.replaceFirst("(Farming Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Farming Fortune: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Farming Fortune: -")) {
+                line = line.replaceFirst("(Farming Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Farming Fortune: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Foraging Fortune: +")) {
+                line = line.replaceFirst("(Foraging Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Foraging Fortune: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Foraging Fortune: -")) {
+                line = line.replaceFirst("(Foraging Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Foraging Fortune: " + ChatColor.RED + "-" + String.format("%.1f", change));
+            } else if (line.startsWith("Mining Fortune: +")) {
+                line = line.replaceFirst("(Mining Fortune: +\\+)", "");
+                change = Float.parseFloat(line);
+                change = change * multiplier;
+                lore.set(i, ChatColor.GRAY + "Mining Fortune: " + ChatColor.GREEN + "+" + String.format("%.1f", change));
+            } else if (line.startsWith("Mining Fortune: -")) {
+                line = line.replaceFirst("(Mining Fortune: +\\-)", "");
+                change = -Float.parseFloat(line);
+                change = change - (change * (multiplier-1));
+                lore.set(i, ChatColor.GRAY + "Mining Fortune: " + ChatColor.RED + "-" + String.format("%.1f", change));
             }
         }
         return lore;
     }
 
-    private float calculateAbilityDamage(float num, MMOPlayer mmoPlayer, MMOItem mmoItem) {
+    public float calculateNormalDamage(float num, MMOPlayer mmoPlayer, boolean crit) {
+        num = (5+num) * getNormalDamageModifier(mmoPlayer);
+        if (crit) {
+            num = num * (1+(mmoPlayer.getCritDamage()/100));
+        }
+        return num;
+    }
+    private float getNormalDamageModifier(MMOPlayer mmoPlayer) {
+        return (1+(mmoPlayer.getStrength()/100)) * normalDamageAdditiveMults(mmoPlayer) * normalDamageMultiplicativeMults(mmoPlayer);
+    }
+    public float calculateAbilityDamage(float num, MMOPlayer mmoPlayer, MMOItem mmoItem) {
         num = num * getAbilityDamageModifier(mmoPlayer, mmoItem);
         return num;
     }
@@ -698,7 +917,13 @@ public class StatUpdates {
         return (1 + (mmoPlayer.getVigor()/100) * mmoItem.abilityScaling) * abilityDamageAdditiveMults(mmoPlayer) * abilityDamageMultiplicativeMults(mmoPlayer);
     }
     private float abilityDamageAdditiveMults(MMOPlayer mmoPlayer) {
-        return (float) 1;
+        float multiplier = 1;
+        double combatLvlMult = mmoPlayer.getCombatLvl() * 0.04;
+        if (plugin.tournament) {
+            combatLvlMult = combatLvlMult * 2;
+        }
+        multiplier = (float) (multiplier + combatLvlMult);
+        return multiplier;
     }
 
     private float abilityDamageMultiplicativeMults(MMOPlayer mmoPlayer) {
@@ -706,4 +931,28 @@ public class StatUpdates {
         multiplier = multiplier * (1 + (mmoPlayer.getAbilityDamage()/100));
         return multiplier;
     }
+    private float normalDamageAdditiveMults(MMOPlayer mmoPlayer) {
+        float multiplier = 1;
+        double combatLvlMult = mmoPlayer.getCombatLvl() * 0.04;
+        if (plugin.tournament) {
+            combatLvlMult = combatLvlMult * 2;
+        }
+        multiplier = (float) (multiplier + combatLvlMult);
+        return multiplier;
+    }
+    private float normalDamageMultiplicativeMults(MMOPlayer mmoPlayer) {
+        return 1;
+    }
+
+    public void temporaryStatUpdate(MMOPlayer mmoPlayer, String statName, float amount, int timeInSecs) {
+        StatBuff buff = new StatBuff(statName, amount, System.currentTimeMillis() + (1000L*timeInSecs));
+        mmoPlayer.buffs.add(buff);
+        if (statName.equalsIgnoreCase("absorption")) {
+            mmoPlayer.absorptionLayers.add(buff);
+            plugin.updatePlayerHealth(mmoPlayer,0);
+            mmoPlayer.sortLayers();
+        }
+    }
+
+
 }

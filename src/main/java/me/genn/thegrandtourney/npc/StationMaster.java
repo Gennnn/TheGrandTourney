@@ -96,7 +96,7 @@ public class StationMaster extends Quest {
                 this.playSound(player, "random.levelup", 1.0F, 2.0F);
             }
             plugin.getLogger().log(Level.INFO,"Successfully creating dialogue...");
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate, step.commands);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }

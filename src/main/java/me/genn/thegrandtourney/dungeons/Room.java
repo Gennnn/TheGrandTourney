@@ -38,6 +38,7 @@ public class Room implements Listener {
     public List<UUID> completedPlayers;
     TGT plugin;
     BukkitTask boundsTask;
+    public RewardChest rewardChest;
 
     public Room(TGT plugin) {
         this.playerProgress = new IntMap<>();
@@ -92,6 +93,9 @@ public class Room implements Listener {
         }
         if (this.door != null) {
             this.door.unregister();
+        }
+        if (this.rewardChest != null) {
+            this.rewardChest.remove();
         }
         this.minLoc = null;
         this.maxLoc = null;

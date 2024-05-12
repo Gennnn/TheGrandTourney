@@ -3,6 +3,7 @@ package me.genn.thegrandtourney.menu;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.npc.StationMaster;
 import me.genn.thegrandtourney.npc.StationMasterRecipeBook;
+import me.genn.thegrandtourney.player.PotionEffect;
 import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.entity.Player;
 
@@ -14,6 +15,7 @@ public class MenuManager {
     private SkillXpSelector skillMenu;
     private RecipeBook recipeMenu;
     private StationMasterRecipeBook stationMasterRecipeBook;
+    private PotionEffects potionEffects;
     TGT plugin;
 
     public MenuManager(TGT plugin) {
@@ -25,6 +27,7 @@ public class MenuManager {
         this.skillMenu = new SkillXpSelector(plugin);
         this.recipeMenu = new RecipeBook(plugin);
         this.stationMasterRecipeBook = new StationMasterRecipeBook(plugin);
+        this.potionEffects = new PotionEffects(plugin);
     }
 
     public void openHomeMenu(Player player) {
@@ -44,4 +47,5 @@ public class MenuManager {
     public void openSkillMenu(Player player) {this.skillMenu.loadSkillSelectionMenu(player);}
     public void openRecipeBook(Player player) {this.recipeMenu.loadMenuRecipeBook(player, 0, XpType.ALL);}
     public void openStationMasterMenu(Player player, XpType type, StationMaster sm) {this.stationMasterRecipeBook.loadMenuRecipeBook(player, 0, type, sm);}
+    public void openActiveEffectsMenu(Player player) {this.potionEffects.loadMenuPotionEffects(player);}
 }

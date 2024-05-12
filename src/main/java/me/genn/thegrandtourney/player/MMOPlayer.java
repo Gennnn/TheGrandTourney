@@ -16,7 +16,6 @@ import java.util.*;
 
 public class MMOPlayer {
     public TGT plugin;
-    public String currentGoal;
 
     public Objective trackedObjective;
     private float health;
@@ -41,6 +40,7 @@ public class MMOPlayer {
 
     private float abilityDamage;
     private float baseAbilityDamage;
+
 
     public float getLure() {
         return lure;
@@ -88,11 +88,135 @@ public class MMOPlayer {
         this.completedObjectives = new ArrayList<>();
         this.recipeBook = new ArrayList<>();
     }
+    public HashSet<StatBuff> buffs = new HashSet<>();
+    public HashSet<PotionEffect> potionEffects = new HashSet<>();
     public boolean isCrafting = false;
     public Location craftStart;
     public String currentCraft = "none";
     public Craft currentCraftObj = null;
     public Station currentStation;
+    public List<StatBuff> absorptionLayers = new ArrayList<>();
+
+    public float getTotalHealth() {
+        return health + absorptionHealth;
+    }
+
+    public void takeDamage(float damage) {
+        if (absorptionLayers.size() > 0) {
+            this.sortLayers();
+
+            do {
+                StatBuff layer = absorptionLayers.get(0);
+                if (layer.amount > damage) {
+                    layer.amount = layer.amount - damage;
+                    damage = 0;
+                    absorptionLayers.set(0, layer);
+                } else if (layer.amount == damage) {
+                    damage = 0;
+                    absorptionLayers.remove(layer);
+                } else if (layer.amount < damage) {
+                    damage = damage - layer.amount;
+                    absorptionLayers.remove(layer);
+                }
+            } while (damage > 0 && absorptionLayers.size() > 0);
+        }
+        if (potionEffects.size() > 0 && potionEffects.stream().anyMatch(o -> o.statsImpacted.stream().anyMatch(o2 -> o2.statName.equalsIgnoreCase("absorption")))) {
+            for (PotionEffect effect : potionEffects) {
+                StatBuff buff = effect.statsImpacted.stream().filter(o3 -> o3.statName.equalsIgnoreCase("absorption")).findFirst().orElse(null);
+                if (buff != null && buff.amount > 0) {
+                    if (buff.amount > damage) {
+                        buff.amount = buff.amount - damage;
+                        damage = 0;
+                    } else if (buff.amount == damage) {
+                        damage = 0;
+                    } else if (buff.amount < damage) {
+                        damage = damage - buff.amount;
+                    }
+                }
+            }
+        }
+        if (potionEffects.size() > 0 || absorptionLayers.size() > 0) {
+            float absorptionHealth = 0.0f;
+            for (PotionEffect effect : potionEffects) {
+                StatBuff buff = effect.statsImpacted.stream().filter(o3 -> o3.statName.equalsIgnoreCase("absorption")).findFirst().orElse(null);
+                if (buff != null) {
+                    absorptionHealth = absorptionHealth + buff.amount;
+                }
+            }
+            for (StatBuff buff : absorptionLayers) {
+                absorptionHealth = absorptionHealth + buff.amount;
+            }
+            this.absorptionHealth = absorptionHealth;
+        }
+
+        //plugin.updatePlayerHealth(this,-damage);
+    }
+
+    public boolean addPotionEffect(String effectName, int lvl, int timeInSecs, ItemStack activatingItem) {
+        PotionEffect effect = new PotionEffect(effectName,System.currentTimeMillis() + (1000L * timeInSecs),lvl, activatingItem);
+        if(potionEffects.stream().anyMatch(o -> o.name.equalsIgnoreCase(effectName))) {
+            PotionEffect compEffect = potionEffects.stream().filter(o -> o.name.equalsIgnoreCase(effectName)).findFirst().orElse(null);
+            if (compEffect!=null) {
+                StatBuff oldAbsorption = compEffect.statsImpacted.stream().filter(o2 -> o2.statName.equalsIgnoreCase("absorption")).findFirst().orElse(null);
+                StatBuff newAbsorption = effect.statsImpacted.stream().filter(o3 -> o3.statName.equalsIgnoreCase("absorption")).findFirst().orElse(null);
+
+                if (lvl < compEffect.lvl) {
+                    if (oldAbsorption != null && newAbsorption != null) {
+                        if (oldAbsorption.amount < newAbsorption.amount) {
+                            oldAbsorption.amount = newAbsorption.amount;
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else if (lvl == compEffect.lvl) {
+                    if (effect.expiryTime <= compEffect.expiryTime) {
+                        return false;
+                    } else {
+                        this.potionEffects.remove(compEffect);
+                    }
+                } else {
+                    this.potionEffects.remove(compEffect);
+                }
+            }
+        }
+        effect.addStatsForName(this);
+        this.potionEffects.add(effect);
+        takeDamage(0);
+        return true;
+    }
+
+    public float getEvasiveness() {
+        return this.evasiveness;
+    }
+
+    public void setEvasiveness(float value) {
+        this.evasiveness = value;
+    }
+
+    private float evasiveness = 0.0f;
+
+
+    public void heal(float amount) {
+        plugin.updatePlayerHealth(this, amount);
+    }
+
+    public float getAbsorptionHealth() {
+        return absorptionHealth;
+    }
+
+    public void setAbsorptionHealth(float absorptionHealth) {
+        this.absorptionHealth = absorptionHealth;
+    }
+
+    public void sortLayers() {
+        Collections.sort(absorptionLayers, Comparator.comparingLong(StatBuff::getExpiryTime));
+    }
+
+
+    private float absorptionHealth = 0.0f;
 
     public float getStrength() {
         return strength;
@@ -233,12 +357,50 @@ public class MMOPlayer {
     private int farmingLvl;
     private int smithingLvl;
     private int cookingLvl;
+
+    public int getAlchemyLvl() {
+        return alchemyLvl;
+    }
+
+    public void setAlchemyLvl(int alchemyLvl) {
+        this.alchemyLvl = alchemyLvl;
+    }
+
+    public int getCarpentryLvl() {
+        return carpentryLvl;
+    }
+
+    public void setCarpentryLvl(int carpentryLvl) {
+        this.carpentryLvl = carpentryLvl;
+    }
+
+    private int alchemyLvl;
+    private int carpentryLvl;
     private float combatProg;
     private float miningProg;
     private float loggingProg;
     private float fishingProg;
     private float farmingProg;
     private float smithingProg;
+
+    public float getAlchemyProg() {
+        return alchemyProg;
+    }
+
+    public void setAlchemyProg(float alchemyProg) {
+        this.alchemyProg = alchemyProg;
+    }
+
+    public float getCarpentryProg() {
+        return carpentryProg;
+    }
+
+    public void setCarpentryProg(float carpentryProg) {
+        this.carpentryProg = carpentryProg;
+    }
+
+    private float alchemyProg;
+    private float carpentryProg;
 
 
     public float getTailoringProg() {
@@ -559,7 +721,7 @@ public class MMOPlayer {
     public void setCritChance(float critChance) {
         this.critChance = critChance;
     }
-
+    public List<ItemStack> soldItems = new ArrayList<>();
 
     public float getVigor() {
         return vigor;
@@ -731,6 +893,10 @@ public class MMOPlayer {
             return getFishingProg();
         } else if (type == XpType.MINING) {
             return getMiningProg();
+        } else if (type == XpType.ALCHEMY) {
+            return getAlchemyProg();
+        } else if (type == XpType.CARPENTRY) {
+            return getCarpentryProg();
         }
         return 0.0F;
     }
@@ -753,6 +919,10 @@ public class MMOPlayer {
              setFishingProg((float)amount);
         } else if (type == XpType.MINING) {
              setMiningProg((float)amount);
+        } else if (type == XpType.CARPENTRY) {
+            setCarpentryProg((float)amount);
+        } else if (type == XpType.ALCHEMY) {
+            setAlchemyProg((float)amount);
         }
     }
 
@@ -775,6 +945,10 @@ public class MMOPlayer {
             return getFishingLvl();
         } else if (type == XpType.MINING) {
             return getMiningLvl();
+        } else if (type == XpType.ALCHEMY) {
+            return getAlchemyLvl();
+        } else if (type == XpType.CARPENTRY) {
+            return getCarpentryLvl();
         }
         return 0;
     }
@@ -798,6 +972,10 @@ public class MMOPlayer {
              setFishingLvl(lvl);
         } else if (type == XpType.MINING) {
              setMiningLvl(lvl);
+        } else if (type == XpType.CARPENTRY) {
+            setCarpentryLvl(lvl);
+        } else if (type == XpType.ALCHEMY) {
+            setAlchemyLvl(lvl);
         }
     }
 

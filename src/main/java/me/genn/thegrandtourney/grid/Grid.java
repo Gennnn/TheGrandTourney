@@ -22,6 +22,7 @@ import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.DataException;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.dungeons.*;
 import me.genn.thegrandtourney.mobs.Spawner;
 import me.genn.thegrandtourney.npc.TGTNpc;
 import me.genn.thegrandtourney.skills.HoldingTable;
@@ -65,7 +66,6 @@ public class Grid {
     public boolean districtCheck = false;
     public int numBackRoads = 5;
     SchematicHandler schemHandler;
-    public List<Cell> listOfCellsThatShouldHaveBeenPastedTo;
     List<Direction> potentialDirections = Arrays.asList(Direction.N, Direction.S, Direction.E, Direction.W);
     public List<Cell> portCells;
     public List<Cell> farmCells;
@@ -87,6 +87,14 @@ public class Grid {
     public List<Schematic> localSlumsOmni;
     public int runningDelay;
     public File schematicDetailsDirectory;
+    public int oceanXMin;
+    public int oceanXMax;
+    public int oceanZMin;
+    public int oceanZMax;
+    long lastGeneration;
+    boolean generationCompleted = false;
+    List<int[]> blacklistedCells = new ArrayList<>();
+
 
     public Grid(SchematicHandler schematicHandler, TGT plugin) {
         this.schemHandler = schematicHandler;
@@ -98,7 +106,6 @@ public class Grid {
     public void initialize() throws DataException, WorldEditException, IOException {
         grid = new Cell[size][size + (int)(0.5*size)];
         highways = new HashMap();
-        listOfCellsThatShouldHaveBeenPastedTo = new ArrayList();
         this.portCells = new ArrayList<>();
         this.aristocracyCells = new ArrayList<>();
         this.farmCells = new ArrayList<>();
@@ -164,6 +171,10 @@ public class Grid {
                     }
                 }
             }
+        }
+        for (int[] coords : this.blacklistedCells) {
+            Cell cell = grid[coords[0]][coords[1]];
+            cell.isOccupied = true;
         }
         for (int z = 0; z < size + (int)(0.5*size); z++) {
             for (int x = 0; x<size; x++) {
@@ -243,7 +254,7 @@ public class Grid {
             }
         }
         for (int x = 0; x < size; x++) {
-            for (int z = size; z < size + (int)(0.5*size); z++) {
+            for (int z = size; z < size*1.5; z++) {
                 grid[x][z].district = District.OUTSKIRTS;
                 this.outskirtsCells.add(grid[x][z]);
             }
@@ -354,7 +365,7 @@ public class Grid {
                     }
                     grid[lastX][lastZ].isRoad = true;
                     grid[lastX][lastZ].isOccupied = true;
-                    this.fillCellWithBlock(Material.COBBLESTONE, lastX , lastZ);
+                    this.fillCellWithBlock(Material.GRAVEL, lastX , lastZ);
 
 
                 }
@@ -581,7 +592,7 @@ public class Grid {
         final int finalX = paste.x;
         final int finalZ = paste.z;
         final Direction finalDirection = paste.direction;
-        Bukkit.getLogger().log(Level.INFO, "Performing paste of " + paste.schematic.name + " coords=" + paste.targetCellX + "," + paste.targetCellZ + " dir=" + paste.direction);
+        //Bukkit.getLogger().log(Level.INFO, "Performing paste of " + paste.schematic.name + " coords=" + paste.targetCellX + "," + paste.targetCellZ + " dir=" + paste.direction);
         if (paste.direction == Direction.S) {
             Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
                 @Override
@@ -837,7 +848,6 @@ public class Grid {
                 npc.npc.spawn(loc);
                 npc.pasteLocation = loc;
                 plugin.npcHandler.allSpawnedNpcs.add(npc);
-                plugin.getLogger().log(Level.INFO, "Added " + npc.internalName + " to allSpawnedNpcs");
             }
         }
 
@@ -969,6 +979,96 @@ public class Grid {
                 zone.paste(minLoc, maxLoc);
             }
         }
+        if (master.getConfigurationSection("dungeons") != null) {
+            ConfigurationSection dungeons = master.getConfigurationSection("dungeons");
+            Iterator<String> iter = dungeons.getKeys(false).iterator();
+            while (iter.hasNext()) {
+                String key = iter.next();
+                ConfigurationSection section = dungeons.getConfigurationSection(key);
+                DungeonTemplate template = plugin.dungeonHandler.allTemplates.stream().filter(obj -> obj.name.equalsIgnoreCase(section.getString("template-name"))).findFirst().orElse(null);
+                if (template == null) {
+                    continue;
+                }
+                Dungeon dungeon = new Dungeon(template, plugin);
+                Location minLoc = getPasteLocation(paste, section.getDouble("min-x"), section.getDouble("min-y"), section.getDouble("min-z"));
+                Location maxLoc = getPasteLocation(paste, section.getDouble("max-x"), section.getDouble("max-y"), section.getDouble("max-z"));
+                if (maxLoc.getX() < minLoc.getX()) {
+                    double minX = maxLoc.getX();
+                    double maxX = minLoc.getX();
+                    maxLoc.setX(maxX);
+                    minLoc.setX(minX);
+                }
+                if (maxLoc.getY() < minLoc.getY()) {
+                    double minY = maxLoc.getY();
+                    double maxY = minLoc.getY();
+                    maxLoc.setY(maxY);
+                    minLoc.setY(minY);
+                }
+                if (maxLoc.getZ() < minLoc.getZ()) {
+                    double minZ = maxLoc.getZ();
+                    double maxZ = minLoc.getZ();
+                    maxLoc.setZ(maxZ);
+                    minLoc.setZ(minZ);
+                }
+                dungeon.minLoc = minLoc.clone();
+                dungeon.maxLoc = maxLoc.clone();
+                if (section.contains("entrance-door-min-loc") && section.contains("entrance-door-max-loc") && section.contains("entrance-door-armorstand-loc")) {
+                    String[] minString = section.getString("entrance-door-min-loc").split(",");
+                    String[] maxString = section.getString("entrance-door-max-loc").split(",");
+                    String[] asString = section.getString("entrance-door-armorstand-loc").split(",");
+                    Location asLoc = getPasteLocation(paste,Double.parseDouble(asString[0]), Double.parseDouble(asString[1]), Double.parseDouble(asString[2]) );
+                    asLoc.setYaw((float)Double.parseDouble(asString[3]));
+                    dungeon.setDoorForDungeon(asLoc.toCenterLocation(), dungeon.getName() + ".door", getPasteLocation(paste, Double.parseDouble(minString[0]), Double.parseDouble(minString[1]), Double.parseDouble(minString[2])).toCenterLocation(), getPasteLocation(paste, Double.parseDouble(maxString[0]), Double.parseDouble(maxString[1]), Double.parseDouble(maxString[2])).toCenterLocation());
+                }
+                if (section.contains("exit-warp-entrance") && section.contains("exit-warp-target")) {
+                    String[] entranceStr = section.getString("exit-warp-entrance").split(",");
+                    String[] targetStr = section.getString("exit-warp-target").split(",");
+                    Location entranceLoc = getPasteLocation(paste, Double.parseDouble(entranceStr[0]), Double.parseDouble(entranceStr[1]), Double.parseDouble(entranceStr[2])).toCenterLocation();
+                    entranceLoc.setYaw((float)Double.parseDouble(entranceStr[3]));
+                    Location targetLoc = getPasteLocation(paste, Double.parseDouble(targetStr[0]), Double.parseDouble(targetStr[1]), Double.parseDouble(targetStr[2])).toCenterLocation();
+                    targetLoc.setYaw((float)Double.parseDouble(targetStr[3]));
+                    dungeon.createExitWarp(entranceLoc);
+                    dungeon.createExitTarget(targetLoc);
+                }
+                ConfigurationSection rooms = section.getConfigurationSection("rooms");
+                Iterator<String> roomsIter = rooms.getKeys(false).iterator();
+                while (roomsIter.hasNext()) {
+                    String roomKey = roomsIter.next();
+                    ConfigurationSection room = rooms.getConfigurationSection(roomKey);
+                    RoomData data = template.getRoomWithName(room.getString("name"));
+                    if (data == null) {
+                        continue;
+                    }
+                    if (data.goal == RoomGoal.SLAYER) {
+                        dungeon.addSlayerRoom(data.name, getPasteLocation(paste, room.getDouble("min-x"), room.getDouble("min-y"), room.getDouble("min-z")), getPasteLocation(paste, room.getDouble("max-x"), room.getDouble("max-y"), room.getDouble("max-z")), data.quantity, data.toProgress, data.preventAbilities);
+                    } else if (data.goal == RoomGoal.COLLECTION) {
+                        dungeon.addCollectionRoom(data.name, getPasteLocation(paste, room.getDouble("min-x"), room.getDouble("min-y"), room.getDouble("min-z")), getPasteLocation(paste, room.getDouble("max-x"), room.getDouble("max-y"), room.getDouble("max-z")), data.quantity, data.toProgress, data.preventAbilities);
+                    } else {
+                        dungeon.addThroughRoom(data.name, getPasteLocation(paste, room.getDouble("min-x"), room.getDouble("min-y"), room.getDouble("min-z")), getPasteLocation(paste, room.getDouble("max-x"), room.getDouble("max-y"), room.getDouble("max-z")), data.doorClosedByDefault, data.preventAbilities);
+                    }
+                    if (room.contains("door-min-loc") && room.contains("door-max-loc") && room.contains("door-armorstand-loc")) {
+                        String[] minString = room.getString("door-min-loc").split(",");
+                        String[] maxString = room.getString("door-max-loc").split(",");
+                        String[] asString = room.getString("door-armorstand-loc").split(",");
+                        Location doorMinLoc = getPasteLocation(paste, Double.parseDouble(minString[0]),Double.parseDouble(minString[1]),Double.parseDouble(minString[2]));
+                        Location doorMaxLoc = getPasteLocation(paste, Double.parseDouble(maxString[0]),Double.parseDouble(maxString[1]),Double.parseDouble(maxString[2]));
+                        Location asLoc = getPasteLocation(paste, Double.parseDouble(asString[0]), Double.parseDouble(asString[1]), Double.parseDouble(asString[2]));
+                        asLoc.setYaw((float)Double.parseDouble(asString[3]));
+                        dungeon.setDoorForRoom(asLoc,dungeon.getName()+ "." + data.name + ".door",doorMinLoc,doorMaxLoc );
+                    }
+                    if (room.contains("reward-chest-loc") && room.contains("reward-chest-dir")) {
+                        String[] locString = room.getString("reward-chest-loc").split(",");
+                        Location chestLoc = getPasteLocation(paste, Double.parseDouble(locString[0]), Double.parseDouble(locString[1]), Double.parseDouble(locString[2]));
+                        Direction dir = getPasteDirection(paste, Direction.getDirection(room.getString("reward-chest-dir")));
+                        RewardChest chest = new RewardChest(plugin, data.rewardChestBase, data.rewardChestMid, data.rewardChestBase64, data.rewardChestDrops, data.chestParticle, data.chestParticleCount);
+                        dungeon.getRoomWithName(data.name).rewardChest = chest;
+                        chest.paste(chestLoc, dir);
+                    }
+
+                }
+
+            }
+        }
 
     }
     public Location getPasteLocation(Paste paste, double x, double y, double z) {
@@ -1027,33 +1127,7 @@ public class Grid {
         }
         return null;
     }
-    public void generateNpcsInPaste(Paste paste) {
-        for (String str : paste.schematic.npcNames) {
-            TGTNpc npc = plugin.npcHandler.allNpcs.stream().filter(obj -> obj.internalName.equalsIgnoreCase(str)).findFirst().orElse(null);
 
-            if (npc != null) {
-
-                if (paste.direction == Direction.S) {
-                    Location loc = new Location(Bukkit.getWorlds().get(0), startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize));
-                    loc.add(npc.spawnX, npc.spawnY, npc.spawnZ);
-                    npc.npc.spawn(loc);
-                } else if (paste.direction == Direction.N) {
-                    Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize);
-                    loc.add(-npc.spawnX, npc.spawnY, -npc.spawnZ);
-                    npc.npc.spawn(loc);
-                } else if (paste.direction == Direction.E) {
-                    Location loc = new Location(Bukkit.getWorlds().get(0), startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize);
-                    loc.add(-npc.spawnX, npc.spawnY, npc.spawnZ);
-                    npc.npc.spawn(loc);
-                } else if (paste.direction == Direction.W) {
-                    Location loc = new Location(Bukkit.getWorlds().get(0), (startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4));
-                    loc.add(npc.spawnX, npc.spawnY, -npc.spawnZ);
-                    npc.npc.spawn(loc);
-                }
-
-            }
-        }
-    }
     /*public void generateSpawnersInPaste(Paste paste) {
 
         for (Spawner spawner : paste.schematic.spawners) {
@@ -1140,15 +1214,74 @@ public class Grid {
             }
         }
     }*/
-    public void pasteRepeatable(Paste paste, List<Cell> cells) throws IOException {
+    public void pasteRepeatable(Paste paste, List<Cell> cells, boolean isOmni) throws IOException {
         ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic"));
         ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic")));
         Clipboard clipboard = reader.read();
         final int finalX = paste.x;
         final int finalZ = paste.z;
         final Direction finalDirection = paste.direction;
-        Bukkit.getLogger().log(Level.INFO, "Performing repeatable paste of " + paste.schematic.name + " coords=" + paste.targetCellX + "," + paste.targetCellZ + " dir=" + paste.direction);
-        if (paste.direction == Direction.S) {
+        final District finalDistrict = paste.schematic.district;
+        //Bukkit.getLogger().log(Level.INFO, "Performing repeatable paste of " + paste.schematic.name + " coords=" + paste.targetCellX + "," + paste.targetCellZ + " dir=" + finalDirection);
+
+        if (true/*finalDirection == Direction.S*/) {
+            Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    List<Cell> newCells = new ArrayList<>();
+                    if (finalDistrict != District.OUTSKIRTS) {
+                        newCells.addAll(markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name));
+                    } else {
+                        newCells.addAll(markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name));
+                    }
+                    for (Cell cell : newCells) {
+                        cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                    }
+                    getCellsForDistrict(finalDistrict).removeAll(newCells);
+                    cells.removeAll(newCells);
+                    EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
+                    Operation operation = null;
+                    if (finalDirection == Direction.S) {
+                        operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
+                    } else if (finalDirection == Direction.E) {
+                        ClipboardHolder holder = new ClipboardHolder(clipboard);
+                        holder.setTransform(new AffineTransform().rotateY(90));
+                        operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
+                    } else if (finalDirection == Direction.N) {
+                        ClipboardHolder holder = new ClipboardHolder(clipboard);
+                        holder.setTransform(new AffineTransform().rotateY(180));
+                        operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
+                    } else if (finalDirection == Direction.W) {
+                        ClipboardHolder holder = new ClipboardHolder(clipboard);
+                        holder.setTransform(new AffineTransform().rotateY(270));
+                        operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
+
+                    }
+                    try {
+                        if (operation != null) {
+                            Operations.complete(operation);
+                        }
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                    editSession.close();
+
+                    //getSchematicsForDistrict(finalDistrict).remove(paste.schematic);
+                    //runningDelay = runningDelay + paste.schematic.area;
+                    try {
+                        //Bukkit.getLogger().log(Level.INFO, "Attempting new paste...");
+                        generateRepeatables(grid, cells);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+
+                }
+            }, paste.schematic.area);
+            return;
+        }
+
+        /*if (finalDirection == Direction.S) {
             Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
                 @Override
                 public void run() {
@@ -1162,6 +1295,9 @@ public class Grid {
                     editSession.close();
                     if (paste.schematic.district != District.OUTSKIRTS) {
                         List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1174,6 +1310,9 @@ public class Grid {
                         }
                     } else {
                         List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1189,7 +1328,7 @@ public class Grid {
                 }
             }, paste.schematic.area);
             return;
-        } else if (paste.direction == Direction.E) {
+        } else if (finalDirection == Direction.E) {
             Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
                 @Override
                 public void run() {
@@ -1205,6 +1344,9 @@ public class Grid {
                     editSession.close();
                     if (paste.schematic.district != District.OUTSKIRTS) {
                         List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1218,6 +1360,9 @@ public class Grid {
                         }
                     } else {
                         List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1232,7 +1377,7 @@ public class Grid {
                     }
 
                 }
-            }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
+            }, paste.schematic.area*//*paste.schematic.area + runningDelay*//*);
             return;
         } else if (paste.direction == Direction.N) {
             Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
@@ -1250,6 +1395,9 @@ public class Grid {
                     editSession.close();
                     if (paste.schematic.district != District.OUTSKIRTS) {
                         List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1262,6 +1410,9 @@ public class Grid {
                         }
                     } else {
                         List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1275,7 +1426,7 @@ public class Grid {
                     }
 
                 }
-            }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
+            }, paste.schematic.area*//*paste.schematic.area + runningDelay*//*);
             return;
         } else if (paste.direction == Direction.W) {
             Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
@@ -1293,6 +1444,9 @@ public class Grid {
                     editSession.close();
                     if (paste.schematic.district != District.OUTSKIRTS) {
                         List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1305,6 +1459,9 @@ public class Grid {
                         }
                     } else {
                         List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        for (Cell cell : newCells) {
+                            cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
+                        }
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         cells.removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1318,8 +1475,8 @@ public class Grid {
                     }
 
                 }
-            }, paste.schematic.area/*paste.schematic.area + runningDelay*/);
-        }
+            }, paste.schematic.area*//*paste.schematic.area + runningDelay*//*);
+        }*/
     }
 
     public District cycleToNextDistrict(District district) {
@@ -1674,6 +1831,7 @@ public class Grid {
     }
     public void generateRepeatablesInitial(Cell[][] grid) throws IOException {
         Bukkit.getLogger().log(Level.INFO, "Starting repeatable generation...");
+        lastGeneration = System.currentTimeMillis();
         List<Cell> remainingCells = new ArrayList<>();
         remainingCells.addAll(getCellsForDistrict(District.FARM));
         remainingCells.addAll(getCellsForDistrict(District.ARISTOCRACY));
@@ -1687,12 +1845,29 @@ public class Grid {
     public void generateRepeatables(Cell[][] grid, List<Cell> remainingCells) throws IOException {
 
         if (remainingCells.size() >= 1) {
+            lastGeneration = System.currentTimeMillis();
             Cell cell = (Cell) remainingCells.get(0);
-            Bukkit.getLogger().log(Level.INFO, "Got cell " + cell.x + "," + cell.z);
+            //Bukkit.getLogger().log(Level.INFO, "Got cell " + cell.x + "," + cell.z);
+            /*new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (Grid.this.lastGeneration + 3500L < System.currentTimeMillis() && !generationCompleted) {
+                        Bukkit.getLogger().log(Level.INFO, "Generation stalled, attempting a refresh...");
+                        remainingCells.remove(0);
+                        remainingCells.add(cell);
+                        try {
+                            generateRepeatables(grid, remainingCells);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }.runTaskLater(plugin, 80L);*/
+
             if (cell.isOccupied || cell.isRoad) {
                 remainingCells.remove(cell);
                 generateRepeatables(grid, remainingCells);
-                Bukkit.getLogger().log(Level.INFO, "Cell was occupied moving on...");
+                //Bukkit.getLogger().log(Level.INFO, "Cell was occupied moving on...");
                 return;
             }
             List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x, cell.z);
@@ -1706,54 +1881,72 @@ public class Grid {
                 if ((getOmniSchematicsForDistrict(cell.district)).size() < 1 || getOmniSchematicsForDistrict(cell.district).isEmpty()) {
                     localOmniRefresh(cell.district);
                 }
+                //Bukkit.getLogger().log(Level.INFO, "Attempting an omni paste for district " + cell.district + " at cell " + cell.x + "," + cell.z);
                 List<Schematic> schematicList = getOmniSchematicsForDistrict(cell.district);
                 int targetZ = cell.z;
                 int targetX = cell.x;
-                Iterator schemIter = schematicList.iterator();
+                Iterator<Schematic> schemIter = schematicList.iterator();
                 boolean pasted = false;
                 do {
                     Schematic schematic = (Schematic) schemIter.next();
                     int x = schematic.xLength;
                     int z = schematic.zHeight;
-                    List<Direction> randomDir = new ArrayList<>();
-                    randomDir.addAll(potentialDirections);
+                    List<Direction> randomDir = new ArrayList<>(potentialDirections);
                     Collections.shuffle(randomDir);
-                    Iterator dirIter = randomDir.iterator();
-
+                    Iterator<Direction> dirIter = randomDir.iterator();
+                    //Bukkit.getLogger().log(Level.INFO, "Attempting schematic " + schematic.name + " for cell " + cell.x + ", " + cell.z);
                     do {
                         Direction oDirection = (Direction) dirIter.next();
+                        if (oDirection == Direction.W || oDirection == Direction.E) {
+                            x = schematic.zHeight;
+                            z = schematic.xLength;
+                        } else if (oDirection == Direction.N || oDirection == Direction.S) {
+                            x = schematic.xLength;
+                            z = schematic.zHeight;
+                        }
                         if (cell.district != District.OUTSKIRTS) {
                             if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection)) {
+
                                 Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
-                                pasteRepeatable(paste, remainingCells);
+
+                                pasteRepeatable(paste, remainingCells, true);
                                 getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                                 pasted = true;
+                                //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
 
                             }
                         } else {
                             if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, oDirection)) {
                                 Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
-                                pasteRepeatable(paste, remainingCells);
+                                pasteRepeatable(paste, remainingCells, true);
                                 getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                                 pasted = true;
-
+                                //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
                             }
                         }
                     } while (dirIter.hasNext() && !pasted);
-                } while (schemIter.hasNext() && !pasted);
 
+                } while (schemIter.hasNext() && !pasted);
+                if (!schemIter.hasNext() && !pasted) {
+                    //Bukkit.getLogger().log(Level.INFO, "Schem iterator was exhausted");
+                    localOmniRefresh(cell.district);
+                    generateRepeatables(grid, remainingCells);
+                    return;
+                }
             } else {
                 if (getRepeatableSchematicsForDistrict(cell.district).size() < 1 || getRepeatableSchematicsForDistrict(cell.district).isEmpty()) {
                     localRepeatableRefresh(cell.district);
                 }
                 List<Schematic> schematicList = getRepeatableSchematicsForDistrict(cell.district);
+
                 int targetZ = cell.z;
                 int targetX = cell.x;
-                Iterator schemIter = schematicList.iterator();
+                Iterator<Schematic> schemIter = schematicList.iterator();
                 boolean pass = false;
                 do {
 
                     Schematic schematic = (Schematic) schemIter.next();
+                    //Bukkit.getLogger().log(Level.INFO, "Attempting schematic " + schematic.name + " for cell " + cell.x + ", " + cell.z);
                     int x = schematic.xLength;
                     int z = schematic.zHeight;
                     if (direction == Direction.W || direction == Direction.E) {
@@ -1763,21 +1956,31 @@ public class Grid {
                     if (cell.district != District.OUTSKIRTS) {
                         if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
                             Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                            pasteRepeatable(paste, remainingCells);
+                            pasteRepeatable(paste, remainingCells, false);
+                            //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
                             pass = true;
                         }
                     } else {
+
                         if (schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
                             Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                            pasteRepeatable(paste, remainingCells);
+                            pasteRepeatable(paste, remainingCells, false);
+                            //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
                             pass = true;
                         }
                     }
 
                 } while (schemIter.hasNext() && !pass);
+                if (!schemIter.hasNext() && !pass) {
+                    //Bukkit.getLogger().log(Level.INFO, "Schem iterator was exhausted");
+                    localRepeatableRefresh(cell.district);
+                    generateRepeatables(grid, remainingCells);
+                    return;
+                }
             }
         } else {
             Bukkit.getLogger().log(Level.INFO, "Finished repeatable generation.");
+            generationCompleted = true;
         }
 
     }
@@ -1860,7 +2063,7 @@ public class Grid {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < (int)size*1.5)) {
                         if (grid[gridX + x][gridZ + z].isOccupied) {
                             int xVal = gridX + x;
                             int zVal = gridZ + z;
@@ -1911,7 +2114,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size*1.5)) {
                         if (grid[gridX - x][gridZ + z].isOccupied) {
                             int xVal = gridX - x;
                             int zVal = gridZ + z;
@@ -1989,7 +2192,7 @@ public class Grid {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size*1.5)) {
                         int xVal = gridX + x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -2015,7 +2218,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size*1.5)) {
                         int xVal = gridX - x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -2116,13 +2319,13 @@ public class Grid {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size*1.5)) {
                         int xVal = gridX + x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
-                        grid[gridX + x][gridZ + z].isOccupied = true;
-                        grid[gridX + x][gridZ + z].schematicAtCell = schematicName;
-                        cellsToRemove.add(grid[gridX + x][gridZ + z]);
+                        grid[xVal][zVal].isOccupied = true;
+                        grid[xVal][zVal].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[xVal][zVal]);
                     } else {
                         Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
                     }
@@ -2145,7 +2348,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size + (int)(0.5*size))) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size*1.5)) {
                         int xVal = gridX - x;
                         int zVal = gridZ + z;
                         //Bukkit.broadcastMessage(ChatColor.AQUA + "Marking cell " + xVal + ", " + zVal + " as occupied");
@@ -2161,9 +2364,11 @@ public class Grid {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
                     if (((gridX - x) >= 0 ) && ((gridZ - z) >= size)) {
-                        grid[gridX - x][gridZ - z].isOccupied = true;
-                        grid[gridX - x][gridZ - z].schematicAtCell = schematicName;
-                        cellsToRemove.add(grid[gridX - x][gridZ - z]);
+                        int xVal = gridX - x;
+                        int zVal = gridZ - z;
+                        grid[xVal][zVal].isOccupied = true;
+                        grid[xVal][zVal].schematicAtCell = schematicName;
+                        cellsToRemove.add(grid[xVal][zVal]);
                     } else {
                         Bukkit.broadcastMessage(ChatColor.RED + "This is going to throw an error.");
                     }
@@ -2234,38 +2439,118 @@ public class Grid {
     public void localRepeatableRefresh(District district) {
         if (district == District.FARM) {
             localFarmRepeatable.addAll(plugin.schematicHandler.farmSchematicsRepeatable);
-            Collections.shuffle(localFarmRepeatable);
+            Collections.sort(localFarmRepeatable);
         } else if (district == District.PORT) {
             localPortRepeatable.addAll(plugin.schematicHandler.portSchematicsRepeatable);
-            Collections.shuffle(localPortRepeatable);
+            Collections.sort(localPortRepeatable);
         } else if (district == District.ARISTOCRACY) {
             localAristocracyRepeatable.addAll(plugin.schematicHandler.aristocracySchematicsRepeatable);
-            Collections.shuffle(localAristocracyRepeatable);
+            Collections.sort(localAristocracyRepeatable);
         } else if (district == District.SLUMS) {
             localSlumsRepeatable.addAll(plugin.schematicHandler.slumsSchematicsRepeatable);
-            Collections.shuffle(localSlumsRepeatable);
+            Collections.sort(localSlumsRepeatable);
         } else {
             localOutskirtsRepeatable.addAll(plugin.schematicHandler.outskirtsSchematicsRepeatable);
-            Collections.shuffle(localOutskirtsRepeatable);
+            Collections.sort(localOutskirtsRepeatable);
         }
     }
 
     public void localOmniRefresh(District district) {
         if (district == District.FARM) {
             localFarmOmni.addAll(plugin.schematicHandler.farmSchematicsOmni);
-            Collections.shuffle(localFarmOmni);
+            Collections.sort(localFarmOmni);
         } else if (district == District.PORT) {
             localPortOmni.addAll(plugin.schematicHandler.portSchematicsOmni);
-            Collections.shuffle(localPortOmni);
+            Collections.sort(localPortOmni);
         } else if (district == District.ARISTOCRACY) {
             localAristocracyOmni.addAll(plugin.schematicHandler.aristocracySchematicsOmni);
-            Collections.shuffle(localAristocracyOmni);
+            Collections.sort(localAristocracyOmni);
         } else if (district == District.SLUMS) {
             localSlumsOmni.addAll(plugin.schematicHandler.slumsSchematicsOmni);
-            Collections.shuffle(localSlumsOmni);
+            Collections.sort(localSlumsOmni);
         } else {
             localOutskirtsOmni.addAll(plugin.schematicHandler.outskirtsSchematicsOmni);
-            Collections.shuffle(localOutskirtsOmni);
+            Collections.sort(localOutskirtsOmni);
+        }
+    }
+
+    public void registerBlackList(List<String> list) {
+
+        for (String line : list) {
+            if (line.matches("[0-9]+,[0-9]+")) {
+                String[] parts = line.split(",");
+                this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]),Integer.parseInt(parts[1])});
+            } else if (line.matches(">[0-9]+,[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace(">","");
+                for (int i = Integer.parseInt(parts[0])+1; i < this.size; i++) {
+                    this.blacklistedCells.add(new int[]{i, Integer.parseInt(parts[1])});
+                }
+            } else if (line.matches("<[0-9]+,[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace("<","");
+                for (int i = 0; i < Integer.parseInt(parts[0]); i++) {
+                    this.blacklistedCells.add(new int[]{i, Integer.parseInt(parts[1])});
+                }
+            } else if (line.matches("[0-9]+,>[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[1] = parts[1].replace(">","");
+                for (int i = Integer.parseInt(parts[1])+1; i < this.size*1.5; i++) {
+                    this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]), i});
+                }
+            } else if (line.matches("[0-9]+,<[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[1] = parts[1].replace("<","");
+                for (int i = 0; i < Integer.parseInt(parts[1]); i++) {
+                    this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]), i});
+                }
+            } else if (line.matches(">[0-9]+,>[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace(">","");
+                parts[1] = parts[1].replace(">","");
+                for (int x = Integer.parseInt(parts[0])+1; x < this.size; x++) {
+                    for (int z = Integer.parseInt(parts[1])+1; z < this.size*1.5; z++) {
+                        this.blacklistedCells.add(new int[]{x,z});
+                    }
+                }
+            } else if (line.matches("<[0-9]+,>[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace("<","");
+                parts[1] = parts[1].replace(">","");
+                for (int x = 0; x < Integer.parseInt(parts[0]); x++) {
+                    for (int z = Integer.parseInt(parts[1])+1; z < this.size*1.5; z++) {
+                        this.blacklistedCells.add(new int[]{x,z});
+                    }
+                }
+            } else if (line.matches(">[0-9]+,<[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace("<","");
+                parts[1] = parts[1].replace("<","");
+                for (int x = Integer.parseInt(parts[0])+1; x < this.size ; x++) {
+                    for (int z = 0; z < Integer.parseInt(parts[1]); z++) {
+                        this.blacklistedCells.add(new int[]{x,z});
+                    }
+                }
+            } else if (line.matches("<[0-9]+,<[0-9]+")) {
+                String[] parts = line.split(",");
+                parts[0] = parts[0].replace("<","");
+                parts[1] = parts[1].replace("<","");
+                for (int x = 0; x < Integer.parseInt(parts[0]); x++) {
+                    for (int z = 0; z < Integer.parseInt(parts[1]); z++) {
+                        this.blacklistedCells.add(new int[]{x,z});
+                    }
+                }
+            } else if (line.matches("x = [0-9]+")) {
+                String x = line.replace("x = ", "");
+                for (int z = 0; z < this.size*1.5; z++) {
+                    this.blacklistedCells.add(new int[]{Integer.parseInt(x), z});
+                }
+            } else if (line.matches("z = [0-9]+")) {
+                String z = line.replace("z = ", "");
+                for (int x = 0; x < this.size; x++) {
+                    this.blacklistedCells.add(new int[]{x, Integer.parseInt(z)});
+                }
+            }
         }
     }
 

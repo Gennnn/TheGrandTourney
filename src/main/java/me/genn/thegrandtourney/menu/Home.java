@@ -29,6 +29,7 @@ public class Home implements Listener {
     final String quests = ChatColor.GREEN + "Quest Log";
     final String accessories = ChatColor.GREEN + "Accessory Bag";
     final String storage = ChatColor.GREEN + "Storage";
+    final String activeEffects = ChatColor.GREEN + "Active Effects";
     final String close = ChatColor.RED + "Close";
     TGT plugin;
 
@@ -85,7 +86,7 @@ public class Home implements Listener {
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
         item.setItemMeta(meta);
-        inv.setItem(29, item);
+        inv.setItem(20, item);
         item = new ItemStack(Material.EXPERIENCE_BOTTLE);
         meta = item.getItemMeta();
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -100,7 +101,7 @@ public class Home implements Listener {
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
         item.setItemMeta(meta);
-        inv.setItem(30, item);
+        inv.setItem(21, item);
         item = new ItemStack(Material.WRITABLE_BOOK);
         meta = item.getItemMeta();
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -115,7 +116,7 @@ public class Home implements Listener {
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
         item.setItemMeta(meta);
-        inv.setItem(31, item);
+        inv.setItem(22, item);
         item = new ItemStack(Material.PLAYER_HEAD);
         MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTVhOTI1MjFlZDc3OTA0ZWI0NTAwMDUwYjc1NmVkY2NlNmE2MjA3YmFjNGVhMWM2ZjhiMzViNWY4NmE5YWJhNSJ9fX0=", item);
         meta = item.getItemMeta();
@@ -132,7 +133,7 @@ public class Home implements Listener {
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
         item.setItemMeta(meta);
-        inv.setItem(32, item);
+        inv.setItem(23, item);
         item = new ItemStack(Material.CHEST);
         meta = item.getItemMeta();
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -147,7 +148,7 @@ public class Home implements Listener {
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
         item.setItemMeta(meta);
-        inv.setItem(33, item);
+        inv.setItem(24, item);
         item = new ItemStack(Material.BARRIER);
         meta = item.getItemMeta();
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -156,6 +157,21 @@ public class Home implements Listener {
         meta.setDisplayName(close);
         item.setItemMeta(meta);
         inv.setItem(49, item);
+        item = new ItemStack(Material.POTION);
+        meta = item.getItemMeta();
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS);
+        meta.setDisplayName(activeEffects);
+        lore.clear();
+        lore.add("");
+        lore.add(ChatColor.GRAY + "View and manage your currently");
+        lore.add(ChatColor.GRAY + "active potion effects.");
+        lore.add("");
+        lore.add(ChatColor.YELLOW + "Click to open!");
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        inv.setItem(31, item);
         fillRemainderOfInventory(inv);
         player.openInventory(inv);
     }
@@ -192,6 +208,8 @@ public class Home implements Listener {
                     plugin.menus.openStorage(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(close)) {
                     e.getInventory().close();
+                } else if (name.equalsIgnoreCase(activeEffects)) {
+                    plugin.menus.openActiveEffectsMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 }
             }
         }

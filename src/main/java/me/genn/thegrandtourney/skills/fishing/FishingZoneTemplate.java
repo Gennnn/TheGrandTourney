@@ -14,7 +14,7 @@ public class FishingZoneTemplate {
 
     public DropTable drops;
     public String name;
-    int minTimeModifier;
+    public int minTimeModifier;
     int maxTimeModifier;
 
     public static FishingZoneTemplate create(ConfigurationSection config) throws IOException {

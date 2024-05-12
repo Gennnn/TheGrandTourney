@@ -33,6 +33,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -65,6 +66,10 @@ public class MMOItem {
     public XpType typeRequirement;
     public int lvlRequirement;
     public float abilityScaling;
+    public float[] qualityScaling;
+    public boolean consumable;
+    public Color color;
+    public float sellPrice;
 
 
 
@@ -76,6 +81,7 @@ public class MMOItem {
         }
         item.bukkitItem = new ItemStack(Material.matchMaterial("minecraft:" + config.getString("item", "apple")));
         item.bukkitItemMeta = item.bukkitItem.getItemMeta();
+        item.qualityScaling = new float[]{1.1f,1.2f,1.3f};
         if (item.bukkitItem.getType().getMaxDurability() > 0) {
             item.bukkitItemMeta.setUnbreakable(true);
         }
@@ -101,7 +107,7 @@ public class MMOItem {
             item.abilityBlock.replaceAll(textToTranslate -> ChatColor.translateAlternateColorCodes('&', textToTranslate));
         }
 
-
+        item.consumable = config.getBoolean("consumable", false);
 
         item.categoryString = config.getString("category");
         item.spellName = config.getString("spell");
@@ -109,7 +115,7 @@ public class MMOItem {
         item.lSpellName = config.getString("lclick-spell");
 
         item.activateSpellName = config.getString("activate-spell");
-
+        item.sellPrice = (float) config.getDouble("sell-price", 1.0);
         item.bukkitItemMeta.setLore(MMOItem.assembleFullLore(item, item.statBlock, item.abilityBlock));
         item.unique = config.getBoolean("unique", false);
         item.enchantGlint = config.getBoolean("enchanted", false);
@@ -146,6 +152,7 @@ public class MMOItem {
         }
         item.bukkitItemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.bukkitItemMeta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        item.bukkitItemMeta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
         item.bukkitItemMeta.setDisplayName(item.displayName);
         item.bukkitItem.setItemMeta(item.bukkitItemMeta);
         if (config.contains("type-requirement")) {
@@ -156,13 +163,14 @@ public class MMOItem {
 
         item.colorStr = config.getString("color");
         if (item.colorStr != null) {
+            item.color = Color.fromRGB(Integer.parseInt(item.colorStr, 16));
             if (item.bukkitItem.getType() == Material.LEATHER_HELMET || item.bukkitItem.getType() == Material.LEATHER_CHESTPLATE || item.bukkitItem.getType() == Material.LEATHER_LEGGINGS || item.bukkitItem.getType() == Material.LEATHER_BOOTS) {
                 LeatherArmorMeta meta = (LeatherArmorMeta) item.bukkitItem.getItemMeta();
-                int r = Integer.valueOf(item.colorStr.substring(0, 2), 16);
-                int g = Integer.valueOf(item.colorStr.substring(2, 4), 16);
-                int b = Integer.valueOf(item.colorStr.substring(4, 6), 16);
-                Color color = Color.fromRGB(r,g,b);
-                meta.setColor(color);
+                meta.setColor(item.color);
+                item.bukkitItem.setItemMeta(meta);
+            } else if (item.bukkitItem.getType() == Material.POTION) {
+                PotionMeta meta = (PotionMeta) item.bukkitItem.getItemMeta();
+                meta.setColor(item.color);
                 item.bukkitItem.setItemMeta(meta);
             }
 
@@ -184,6 +192,15 @@ public class MMOItem {
             ConfigurationSection section = config.getConfigurationSection("recipe");
             Recipe recipe = Recipe.create(section, plugin, item.internalName);
             plugin.itemHandler.allRecipes.add(recipe);
+        }
+        if (config.contains("bronze-scaling")) {
+            item.qualityScaling[0] = (float) config.getDouble("bronze-scaling");
+        }
+        if (config.contains("silver-scaling")) {
+            item.qualityScaling[1] = (float) config.getDouble("silver-scaling");
+        }
+        if (config.contains("gold-scaling")) {
+            item.qualityScaling[2] = (float) config.getDouble("gold-scaling");
         }
         return item;
     }
@@ -241,14 +258,25 @@ public class MMOItem {
         if (player.getInventory().getContents().length <= 0) {
             return;
         }
+
         ItemStack[] inv = player.getInventory().getContents();
         for (ItemStack i : inv) {
+            if (quantity <= 0) {
+                return;
+            }
             if (i != null) {
                 if (i.getType() == item.bukkitItem.getType() && i.hasItemMeta()) {
                     NBTItem nbtI = new NBTItem(i);
                     if (nbtI.hasTag("ExtraAttributes")) {
                         if (nbtI.getCompound("ExtraAttributes").hasTag("id") && nbtI.getCompound("ExtraAttributes").getString("id").equalsIgnoreCase(item.internalName)) {
-                            player.getInventory().removeItem(i.asQuantity(quantity));
+                            int stack = i.getAmount();
+                            if (stack >= quantity) {
+                                player.getInventory().removeItem(i.asQuantity(quantity));
+                                quantity = 0;
+                            } else {
+                                quantity = quantity - stack;
+                                player.getInventory().removeItem(i.asQuantity(stack));
+                            }
                         }
                     }
                 }

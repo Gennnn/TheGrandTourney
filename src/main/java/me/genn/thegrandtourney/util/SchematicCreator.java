@@ -211,27 +211,34 @@ public class SchematicCreator {
                                     config.set(schematicName + ".dungeons." + objectCounter + ".max-y", dungeon.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
                                     config.set(schematicName + ".dungeons." + objectCounter + ".max-z", dungeon.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
                                     config.set(schematicName + ".dungeons." + objectCounter + ".template-name", dungeon.template.getName());
-                                    config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door", dungeon.entranceDoor.generateList(clipboard.getClipboard().getOrigin()));
-                                    config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door-material", dungeon.entranceDoor.blockType);
+                                    if (dungeon.entranceDoor != null) {
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door-min-loc", (dungeon.entranceDoor.minLoc.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (dungeon.entranceDoor.minLoc.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (dungeon.entranceDoor.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ()));
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door-max-loc", (dungeon.entranceDoor.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (dungeon.entranceDoor.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (dungeon.entranceDoor.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ()));
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".entrance-door-armorstand-loc", (dungeon.entranceDoor.asLocation.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (dungeon.entranceDoor.asLocation.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (dungeon.entranceDoor.asLocation.getZ() - clipboard.getClipboard().getOrigin().getZ()) + "," + (dungeon.entranceDoor.asLocation.getYaw()));
+                                    }
+                                    if (dungeon.exitWarpTarget != null && dungeon.exitWarpLocation != null) {
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".exit-warp-entrance", (dungeon.exitWarpLocation.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (dungeon.exitWarpLocation.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (dungeon.exitWarpLocation.getZ() - clipboard.getClipboard().getOrigin().getZ()) + "," + (dungeon.exitWarpLocation.getYaw()));
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".exit-warp-target", (dungeon.exitWarpTarget.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (dungeon.exitWarpTarget.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (dungeon.exitWarpTarget.getZ() - clipboard.getClipboard().getOrigin().getZ()) + "," + (dungeon.exitWarpTarget.getYaw()));
+                                    }
                                     for (Room room : dungeon.rooms) {
-                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".goal", room.goal);
+                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".name", room.name);
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-x", room.minLoc.getX() - clipboard.getClipboard().getOrigin().getX());
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-y", room.minLoc.getY() - clipboard.getClipboard().getOrigin().getY());
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".min-z", room.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-x", room.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX());
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-y", room.maxLoc.getY() - clipboard.getClipboard().getOrigin().getY());
                                         config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".max-z", room.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ());
-                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".prevent-abilities", room.preventAbilities);
-                                        config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".door-closed-by-default", room.doorClosedByDefault);
-                                        if (room.goal == RoomGoal.COLLECTION) {
-                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".item-to-get", room.itemToCollect.getName());
-                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".quantity", room.quantity);
-                                        } else if (room.goal == RoomGoal.SLAYER) {
-                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".mob-to-kill", room.mobToKill.getName());
-                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".quantity", room.quantity);
+                                        if (room.door != null) {
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".door-min-loc", (room.door.minLoc.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (room.door.minLoc.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (room.door.minLoc.getZ() - clipboard.getClipboard().getOrigin().getZ()));
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".door-max-loc", (room.door.maxLoc.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (room.door.maxLoc.getX() - clipboard.getClipboard().getOrigin().getY()) + "," + (room.door.maxLoc.getZ() - clipboard.getClipboard().getOrigin().getZ()));
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".door-armorstand-loc", (room.door.asLocation.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (room.door.asLocation.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (room.door.asLocation.getZ() - clipboard.getClipboard().getOrigin().getZ()) + "," + room.door.asLocation.getYaw());
+                                        }
+                                        if (room.rewardChest != null) {
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".reward-chest-loc", (room.rewardChest.loc.getX() - clipboard.getClipboard().getOrigin().getX()) + "," + (room.rewardChest.loc.getY() - clipboard.getClipboard().getOrigin().getY()) + "," + (room.rewardChest.loc.getZ() - clipboard.getClipboard().getOrigin().getZ()));
+                                            config.set(schematicName + ".dungeons." + objectCounter + ".room." + dungeon.rooms.indexOf(room) + ".reward-chest-dir", room.rewardChest.direction.toString());
                                         }
                                     }
-
+                                    p.sendMessage(plugin.dungeonLocList.get(targetLoc).getName() + " at " + (x - clipboard.getClipboard().getOrigin().getX()) + "," + (y - clipboard.getClipboard().getOrigin().getY()) + "," + (z - clipboard.getClipboard().getOrigin().getZ()) );
                                     objectCounter++;
                                 }
                             }

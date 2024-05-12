@@ -10,20 +10,11 @@ import com.nisovin.magicspells.Spell;
 import com.nisovin.magicspells.Spell.SpellCastState;
 //import com.nisovin.magicspells.materials.MagicMaterial;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 
 import com.nisovin.magicspells.util.Util;
 import me.genn.thegrandtourney.TGT;
-import me.genn.thegrandtourney.skills.fishing.FishingZone;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -77,18 +68,19 @@ public class MiniGame {
     List<Material> breakableBlocks;
     List<Material> interactableBlocks;
     Set<EntityType> interactableEntities;
-    public List<String> participants = new ArrayList();
-    Map<String, Team> teams = new HashMap();
-    public Map<String, String> playerTeams = new HashMap();
-    public Map<String, List<String>> teamPlayers = new HashMap();
-    public Map<String, Score> teamScores = new HashMap();
+    public List<String> participants = new ArrayList<>();
+    Map<String, Team> teams = new HashMap<>();
+    public Map<String, String> playerTeams = new HashMap<>();
+    public Map<String, List<String>> teamPlayers = new HashMap<>();
+    public Map<String, Float> teamScores = new HashMap<>();
     public boolean gameRunning = false;
     boolean gameEnded = false;
     public long endTime;
     public long gameStartTime;
     public Scoreboard scoreboard;
-    public Objective objective;
     public List<String> introductoryText;
+    public Map<UUID, Float> playerScores = new HashMap<>();
+    public float multiplier = 1.0f;
 
     public MiniGame(TGT plugin, String code, ConfigurationSection config) {
         this.plugin = plugin;
@@ -102,7 +94,6 @@ public class MiniGame {
         } else {
             this.type = MiniGame.MiniGameType.TIMED;
         }
-
         this.pvp = config.getBoolean("pvp", false);
         this.crafting = config.getBoolean("crafting", false);
         this.joinMidGame = config.getBoolean("join-mid-game", false);
@@ -258,9 +249,9 @@ public class MiniGame {
 
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ms reload");
         this.scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-        this.objective = this.scoreboard.registerNewObjective(this.code, "CUSTOM");
+        /*this.objective = this.scoreboard.registerNewObjective(this.code, "CUSTOM");
         this.objective.setDisplayName(this.scoreboardName);
-        this.objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        this.objective.setDisplaySlot(DisplaySlot.SIDEBAR);*/
         if (this.teamsEnabled) {
             for(int i = 0; i < this.teamNames.size(); ++i) {
                 String teamName = (String)this.teamNames.get(i);
@@ -280,11 +271,8 @@ public class MiniGame {
                 team.setDisplayName(coloredName);
                 team.setAllowFriendlyFire(this.friendlyFire);
                 this.teams.put(name, team);
-                this.teamPlayers.put(name, new ArrayList());
-                Score score = this.objective.getScore(Bukkit.getOfflinePlayer(coloredName));
-                score.setScore(1);
-                score.setScore(0);
-                this.teamScores.put(name, score);
+                this.teamPlayers.put(name, new ArrayList<>());
+                this.teamScores.put(name, 0.0f);
             }
         }
 
@@ -309,47 +297,37 @@ public class MiniGame {
 
         final int[] lineNum = {0};
         final long[] delay = {100L};
-        new BukkitRunnable() {
-
-            @Override
-            public void run() {
-
-                String line = MiniGame.this.introductoryText.get(lineNum[0]);
-                if (ChatColor.stripColor(line).startsWith("<King Posh>")) {
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.playSound(player.getLocation(), "entity.villager.celebrate", 5.0f, 0.75f);
-                    }
-                } else if (ChatColor.stripColor(line).startsWith("<Herald>")) {
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.playSound(player.getLocation(), "entity.villager.trade", 5.0f, 1.25f);
-                    }
-                }
-                String[] wordCount = line.split(" ");
-                delay[0] = wordCount.length * 10L;
-                if (lineNum[0]==MiniGame.this.introductoryText.size()-1) {
-                    this.cancel();
-
-                }
-                lineNum[0]++;
-                Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', line));
+        int runningDelay = 10;
+        for (String line : this.introductoryText) {
+            if (line.startsWith("herald:")||line.startsWith("Herald:")||line.startsWith("h:"))  {
+                plugin.gameCaster.speakHerald(plugin.trimCasterDialogue(line), runningDelay);
+            } else if (line.startsWith("king:")||line.startsWith("King:")||line.startsWith("k:")) {
+                plugin.gameCaster.speakKing(plugin.trimCasterDialogue(line), runningDelay);
             }
-        }.runTaskTimer(plugin, 60L, delay[0]);
+            String[] wordCount = line.split(" ");
+            runningDelay = runningDelay + wordCount.length * 10;
+        }
         final int[] secondNum = new int[]{30};
         new BukkitRunnable() {
 
             @Override
             public void run() {
-                if (secondNum[0] == 30 || secondNum[0] == 20 || secondNum[0] == 10 || (secondNum[0] < 6 && secondNum[0] >0)) {
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.playSound(player.getLocation(), "entity.villager.trade", 5.0f, 1.25f);
-                    }
+                if (secondNum[0] == 30 || secondNum[0] == 20 || secondNum[0] == 10 || (secondNum[0] < 6 && secondNum[0] >-1)) {
+
                     if (secondNum[0]==0) {
                         this.cancel();
                         return;
                     }
-                    Bukkit.broadcastMessage(ChatColor.WHITE + "<" + ChatColor.YELLOW + "Herald" + ChatColor.WHITE + "> " + ChatColor.GOLD + "The next round will begin in " + secondNum[0] + " seconds...");
+                    if (secondNum[0] <= 5) {
+                        for (Player player : Bukkit.getOnlinePlayers()) {
+                            player.sendTitle("", ChatColor.GOLD.toString() + secondNum[0] + "...", 0, 21, 0);
+                        }
+                    }
+                    plugin.gameCaster.speakHerald(ChatColor.WHITE + "The round will begin in " + ChatColor.YELLOW + secondNum[0] + ChatColor.WHITE + " seconds...", 0);
+
                 }
                 secondNum[0]--;
+
             }
         }.runTaskTimer(plugin, (this.waitTime*20L) - 600L, 20L);
         gameStartTime = System.currentTimeMillis() + (this.waitTime*1000L);
@@ -360,6 +338,7 @@ public class MiniGame {
         }, (long)(this.waitTime * 20L));
 
     }
+
 
     public void start() {
         this.plugin.getLogger().info("Starting game " + this.name);
@@ -381,10 +360,7 @@ public class MiniGame {
             Player player = var3.next();
             this.startPlayer(player);
         }
-        Bukkit.broadcastMessage(ChatColor.WHITE + "<" + ChatColor.YELLOW + "Herald" + ChatColor.WHITE + "> " + ChatColor.GOLD + "BEGIN!");
-        for (Player player : Bukkit.getOnlinePlayers()) {
-        player.playSound(player.getLocation(), "entity.villager.trade", 5.0f, 1.25f);
-        }
+        plugin.gameCaster.speakHerald(ChatColor.GOLD + "BEGIN!", 0);
 
         this.endTime = System.currentTimeMillis() + (long)(this.gameLength * 1000);
     }
@@ -409,47 +385,64 @@ public class MiniGame {
         }
     }
 
-    public void addScore(Player player, int points) {
+    public void addScore(Player player, float points) {
         if (this.gameRunning) {
             if (this.teamsEnabled) {
                 String teamName = (String)this.playerTeams.get(player.getName());
                 if (teamName != null) {
-                    Score score = (Score)this.teamScores.get(teamName);
-                    int s = score.getScore() + points;
+                    float score = this.teamScores.get(teamName);
+
+                    float s = score + (points * multiplier);
                     if (s < 0 && !this.allowNegative) {
                         s = 0;
                     }
+                    this.teamScores.put(teamName, s);
 
-                    score.setScore(s);
                 }
             } else {
-                Score score = this.objective.getScore(player);
-                int s = score.getScore() + points;
+                float score = this.playerScores.get(player.getUniqueId());
+                float s = score + (points * multiplier);
                 if (s < 0 && !this.allowNegative) {
                     s = 0;
                 }
-
-                score.setScore(s);
+                this.playerScores.put(player.getUniqueId(), s);
             }
-
+            player.playSound(player, "entity.experience_orb.pickup", 0.5f, 2.0f);
+            plugin.actionBarMessenger.queuePointsMessage(player, points);
         }
     }
 
-    public void setScore(Player player, int points) {
+    public void setScore(Player player, float points) {
         if (this.gameRunning) {
             if (this.teamsEnabled) {
                 String teamName = (String)this.playerTeams.get(player.getName());
                 if (teamName != null) {
-                    ((Score)this.teamScores.get(teamName)).setScore(points);
+                    this.teamScores.put(teamName, points);
                 }
             } else {
-                this.objective.getScore(player).setScore(points);
+                this.playerScores.put(player.getUniqueId(), points);
             }
 
         }
     }
 
-    public String getHighestScoringPlayer() {
+    public float getScore(Player player) {
+        if (this.gameRunning) {
+            if (this.teamsEnabled) {
+                String teamName = (String)this.playerTeams.get(player.getName());
+                if (teamName != null) {
+                    return this.teamScores.get(teamName);
+                }
+            } else {
+                return this.playerScores.get(player.getUniqueId());
+            }
+        }
+        return 0.0f;
+    }
+
+
+
+    /*public String getHighestScoringPlayer() {
         List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
         if (players.size() < 1) {
             return "none";
@@ -502,6 +495,58 @@ public class MiniGame {
             retList.add(getHighestScoringPlayer());
         }
         return retList;
+    }*/
+
+    public Player getHighestScoringPlayer() {
+        List<Player> players = new ArrayList<>();
+        for (UUID id : this.playerScores.keySet()) {
+            players.add(Bukkit.getPlayer(id));
+        }
+        Player highestPlayer = players.get(0);
+        float highestScore = this.playerScores.get(highestPlayer.getUniqueId());
+        for (int i = 1; i < players.size(); i++) {
+            Player player = players.get(i);
+            if (this.playerScores.get(player.getUniqueId()) > highestScore) {
+                highestPlayer = player;
+                highestScore = this.playerScores.get(player.getUniqueId());
+            }
+        }
+        return highestPlayer;
+    }
+
+    public Player getHighestScoringPlayer(List<String> playerNames) {
+        List<Player> players = new ArrayList<>();
+        for (String name : playerNames) {
+            players.add(Bukkit.getPlayerExact(name));
+        }
+        if (players.size() < 1) {
+            return null;
+        } else if (players.size() == 1) {
+            return players.get(0);
+        }
+        Player highestPlayer = players.get(0);
+        float highestScore = this.playerScores.get(highestPlayer.getUniqueId());
+        for (int i = 1; i < players.size(); i++) {
+            Player player = players.get(i);
+            if (this.playerScores.get(player.getUniqueId()) > highestScore) {
+                highestPlayer = player;
+                highestScore = this.playerScores.get(player.getUniqueId());
+            }
+        }
+        return highestPlayer;
+    }
+
+    public String getHighestScoringTeamName() {
+        String highestTeam = this.teamNames.get(0);
+        float highestScore = this.teamScores.get(highestTeam);
+        for (int i = 1; i < teamNames.size(); i++) {
+            String teamName = teamNames.get(i);
+            if (this.teamScores.get(teamName) > highestScore) {
+                highestTeam = teamName;
+                highestScore = this.teamScores.get(teamName);
+            }
+        }
+        return highestTeam;
     }
 
     public void annoucementMessageIndividuals(List<String> winners) {
@@ -550,20 +595,88 @@ public class MiniGame {
 
     public void end() {
         this.plugin.getLogger().info("Ending game " + this.name);
-        String winningTeam;
-        Iterator var2;
         if (this.endCommands != null) {
-            var2 = this.endCommands.iterator();
-
-            while(var2.hasNext()) {
-                winningTeam = (String)var2.next();
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), winningTeam);
+            String command;
+            for (String endCommand : this.endCommands) {
+                command = endCommand;
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
             }
         }
-
         Player player;
-        int highestScore;
-        if (this.victorySpell != null) {
+        for (Player player1 : Bukkit.getOnlinePlayers()) {
+            int score = plugin.gameScore.get(player1.getUniqueId());
+            if (teamsEnabled) {
+                String teamName = this.playerTeams.get(player1.getName());
+                if (teamName != null) {
+                    float teamScore = this.teamScores.get(teamName);
+                    plugin.gameScore.put(player1.getUniqueId(), score + Math.round(teamScore));
+                }
+            } else {
+                plugin.gameScore.put(player1.getUniqueId(), Math.round(this.playerScores.get(player1.getUniqueId())) + score);
+            }
+
+        }
+        if (victorySpell != null) {
+            if (!this.teamsEnabled) {
+                if (this.type == MiniGameType.LAST_MAN_STANDING) {
+                    if (this.participants.size() == 1) {
+                        player = Bukkit.getPlayerExact(this.participants.get(0));
+                        if (player != null) {
+                            this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                        }
+                    } else if (this.participants.size() > 1) {
+                        for (String playerName : this.participants) {
+                            player = Bukkit.getPlayerExact(playerName);
+                            if (player != null) {
+                                this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                            }
+                        }
+                    }
+                } else {
+                    player = getHighestScoringPlayer();
+                    if (player != null) {
+                        this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                    }
+                }
+            } else {
+                if (this.type == MiniGameType.LAST_MAN_STANDING) {
+                    if (this.participants.size() == 1) {
+                        player = Bukkit.getPlayerExact(this.participants.get(0));
+                        /*String teamName = this.playerTeams.get(player.getName());
+                        if (teamName != null) {
+                            List<String> playerNames = this.teamPlayers.get(teamName);
+                            for (String playerName : playerNames) {
+                                Player teamPlayer = Bukkit.getPlayerExact(playerName);
+                                if (teamPlayer != null) {
+                                    this.victorySpell.castSpell(teamPlayer, SpellCastState.NORMAL, 1.0F, (String[])null);
+
+                                }
+                            }
+                        }*/
+                        if (player != null) {
+                            this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                        }
+                    } else if (this.participants.size() > 1) {
+                        for (String name : this.participants) {
+                            player = Bukkit.getPlayerExact(name);
+                            if (player != null) {
+                                this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                            }
+                        }
+                    }
+                } else {
+                    String teamName = getHighestScoringTeamName();
+                    if (teamName != null) {
+                        List<String> teamPlayers = this.teamPlayers.get(teamName);
+                        player = getHighestScoringPlayer(teamPlayers);
+                        if (player != null) {
+                            this.victorySpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+                        }
+                    }
+                }
+            }
+        }
+        /*if (this.victorySpell != null) {
             if (!this.teamsEnabled) {
                 if (this.type == MiniGame.MiniGameType.LAST_MAN_STANDING && this.participants.size() == 1) {
                     player = Bukkit.getPlayerExact((String)this.participants.get(0));
@@ -599,7 +712,7 @@ public class MiniGame {
 
                 }
             } else if (this.type == MiniGame.MiniGameType.LAST_MAN_STANDING) {
-                winningTeam = null;
+                String winningTeam = null;
                 Iterator var3 = this.teamPlayers.keySet().iterator();
 
                 String playerName;
@@ -635,7 +748,7 @@ public class MiniGame {
                     annoucementMessageTeams(winner, false);
                 }
             } else if (this.type == MiniGame.MiniGameType.TIMED) {
-                winningTeam = null;
+                String winningTeam = null;
                 highestScore = 0;
                 boolean tie = false;
                 Iterator var5 = this.teams.keySet().iterator();
@@ -643,7 +756,7 @@ public class MiniGame {
                 String playerName;
                 while(var5.hasNext()) {
                     playerName = (String)var5.next();
-                    int score = ((Score)this.teamScores.get(playerName)).getScore();
+                    float score = this.teamScores.get(playerName);
                     if (score > highestScore) {
                         winningTeam = playerName;
                         highestScore = score;
@@ -672,23 +785,15 @@ public class MiniGame {
                     annoucementMessageTeams(winner, true);
                 }
             }
-        }
-
+        }*/
         if (this.endSpell != null) {
-            List<Player> var14 = new ArrayList<>(Bukkit.getOnlinePlayers());
-            int var13 = (var14).size();
-
-            for(highestScore = 0; highestScore < var13; ++highestScore) {
-                player = var14.get(highestScore);
-                this.endSpell.castSpell(player, SpellCastState.NORMAL, 1.0F, (String[])null);
+            for (Player endSpellPlayer : Bukkit.getOnlinePlayers()) {
+                this.endSpell.castSpell(endSpellPlayer, SpellCastState.NORMAL, 1.0F, (String[])null);
             }
         }
 
         if (this.teamsEnabled) {
-            var2 = this.scoreboard.getTeams().iterator();
-
-            while(var2.hasNext()) {
-                Team team = (Team)var2.next();
+            for (Team team : this.scoreboard.getTeams()) {
                 team.unregister();
             }
         }
@@ -847,9 +952,7 @@ public class MiniGame {
         }
 
         if (!this.teamsEnabled) {
-            Score score = this.objective.getScore(player);
-            score.setScore(1);
-            score.setScore(0);
+            this.playerScores.put(player.getUniqueId(), 0.0f);
         }
 
     }
@@ -1008,6 +1111,20 @@ public class MiniGame {
             var8.printStackTrace();
             return null;
         }
+    }
+
+    public List<String> getRemainingTeamNames() {
+        List<String> retList = new ArrayList<>();
+
+        if (this.teamsEnabled) {
+            for (String teamName : teamNames) {
+                if (teamPlayers.get(teamName).size() > 0) {
+                    retList.add(teamName);
+                }
+            }
+        }
+
+        return retList;
     }
 
     public static enum MiniGameType {

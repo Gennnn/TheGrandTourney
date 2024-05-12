@@ -2,7 +2,6 @@ package me.genn.thegrandtourney.skills;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.grid.Direction;
-import me.genn.thegrandtourney.skills.tailoring.Table;
 import me.genn.thegrandtourney.xp.XpType;
 import org.bukkit.Location;
 

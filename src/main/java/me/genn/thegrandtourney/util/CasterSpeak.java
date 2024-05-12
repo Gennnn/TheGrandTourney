@@ -13,14 +13,7 @@ public class CasterSpeak {
         this.plugin = plugin;
     }
 
-    public void speak(int delaySeconds, String text, String speaker) {
-        if (speaker.equalsIgnoreCase("king")) {
-            speakKing(text, delaySeconds);
-        } else {
-
-        }
-    }
-    public void speakKing(String text, int delaySeconds) {
+    public void speakKing(String text, int delayTicks) {
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -29,11 +22,11 @@ public class CasterSpeak {
                     player.playSound(player.getLocation(), "entity.villager.celebrate", 5.0f, 0.75f);
                 }
             }
-        }.runTaskLater(plugin, delaySeconds * 20L);
+        }.runTaskLater(plugin, delayTicks);
 
 
     }
-    public void speakHerald(String text, int delaySeconds) {
+    public void speakHerald(String text, int delayTicks) {
         new BukkitRunnable() {
 
             @Override
@@ -43,7 +36,7 @@ public class CasterSpeak {
                     player.playSound(player.getLocation(), "entity.villager.trade", 5.0f, 1.25f);
                 }
             }
-        }.runTaskLater(plugin, delaySeconds * 20L);
+        }.runTaskLater(plugin, delayTicks);
 
 
     }

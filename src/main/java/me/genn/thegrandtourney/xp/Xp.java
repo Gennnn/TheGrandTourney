@@ -47,7 +47,7 @@ public class Xp {
             return  XpType.COOKING;
         } else if (str.equalsIgnoreCase("tailoring")) {
             return XpType.TAILORING;
-        } else if (str.equalsIgnoreCase("blacksmithing")) {
+        } else if (str.equalsIgnoreCase("blacksmithing") || str.equalsIgnoreCase("smithing")) {
             return XpType.BLACKSMITHING;
         } else if (str.equalsIgnoreCase("alchemy")) {
             return XpType.ALCHEMY;
@@ -67,11 +67,11 @@ public class Xp {
             player.setLvlForType(type, player.getLvlForType(type)+1);
             this.sendMessagesForLevel(bukkitPlayer, type);
         } else {
-            bukkitPlayer.setExp((float) (player.getXpForType(type)/xpForLevel.get(player.getLvlForType(type) + 1)));
-            bukkitPlayer.setLevel(player.getLvlForType(type));
-            bukkitPlayer.playSound(bukkitPlayer, "entity.experience_orb.pickup", 1f, 1.0f);
+            /*bukkitPlayer.setExp((float) (player.getXpForType(type)/xpForLevel.get(player.getLvlForType(type) + 1)));
+            bukkitPlayer.setLevel(player.getLvlForType(type));*/
+            bukkitPlayer.playSound(bukkitPlayer, "entity.experience_orb.pickup", 0.5f, 1.0f);
         }
-
+        plugin.actionBarMessenger.queueXpMessage(bukkitPlayer, type, amount);
     }
     public void sendMessagesForLevel(Player bukkitPlayer, XpType type) {
         MMOPlayer player = plugin.players.get(bukkitPlayer.getUniqueId());
@@ -93,11 +93,8 @@ public class Xp {
         bukkitPlayer.sendMessage(ChatColor.DARK_AQUA + "=====================================================");
         ChainCommand chain = new ChainCommand(plugin.rewardsHandler.getTableForType(type).getRewardsForLevel(player.getLvlForType(type)).rewardCommands, bukkitPlayer);
         chain.run();
-        double numerator = ( player.getXpForType(type) - ( xpForLevel.get(player.getLvlForType(type))));
-        double denominator = (( xpForLevel.get(player.getLvlForType(type) + 1)) - xpForLevel.get(player.getLvlForType(type) ));
         bukkitPlayer.playSound(bukkitPlayer, "entity.player.levelup", 1.0f, 1.0f);
-        bukkitPlayer.setExp((float)  (numerator/denominator));
-        bukkitPlayer.setLevel(player.getLvlForType(type));
+
     }
     public static String intToRoman(int num)
     {

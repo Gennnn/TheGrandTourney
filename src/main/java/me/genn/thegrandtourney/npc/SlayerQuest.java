@@ -105,7 +105,7 @@ public class SlayerQuest extends Quest {
                     }
                 }
             }
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate, step.commands);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }

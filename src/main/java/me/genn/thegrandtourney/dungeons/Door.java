@@ -19,11 +19,13 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 
 public class Door {
+    public Location minLoc;
+    public Location maxLoc;
     List<Block> blocks;
     public Material blockType;
     TGT plugin;
     List<UUID> openedPlayers;
-    Location asLocation;
+    public Location asLocation;
     Room parentRoom;
     Map<UUID, ArmorStand> playersAndProgressStands;
     List<ArmorStand> allArmorStands;
@@ -31,11 +33,13 @@ public class Door {
     BukkitTask blockChangeTask;
 
 
-    public Door(TGT plugin, Material mat, Room room, Location location, String goalText) {
+    public Door(TGT plugin, Material mat, Room room, Location location, String goalText, Location minLoc, Location maxLoc) {
         this.blocks = new ArrayList<>();
         this.plugin = plugin;
         this.blockType = mat;
         this.parentRoom = room;
+        this.minLoc = minLoc;
+        this.maxLoc = maxLoc;
         this.asLocation = location.add(0,1.5,0);
         this.playersAndProgressStands = new HashMap<>();
         this.allArmorStands = new ArrayList<>();

@@ -1,17 +1,16 @@
 package me.genn.thegrandtourney.dungeons;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.DropTable;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.mobs.MMOMob;
 import me.genn.thegrandtourney.npc.Quest;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class DungeonTemplate {
     public String name;
@@ -51,6 +50,26 @@ public class DungeonTemplate {
             data.name = roomSec.getName();
             if (roomSec.contains("goal-text")) {
                 data.goalText = ChatColor.translateAlternateColorCodes('&', roomSec.getString("goal-text"));
+            }
+            if (roomSec.contains("reward-chest")) {
+                ConfigurationSection rewardChestSection = roomSec.getConfigurationSection("reward-chest");
+                data.rewardChestBase = Material.matchMaterial("minecraft:" + rewardChestSection.get("base-material", "stone_slab"));
+                data.rewardChestMid = Material.matchMaterial("minecraft:" + rewardChestSection.get("mid-material", "stone_bricks"));
+                data.rewardChestBase64 = rewardChestSection.getString("texture", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZDliMjk4M2MwMWI4ZGE3ZGMxYzBmMTJkMDJjNGFiMjBjZDhlNjg3NWU4ZGY2OWVhZTJhODY3YmFlZTYyMzZkNCJ9fX0=");
+                String particle = rewardChestSection.getString("particle", "cloud");
+
+                Particle p = com.nisovin.magicspells.util.ParticleUtil.getParticle(particle);
+                if (p == null) {
+                    data.chestParticle = Particle.CLOUD;
+                } else {
+                    data.chestParticle = p;
+                }
+
+                data.chestParticleCount = rewardChestSection.getInt("particle-count", 1);
+                DropTable rewardTable = new DropTable(plugin, true, false);
+                ConfigurationSection rewardsSection = rewardChestSection.getConfigurationSection("rewards");
+                rewardTable.addDropsFromSection(rewardsSection);
+                data.rewardChestDrops = rewardTable;
             }
             returnData.add(data);
         }

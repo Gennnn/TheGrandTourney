@@ -140,9 +140,18 @@ public class Quest extends Trait {
     }
 
     public void zap(Player player, String string, boolean dialogue) {
-
+        Step step = steps.stream().filter(obj -> obj.stepName.equalsIgnoreCase(string)).findFirst().orElse(null);
+        if (step != null && step.requiredXpType != null && step.requiredLvl > 0 && step.stepToJumpIfFail != null) {
+            if (plugin.players.get(player.getUniqueId()).getLvlForType(step.requiredXpType) < step.requiredLvl) {
+                this.questProgress.put(player.getUniqueId(), step.stepToJumpIfFail);
+                if (dialogue) {
+                    this.dialogueTree(player);
+                }
+                return;
+            }
+        }
         this.questProgress.put(player.getUniqueId(), string);
-        System.out.println("Progress for " + player.getName() + " is now " + this.questProgress.get(player.getUniqueId()));
+        //System.out.println("Progress for " + player.getName() + " is now " + this.questProgress.get(player.getUniqueId()));
         if (dialogue) {
             this.dialogueTree(player);
         }
@@ -162,7 +171,7 @@ public class Quest extends Trait {
             } else if (step.stepName.contains("accept")) {
                 this.playSound(player, "entity.experience_orb.pickup", 1.0F, 0F);
             }
-            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate);
+            this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate, step.commands);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);
             }
@@ -174,8 +183,8 @@ public class Quest extends Trait {
     }
 
 
-    public void createDialogue(List<String> lines, BaseComponent narration, Player player, boolean ranged, List<String> rewards, ObjectiveUpdate objectiveUpdate) {
-        Dialogue dialogue = new Dialogue(lines, this.lineDelay, this.useWordCtForDelay, this.talkSound, this.talkVolume, this.talkPitch, npc, plugin, this.type, this.wordCtFactor, narration, rewards, this.questName, tgtNpc, objectiveUpdate);
+    public void createDialogue(List<String> lines, BaseComponent narration, Player player, boolean ranged, List<String> rewards, ObjectiveUpdate objectiveUpdate, List<String> commands) {
+        Dialogue dialogue = new Dialogue(lines, this.lineDelay, this.useWordCtForDelay, this.talkSound, this.talkVolume, this.talkPitch, npc, plugin, this.type, this.wordCtFactor, narration, rewards, this.questName, tgtNpc, objectiveUpdate, commands);
         dialogue.speak(player, ranged);
     }
     @Override

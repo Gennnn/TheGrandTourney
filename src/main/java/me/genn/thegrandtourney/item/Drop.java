@@ -8,4 +8,5 @@ public class Drop {
     public double maxQuantity;
 
     public int weight;
+    public String quality = "normal";
 }

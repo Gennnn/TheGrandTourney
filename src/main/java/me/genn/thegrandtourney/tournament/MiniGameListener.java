@@ -35,47 +35,19 @@ public class MiniGameListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        if (!plugin.tournament) {
-            return;
-        }
-        MiniGame game = this.plugin.getCurrentGame();
-        if (game != null) {
-            game.playerJoin(event.getPlayer());
-        } else {
-            Location loc = new Location((World)Bukkit.getWorlds().get(0), 0.0, 0.0, 0.0);
-            loc.setY((double)(loc.getWorld().getHighestBlockYAt(loc) + 1));
-            event.getPlayer().teleport(loc);
-        }
+
 
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
-        if (!plugin.tournament) {
-            return;
-        }
-        final MiniGame game = this.plugin.getCurrentGame();
-        if (game != null) {
-            final Player player = event.getPlayer();
-            event.setRespawnLocation(game.getInitSpawn());
-            Bukkit.getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-                public void run() {
-                    game.playerJoin(player);
-                }
-            }, 1L);
-        }
+
 
     }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        if (!plugin.tournament) {
-            return;
-        }
-        MiniGame game = this.plugin.getCurrentGame();
-        if (game != null) {
-            game.playerDeath(event.getEntity());
-        }
+
 
     }
 
@@ -93,9 +65,10 @@ public class MiniGameListener implements Listener {
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
-        if (!plugin.tournament) {
+        /*if (!plugin.tournament) {
+            event.setCancelled(true);
             return;
-        }
+        }*/
         if (event.getEntity() instanceof Player) {
             if (((Player)event.getEntity()).isOp()) {
                 return;

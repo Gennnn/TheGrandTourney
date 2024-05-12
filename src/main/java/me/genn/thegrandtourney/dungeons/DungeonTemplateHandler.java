@@ -27,6 +27,7 @@ public class DungeonTemplateHandler {
 
 
 
+
     public DungeonTemplateHandler() {
     }
     public void registerTemplates(TGT plugin, ConfigurationSection config) throws IOException {

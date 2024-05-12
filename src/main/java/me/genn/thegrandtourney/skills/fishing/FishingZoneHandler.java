@@ -49,6 +49,10 @@ public class FishingZoneHandler {
         return list.stream().map(FishingZoneTemplate::getName).filter(name::equals).findFirst().isPresent();
     }
 
+    public FishingZoneTemplate getTemplateWithName(String name) {
+       return this.allZones.stream().filter(o -> o.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
+    }
+
     private List<FishingZone> listOfZonesWithTemplateName(final List<FishingZone> list, final String name){
         return list.stream().filter(o -> o.getName().equals(name)).toList();
     }

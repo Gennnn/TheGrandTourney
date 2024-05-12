@@ -1,0 +1,38 @@
+sound-sale: "block.note_block.harp"
+sound-no-money: "entity.villager.no"
+
+items:
+  oak_log:
+    item: oak_log
+    quantity: 1
+    cost: 5
+    give-item: true
+    quantity-options: true
+    close-after: false
+  dwarven_runeblade:
+    item: dwarven_runeblade
+    quantity: 1
+    cost: 100
+    cost-items:
+      - oak_log 5
+    give-item: true
+    confirm: true
+    close-after: true
+  salmon:
+    item: salmon
+    quantity: 16
+    cost-items:
+      - dwarven_runeblade 5
+      - oak_log 24
+    confirm: true
+    close-after: false
+
+
+shops:
+  shop1:
+    name: "Test Shop"
+    items:
+      - oak_log
+      - dwarven_runeblade
+      - salmon
+

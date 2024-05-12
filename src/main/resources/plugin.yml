@@ -32,7 +32,7 @@ commands:
     description: spawns a tgt object
   saveschematic:
     description: saves a schem
-  fishingzone:
+  fishing-zone:
     description: defines a fishing zone
   menu:
     description: open menu
@@ -44,13 +44,13 @@ commands:
     description: add skill xp
   tabletest:
     description: table
-  grantrecipe:
+  grant-recipe:
     description: grants recipe
   stat:
     description: modifies base stats
-  foragingtest:
-    description: foragingtest
-  create-dungeon:
+  foraging-zone:
+    description: creates foraging zone
+  dungeon:
     description: create dungeon
   room:
     description: creates room
@@ -78,3 +78,15 @@ commands:
     description: starts the tourney
   exit:
     description: creates dungeon exit point or entry point
+  reward-chest:
+    description: adds reward chest
+  points-multiplier:
+    description: sets points mult for game
+  invshop:
+    description: opens shop
+  debug:
+    description: toggles debug
+  temp-stat:
+    description: temporarily increases a stat
+  potion-effect:
+    description: potion buff
