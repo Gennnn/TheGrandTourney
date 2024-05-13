@@ -16,6 +16,7 @@ public class MenuManager {
     private RecipeBook recipeMenu;
     private StationMasterRecipeBook stationMasterRecipeBook;
     private PotionEffects potionEffects;
+    private Bank bank;
     TGT plugin;
 
     public MenuManager(TGT plugin) {
@@ -28,6 +29,7 @@ public class MenuManager {
         this.recipeMenu = new RecipeBook(plugin);
         this.stationMasterRecipeBook = new StationMasterRecipeBook(plugin);
         this.potionEffects = new PotionEffects(plugin);
+        this.bank = new Bank(plugin);
     }
 
     public void openHomeMenu(Player player) {
@@ -48,4 +50,6 @@ public class MenuManager {
     public void openRecipeBook(Player player) {this.recipeMenu.loadMenuRecipeBook(player, 0, XpType.ALL);}
     public void openStationMasterMenu(Player player, XpType type, StationMaster sm) {this.stationMasterRecipeBook.loadMenuRecipeBook(player, 0, type, sm);}
     public void openActiveEffectsMenu(Player player) {this.potionEffects.loadMenuPotionEffects(player);}
+    public void openBankMenu(Player player){this.bank.loadBank(player,false,0);}
+    public void openRemoteBankMenu(Player player){this.bank.loadBank(player,true,0);}
 }

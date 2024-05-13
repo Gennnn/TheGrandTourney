@@ -3151,6 +3151,76 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         return mmoPlayer;
     }
 
+    public void accessMobileBank(Player player) {
+        MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
+        if (mmoPlayer.mobileBankLvl == 0) {
+            return;
+        } else if (mmoPlayer.mobileBankLvl == 1) {
+            if (mmoPlayer.lastMobileBankUse + (600 * 1000L) <= System.currentTimeMillis()) {
+                this.menus.openRemoteBankMenu(player);
+                return;
+            }
+
+        } else if (mmoPlayer.mobileBankLvl == 2) {
+            if (mmoPlayer.lastMobileBankUse + (300 * 1000L) <= System.currentTimeMillis()) {
+                this.menus.openRemoteBankMenu(player);
+                return;
+            }
+
+        } else if (mmoPlayer.mobileBankLvl == 3) {
+            if (mmoPlayer.lastMobileBankUse + (120 * 1000L) <= System.currentTimeMillis()) {
+                this.menus.openRemoteBankMenu(player);
+                return;
+            }
+
+        } else {
+            this.menus.openRemoteBankMenu(player);
+            return;
+        }
+        int secsOnCd = (int)(System.currentTimeMillis() - mmoPlayer.lastMobileBankUse)/1000;
+        player.sendMessage(ChatColor.RED + "Your Mobile Banking is still on cooldown for " + formatMinsAndSecsRemaining(secsOnCd) + ".");
+    }
+    private String formatMinsAndSecsRemaining(long time) {
+        String retString = "";
+        time = System.currentTimeMillis() - time;
+        long mins = TimeUnit.MILLISECONDS.toMinutes(time);
+        time = time - TimeUnit.MINUTES.toMillis(mins);
+        long secs = TimeUnit.MILLISECONDS.toSeconds(time);
+        if (mins > 0 && secs > 0) {
+            retString = retString + mins;
+            if (mins > 1) {
+                 retString = retString + " minutes ";
+            } else {
+                retString = retString +" minute ";
+            }
+            retString = retString + "and " + secs;
+            if (secs > 1) {
+                retString = retString + " seconds";
+            } else {
+                retString = retString + " second";
+            }
+        }
+        if (mins > 0 && secs <= 0) {
+            retString = retString + mins;
+            if (mins > 1) {
+                retString = retString + " minutes";
+            } else {
+                retString = retString +" minute";
+            }
+        }
+        if (mins <= 0 && secs > 0) {
+            retString = retString + secs;
+            if (secs > 1) {
+                retString = retString + " seconds";
+            } else {
+                retString = retString + " second";
+            }
+        }
+        return retString;
+    }
+
+
+
     public void displayStats() {
         Iterator iter = Bukkit.getOnlinePlayers().iterator();
 

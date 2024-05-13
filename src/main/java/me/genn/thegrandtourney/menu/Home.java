@@ -30,6 +30,7 @@ public class Home implements Listener {
     final String accessories = ChatColor.GREEN + "Accessory Bag";
     final String storage = ChatColor.GREEN + "Storage";
     final String activeEffects = ChatColor.GREEN + "Active Effects";
+    final String mobileBanking = ChatColor.GREEN + "Mobile Banking";
     final String close = ChatColor.RED + "Close";
     TGT plugin;
 
@@ -172,6 +173,21 @@ public class Home implements Listener {
         meta.setLore(lore);
         item.setItemMeta(meta);
         inv.setItem(31, item);
+        lore.clear();
+        item = new ItemStack(Material.PLAYER_HEAD);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWZkMTA4MzgzZGZhNWIwMmU4NjYzNTYwOTU0MTUyMGU0ZTE1ODk1MmQ2OGMxYzhmOGYyMDBlYzdlODg2NDJkIn19fQ==", item);
+        meta = item.getItemMeta();
+        meta.setDisplayName(mobileBanking);
+        lore.add(ChatColor.GRAY + "Deposit and withdraw your Dosh");
+        lore.add(ChatColor.GRAY + "from anywhere!");
+        lore.add(" ");
+        lore.add(ChatColor.YELLOW + "Click to view!");
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS);
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        inv.setItem(30,item);
         fillRemainderOfInventory(inv);
         player.openInventory(inv);
     }
@@ -210,6 +226,8 @@ public class Home implements Listener {
                     e.getInventory().close();
                 } else if (name.equalsIgnoreCase(activeEffects)) {
                     plugin.menus.openActiveEffectsMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                } else if (name.equalsIgnoreCase(mobileBanking)) {
+                    plugin.accessMobileBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 }
             }
         }

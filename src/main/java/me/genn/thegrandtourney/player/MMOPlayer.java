@@ -88,6 +88,7 @@ public class MMOPlayer {
         this.completedObjectives = new ArrayList<>();
         this.recipeBook = new ArrayList<>();
     }
+    public List<BankTransaction> transactionHistory = new ArrayList<>();
     public HashSet<StatBuff> buffs = new HashSet<>();
     public HashSet<PotionEffect> potionEffects = new HashSet<>();
     public boolean isCrafting = false;
@@ -96,7 +97,7 @@ public class MMOPlayer {
     public Craft currentCraftObj = null;
     public Station currentStation;
     public List<StatBuff> absorptionLayers = new ArrayList<>();
-
+    public int mobileBankLvl = 0;
     public float getTotalHealth() {
         return health + absorptionHealth;
     }
@@ -870,7 +871,7 @@ public class MMOPlayer {
     public void setManaRegen(float manaRegen) {
         this.manaRegen = manaRegen;
     }
-
+    public long lastMobileBankUse = 0L;
 
 
 

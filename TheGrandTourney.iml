@@ -139,8 +139,8 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.9.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.libraryaddict:LibsDisguises:v10.0.25" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.PlaceholderAPI:PlaceholderAPI:master-882b7c5965-1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.TechFortress:GriefPrevention:master-17.0.0-g5df4c5d-31" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.PlaceholderAPI:PlaceholderAPI:master-68f467ab29-1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.TechFortress:GriefPrevention:master-17.0.0-g14ce8e6-40" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.Xezard:XGlow:master-54ac265afb-1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.Xezard.XGlow:XGlowAPI:master-54ac265afb-1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.EngineHub:WorldGuard:master" level="project" />
