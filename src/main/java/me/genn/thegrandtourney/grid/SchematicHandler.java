@@ -73,7 +73,7 @@ public class SchematicHandler {
         this.linkedSchematics = new ArrayList<Schematic>();
         this.allSchematics = new ArrayList<Schematic>();
         this.noneSchematics = new ArrayList<Schematic>();
-        String contents[] = schematicFolder.list();
+        String[] contents = schematicFolder.list();
         for (int i=0; i < contents.length; i++) {
             allSchematicsFiles.add(contents[i]);
         }

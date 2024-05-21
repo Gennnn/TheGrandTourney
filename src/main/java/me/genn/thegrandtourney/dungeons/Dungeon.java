@@ -517,13 +517,6 @@ public class Dungeon implements Listener, TournamentZone {
                 }
             }
         }
-        /*for (int x = minLoc.getBlockX(); x < maxLoc.getBlockX(); x++) {
-            for (int y = (int)minLoc.getBlockY(); y < (int)maxLoc.getBlockY(); y++) {
-                for (int z = (int)minLoc.getBlockZ(); z < (int)maxLoc.getBlockZ(); z++) {
-
-                }
-            }
-        }*/
         room.door = door;
 
     }
@@ -566,13 +559,6 @@ public class Dungeon implements Listener, TournamentZone {
                 }
             }
         }
-        /*for (int x = minLoc.getBlockX(); x < maxLoc.getBlockX(); x++) {
-            for (int y = (int)minLoc.getBlockY(); y < (int)maxLoc.getBlockY(); y++) {
-                for (int z = (int)minLoc.getBlockZ(); z < (int)maxLoc.getBlockZ(); z++) {
-
-                }
-            }
-        }*/
         room.door = door;
 
     }
@@ -608,13 +594,6 @@ public class Dungeon implements Listener, TournamentZone {
                 }
             }
         }
-        /*for (int x = minLoc.getBlockX(); x < maxLoc.getBlockX(); x++) {
-            for (int y = (int)minLoc.getBlockY(); y < (int)maxLoc.getBlockY(); y++) {
-                for (int z = (int)minLoc.getBlockZ(); z < (int)maxLoc.getBlockZ(); z++) {
-
-                }
-            }
-        }*/
         this.entranceDoor = door;
         this.entranceStandTask = new BukkitRunnable() {
             @Override

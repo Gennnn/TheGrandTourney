@@ -126,6 +126,9 @@ public class DropTable {
         if (section.contains("quality")){
             drop.quality = section.getString("quality");
         }
+        if (section.contains("luck-boosted")) {
+            drop.luckBoosted = section.getBoolean("luck-boosted", false);
+        }
         return drop;
     }
 
@@ -156,6 +159,9 @@ public class DropTable {
         if (section.contains("quality")){
             drop.quality = section.getString("quality");
         }
+        if (section.contains("luck-boosted")) {
+            drop.luckBoosted = section.getBoolean("luck-boosted", false);
+        }
         return drop;
     }
     public Fish mobDrop(ConfigurationSection section) {
@@ -182,6 +188,9 @@ public class DropTable {
 
         drop.minTime = section.getInt("min-time", 1);
         drop.maxTime = section.getInt("max-time", 4);
+        if (section.contains("luck-boosted")) {
+            drop.luckBoosted = section.getBoolean("luck-boosted", false);
+        }
         return drop;
     }
 
@@ -208,7 +217,11 @@ public class DropTable {
         List<Drop> dropsWithWeight = new ArrayList<>();
         while (iter.hasNext()) {
             Drop drop = (Drop) iter.next();
-            for (int i = 0; i < drop.weight; i++) {
+            int weight = drop.weight;
+            if (drop.luckBoosted) {
+                weight *= (int)(1 + (plugin.players.get(p.getUniqueId()).getLuck()/100));
+            }
+            for (int i = 0; i < weight; i++) {
                 dropsWithWeight.add(drop);
             }
         }
@@ -216,6 +229,7 @@ public class DropTable {
         Drop drop = dropsWithWeight.get(r.nextInt(dropsWithWeight.size()));
 
         int bonusAmount = 0;
+        bonus = bonus * (1 + (plugin.players.get(p.getUniqueId()).getLuck()/100));
         while (bonus > 100) {
             bonusAmount++;
             bonus-=100;
@@ -241,32 +255,30 @@ public class DropTable {
         Random r = new Random();
         List<Fish> dropsWithWeight = new ArrayList<>();
         if (r.nextDouble() * 100 <= plugin.players.get(p.getUniqueId()).getSeaCreatureChance()) {
+
             for (Fish fishCreature : this.fishCreatures) {
                 Fish drop = fishCreature;
-                for (int i = 0; i < drop.weight; i++) {
+                int weight = drop.weight;
+                if (drop.luckBoosted) {
+                    weight = (int) (weight * (1 + (plugin.players.get(p.getUniqueId()).getLuck()/100)));
+                }
+                for (int i = 0; i < weight; i++) {
                     dropsWithWeight.add(drop);
                 }
             }
         } else {
-            for (Drop fishCreature : this.drops) {
-                for (int i = 0; i < (fishCreature).weight; i++) {
-                    dropsWithWeight.add((Fish)fishCreature);
+            for (Drop drop : this.drops) {
+                int weight = drop.weight;
+                if (drop.luckBoosted) {
+                    weight = (int) (weight * (1 + (plugin.players.get(p.getUniqueId()).getLuck()/100)));
+                }
+                for (int i = 0; i < weight; i++) {
+                    dropsWithWeight.add((Fish)drop);
                 }
             }
         }
 
         return dropsWithWeight.get(r.nextInt(dropsWithWeight.size()));
-        /*int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1);
-        ItemStack bItem = plugin.itemHandler.getItem(drop.drop).asQuantity(quantity);
-        p.getInventory().addItem(bItem);
-        this.checkDungeonRoom(p, bItem, quantity);
-        if (this.xpDropType != null) {
-            plugin.xpHandler.grantXp(xpDropType, p, r.nextDouble(this.xpDropMin, this.xpDropMax+0.1));
-        }
-        if (this.moneyDropMin != -1) {
-            plugin.players.get(p.getUniqueId()).addPurseGold(r.nextInt(this.moneyDropMin, this.moneyDropMax+1));
-
-        }*/
     }
     public void calculateDropsIndividual(Player p, float bonus) {
         if (drops.size() < 1) {
@@ -279,6 +291,7 @@ public class DropTable {
             if (drop.chance >= (r.nextDouble() * 100)) {
                 int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1);
                 int bonusAmount = 0;
+                bonus *= 1+(plugin.players.get(p.getUniqueId()).getLuck()/100);
                 while (bonus > 100) {
                     bonusAmount++;
                     bonus-=100;
@@ -309,7 +322,11 @@ public class DropTable {
         Random r = new Random();
         while (iter.hasNext()) {
             Drop drop = (Drop) iter.next();
-            if (drop.chance >= (r.nextDouble() * 100)) {
+            double chance = drop.chance;
+            if (drop.luckBoosted) {
+                chance *= 1 + (plugin.players.get(p.getUniqueId()).getLuck()/100);
+            }
+            if (chance >= (r.nextDouble() * 100)) {
                 int quantity = r.nextInt((int)drop.minQuantity, (int)drop.maxQuantity+1);
                 ItemStack bItem;
                 if (!drop.quality.equalsIgnoreCase("normal")) {

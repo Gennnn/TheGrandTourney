@@ -9,4 +9,5 @@ public class Drop {
 
     public int weight;
     public String quality = "normal";
+    public boolean luckBoosted = false;
 }

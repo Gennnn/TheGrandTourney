@@ -5,20 +5,18 @@ import java.util.*;
 import com.destroystokyo.paper.event.player.PlayerRecipeBookClickEvent;
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.Spell;
-import com.nisovin.magicspells.events.SpellApplyDamageEvent;
-import com.nisovin.magicspells.events.SpellCastEvent;
-import com.nisovin.magicspells.events.SpellTargetEvent;
+import com.nisovin.magicspells.events.*;
 import de.tr7zw.nbtapi.NBTItem;
 import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.bukkit.events.MythicMobDeathEvent;
 import io.lumine.mythic.bukkit.events.MythicMobSpawnEvent;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.conditions.*;
 import me.genn.thegrandtourney.dungeons.Room;
 import me.genn.thegrandtourney.dungeons.RoomGoal;
+import me.genn.thegrandtourney.effects.BetterArmorStandEffect;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.mobs.MMOMob;
-import me.genn.thegrandtourney.npc.ItemRetrievalQuest;
-import me.genn.thegrandtourney.npc.Quest;
 import me.genn.thegrandtourney.npc.SlayerQuest;
 import me.genn.thegrandtourney.player.*;
 import me.genn.thegrandtourney.skills.fishing.Fish;
@@ -26,7 +24,7 @@ import me.genn.thegrandtourney.skills.fishing.FishingZoneTemplate;
 import me.genn.thegrandtourney.skills.mining.Ore;
 import me.genn.thegrandtourney.tournament.MiniGame;
 import me.genn.thegrandtourney.util.IntMap;
-import me.genn.thegrandtourney.xp.Xp;
+import me.genn.thegrandtourney.util.TabList;
 import org.bukkit.*;
 
 import org.bukkit.entity.*;
@@ -34,17 +32,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 
@@ -64,13 +56,14 @@ public class EventListener implements Listener {
     public Map<MMOMob, IntMap<Player>> slayerTracker;
     public Map<UUID, Map<EquipmentSlot, Long>> cantUseMsgCd;
     Map<Player, Fish> queuedFish;
+    public HashMap<Entity, ArrowDamage> arrowsAndDamage = new HashMap<>();
 
     public EventListener(TGT plugin) {
         this.plugin = plugin;
         this.r = new Random();
         this.spectralDamage = SpectralDamage.getInstance();
-        this.mobs = new HashMap();
-        this.ores = new HashMap();
+        this.mobs = new HashMap<>();
+        this.ores = new HashMap<>();
         this.slayerTracker = new HashMap<>();
         this.cantUseMsgCd = new HashMap<>();
         this.queuedFish = new HashMap<>();
@@ -195,9 +188,7 @@ public class EventListener implements Listener {
                     String id = nbtI.getCompound("ExtraAttributes").getString("id");
                     MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(id);
                     if (mmoItem != null && mmoItem.typeRequirement != null) {
-                        if (mmoPlayer.getLvlForType(mmoItem.typeRequirement) < mmoItem.lvlRequirement) {
-                            return false;
-                        }
+                        return mmoPlayer.getLvlForType(mmoItem.typeRequirement) >= mmoItem.lvlRequirement;
                     }
                 }
             }
@@ -214,21 +205,57 @@ public class EventListener implements Listener {
                     String id = nbtI.getCompound("ExtraAttributes").getString("id");
                     MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(id);
                     if (mmoItem != null && mmoItem.typeRequirement != null) {
-                        if (mmoPlayer.getLvlForType(mmoItem.typeRequirement) < mmoItem.lvlRequirement) {
-                            return false;
-                        }
+                        return mmoPlayer.getLvlForType(mmoItem.typeRequirement) >= mmoItem.lvlRequirement;
                     }
                 }
             }
         }
         return true;
     }
+    private boolean isBow(ItemStack item) {
+        if (item != null && item.hasItemMeta()) {
+            NBTItem nbtItem = new NBTItem(item);
+            if (nbtItem.hasTag("ExtraAttributes")) {
+                NBTCompound comp = nbtItem.getCompound("ExtraAttributes");
+                if (comp.hasTag("id")) {
+                    String id = comp.getString("id");
+                    MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(id);
+                    return mmoItem.categoryString != null && (mmoItem.categoryString.equalsIgnoreCase("bow") || mmoItem.categoryString.equalsIgnoreCase("shortbow") || mmoItem.categoryString.equalsIgnoreCase("longbow") || mmoItem.categoryString.equalsIgnoreCase("greatbow"));
+                }
+            }
+        }
+        return false;
+    }
+    @EventHandler
+    public void onBowShoot(EntityShootBowEvent e) {
+        if (e.getEntity() instanceof Player && e.getProjectile() instanceof Projectile && isBow(e.getBow())) {
+            Player player = (Player)e.getEntity();
+            MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
+            boolean crit = (mmoPlayer.getCritChance() * (1+(mmoPlayer.getLuck()/100))) >= (r.nextFloat()*100);
+            double damage = plugin.calculateBowDamage(mmoPlayer, e.getBow(), crit, e.getConsumable());
+            this.arrowsAndDamage.put(e.getProjectile(), new ArrowDamage(damage, crit));
+        }
+    }
+    private boolean isShortBow(ItemStack item) {
+        if (item != null && item.hasItemMeta()) {
+            NBTItem nbtItem = new NBTItem(item);
+            if (nbtItem.hasTag("ExtraAttributes")) {
+                NBTCompound comp = nbtItem.getCompound("ExtraAttributes");
+                if (comp.hasTag("id")) {
+                    String id = comp.getString("id");
+                    MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(id);
+                    return mmoItem.categoryString != null && mmoItem.categoryString.equalsIgnoreCase("shortbow");
+                }
+            }
+        }
+        return false;
+    }
     @EventHandler
     public void onPlayerDoDamage(EntityDamageByEntityEvent e) {
         if (this.ores.containsKey(e.getEntity())) {
             return;
         }
-        if (! (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK)) {
+        if (! (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK) && ! (e.getCause() == EntityDamageEvent.DamageCause.PROJECTILE)) {
             return;
         }
         if (e.getDamager() instanceof Player) {
@@ -253,8 +280,9 @@ public class EventListener implements Listener {
                         return;
                     }
                     target.add(1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)));
-                    boolean crit = (player.getCritChance()/100) >= r.nextFloat();
-                    double damage = plugin.calculateDamage(player, p.getItemInHand(), crit);
+                    //boolean crit = (player.getCritChance()/100) >= r.nextFloat();
+                    boolean crit = (player.getCritChance() * (1+(player.getLuck()/100))) >= (r.nextFloat()*100);
+                    double damage = plugin.calculateDamage(player, e.getEntity(), p.getItemInHand(), crit);
                     if (defense != 0) {
                         damage = plugin.calculateDefenseDamage((float)defense, (float)damage);
                     }
@@ -275,35 +303,6 @@ public class EventListener implements Listener {
                         }
                     }.runTaskLater(plugin, 30L);
                     e.setDamage((int) damage);
-
-                    /*if (this.mobs.keySet().contains(e.getEntity()) && (int)damage >= ((Damageable)e.getEntity()).getHealth()) {
-                        MMOMob mob = this.mobs.get(e.getEntity());
-                        if (plugin.players.containsKey(p.getUniqueId())) {
-                            Iterator iter = plugin.players.get(p.getUniqueId()).slayerMap.keySet().iterator();
-                            while (iter.hasNext()) {
-                                String questName = (String) iter.next();
-                                IntMap map = plugin.players.get(p.getUniqueId()).slayerMap.get(questName);
-                                if (map.containsKey(mob)) {
-                                    map.increment(mob);
-                                    plugin.players.get(p.getUniqueId()).slayerMap.put(questName, map);
-                                    //if (plugin.players.get(p.getUniqueId()).trackedObjective.questName.equalsIgnoreCase(questName)) {
-                                        if (plugin.questHandler.getQuest(questName) != null) {
-                                            if (plugin.questHandler.getQuest(questName) instanceof SlayerQuest) {
-                                                int amount = ((SlayerQuest)plugin.questHandler.getQuest(questName)).amountToBring;
-                                                if (plugin.players.get(p.getUniqueId()).slayerMap.get(questName).get(mob) >= amount) {
-                                                    if (plugin.questHandler.getQuest(questName).questProgress.containsKey(p.getUniqueId()) && plugin.questHandler.getQuest(questName).questProgress.get(p.getUniqueId()).equalsIgnoreCase(((SlayerQuest) plugin.questHandler.getQuest(questName)).stepToFinish)) {
-                                                        plugin.questHandler.objectiveUpdater.performStatusUpdates(p, questName, plugin.questHandler.getQuest(questName).tgtNpc.updateOnCompleteCollection);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    //}
-                                }
-                            }
-                        }
-                        //mob.calculateDrops(p);
-                    }*/
-
                 }
             } else if (e.getEntity() instanceof Player) {
                 if (!plugin.tournament) {
@@ -318,8 +317,8 @@ public class EventListener implements Listener {
                     Location target = e.getEntity().getLocation();
 
                     target.add(1.35 * r.nextDouble() * (1 - (r.nextDouble() * 2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble() * 2)));
-                    boolean crit = (player.getCritChance() / 100) >= r.nextFloat();
-                    double damage = plugin.calculateDamage(player, p.getItemInHand(), crit);
+                    boolean crit = (player.getCritChance() * (1+(player.getLuck()/100))) >= (r.nextFloat()*100);
+                    double damage = plugin.calculateDamage(player, e.getEntity(), p.getItemInHand(), crit);
                     if (defense != 0) {
                         damage = plugin.calculateDefenseDamage((float) defense, (float) damage);
                     }
@@ -344,8 +343,58 @@ public class EventListener implements Listener {
             }
 
 
+        } else if (e.getDamager() instanceof Projectile && this.arrowsAndDamage.containsKey(e.getDamager()) ) {
+            Projectile projectile = (Projectile) e.getDamager();
+            Player player = (Player) projectile.getShooter();
+            if (player.getAttackCooldown() != 1.0) {
+                e.setCancelled(true);
+                return;
+            }
+            if (!checkWieldingItemForLvlRequirements(player)) {
+                player.sendMessage(ChatColor.RED + "You don't have the necessary level to use this item!");
+                e.setCancelled(true);
+                return;
+            }
+            if (e.getEntity() instanceof NPC) {
+                return;
+            }
+            e.setDamage((int)doBowDamage(player, e.getEntity(), projectile));
+
         }
 
+    }
+
+    public double doBowDamage(Player shooter, Entity target, Projectile projectile) {
+        int defense = 0;
+        if (this.mobs.keySet().contains(target)) {
+            defense = (int)this.mobs.get(target).defense;
+        } else if (plugin.players.containsKey(target.getUniqueId())) {
+            defense = (int)plugin.players.get(target.getUniqueId()).getDefense();
+        }
+
+        Location targetLoc = target.getLocation();
+        targetLoc.add(1.35 * r.nextDouble() * (1 - (r.nextDouble() * 2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble() * 2)));
+        double damage = this.arrowsAndDamage.get(projectile).damage;
+        if (defense != 0) {
+            damage = plugin.calculateDefenseDamage((float)defense, (float)damage);
+        }
+        Entity indicator = null;
+        if (this.arrowsAndDamage.get(projectile).crit) {
+            indicator = spectralDamage.spawnDamageIndicator(shooter, targetLoc, new CritDamageIndicator(), (int)damage);
+        } else {
+            indicator = spectralDamage.spawnDamageIndicator(shooter, targetLoc, new NormalDamageIndicator(), (int)damage);
+        }
+        Entity finalIndicator = indicator;
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+                if (finalIndicator.isValid()) {
+                    finalIndicator.remove();
+                }
+            }
+        }.runTaskLater(plugin, 30L);
+        return damage;
     }
 
 
@@ -438,13 +487,13 @@ public class EventListener implements Listener {
 
     public String mobName(Entity entity, String name, int lvl) {
         String str = ChatColor.DARK_GRAY + "[" + ChatColor.GRAY + "Lv" + lvl + ChatColor.DARK_GRAY + "] ";
-        str = str + ChatColor.RED.toString() + name;
+        str = str + ChatColor.RED + name;
         if (((Damageable) entity).getHealth() == ((Damageable) entity).getMaxHealth()) {
-            str = str + " " + ChatColor.GREEN.toString();
+            str = str + " " + ChatColor.GREEN;
         } else {
-            str = str + " " + ChatColor.YELLOW.toString();
+            str = str + " " + ChatColor.YELLOW;
         }
-        str = str + (int)((Damageable) entity).getHealth() + ChatColor.WHITE.toString() + "/" + ChatColor.GREEN.toString() + (int)((Damageable) entity).getMaxHealth() + ChatColor.RED.toString() + "❤";
+        str = str + (int)((Damageable) entity).getHealth() + ChatColor.WHITE + "/" + ChatColor.GREEN + (int)((Damageable) entity).getMaxHealth() + ChatColor.RED + "❤";
         return str;
     }
 
@@ -647,23 +696,45 @@ public class EventListener implements Listener {
     }
     @EventHandler
     public void onMenuClick2(InventoryClickEvent e) {
-        if (plugin.itemHandler.itemIsMMOItemOfName(e.getCurrentItem(), "tgt_menu")) {
-            e.setCancelled(true);
-            e.setCursor(new ItemStack(Material.AIR));
-            plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
-
+        if (e.getInventory().getType() == InventoryType.CRAFTING) {
+            if (e.getRawSlot()+2 == e.getWhoClicked().getOpenInventory().countSlots()) {
+                e.setCancelled(true);
+                e.setCursor(new ItemStack(Material.AIR));
+                plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+            }
+        } else if (e.getInventory().getType() == InventoryType.CHEST) {
+            if (e.getRawSlot()+6 == e.getWhoClicked().getOpenInventory().countSlots()) {
+                e.setCancelled(true);
+                e.setCursor(new ItemStack(Material.AIR));
+                plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+            }
         }
+
     }
     @EventHandler
     public void onMenuClick(InventoryDragEvent e) {
-
-        if (plugin.itemHandler.itemIsMMOItemOfName(e.getCursor(), "tgt_menu") || plugin.itemHandler.itemIsMMOItemOfName(e.getOldCursor(), "tgt_menu")) {
-            e.setCursor(new ItemStack(Material.AIR));
-
-            plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
-            e.setCancelled(true);
+        for (int slot : e.getRawSlots()) {
+            if (e.getInventory().getType() == InventoryType.CRAFTING) {
+                if (slot+2 == e.getWhoClicked().getOpenInventory().countSlots()) {
+                    e.setCancelled(true);
+                    e.setCursor(new ItemStack(Material.AIR));
+                    plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                }
+            } else if (e.getInventory().getType() == InventoryType.CHEST) {
+                if (slot+6 == e.getWhoClicked().getOpenInventory().countSlots()) {
+                    e.setCancelled(true);
+                    e.setCursor(new ItemStack(Material.AIR));
+                    plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                }
+            }
         }
+
     }
+    @EventHandler
+    public void onArrowInGround(ProjectileHitEvent e) {
+        e.getEntity().remove();
+    }
+
 
     @EventHandler
     public void onInvOpenNoMenuAnymore(InventoryOpenEvent e) {
@@ -750,14 +821,10 @@ public class EventListener implements Listener {
         }
     }
     private boolean fishingInOcean(Location loc) {
-        if (loc.getX() < plugin.grid.oceanXMin
-        || loc.getX() > plugin.grid.oceanXMax
-        || loc.getZ() < plugin.grid.oceanZMin
-        || loc.getZ() > plugin.grid.oceanZMax) {
-            return true;
-        } else {
-            return false;
-        }
+        return loc.getX() < plugin.grid.oceanXMin
+                || loc.getX() > plugin.grid.oceanXMax
+                || loc.getZ() < plugin.grid.oceanZMin
+                || loc.getZ() > plugin.grid.oceanZMax;
     }
     @EventHandler
     public void onFish(PlayerFishEvent e) {
@@ -859,39 +926,6 @@ public class EventListener implements Listener {
         e.setFoodLevel(20);
     }
 
-    /*@EventHandler
-    public void loggingTest(PlayerInteractEvent e) {
-        Player p = e.getPlayer();
-        if (e.getClickedBlock() == null) {
-            if (p.hasPotionEffect(PotionEffectType.SLOW_DIGGING)) {
-                p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 2147479783, -5));
-            } else {
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 2147479783, -1));
-            }
-        }
-        if (e.getClickedBlock().getType() == Material.OAK_LOG) {
-
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 2147479783, 0));
-        } else {
-            if (p.hasPotionEffect(PotionEffectType.SLOW_DIGGING)) {
-                p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 2147479783, -5));
-            }
-        }
-    }
-    @EventHandler
-    public void loggingTest2(BlockBreakEvent e) {
-        Player p = e.getPlayer();
-        if (e.getBlock().getType() == Material.OAK_LOG) {
-            if (p.hasPotionEffect(PotionEffectType.SLOW_DIGGING)) {
-                p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 99999999, -5));
-            }
-
-        }
-    }*/
-
     @EventHandler
     public void magicDamageEvent(SpellApplyDamageEvent e) {
         if (e.getCaster() instanceof Player) {
@@ -916,8 +950,7 @@ public class EventListener implements Listener {
                 if (!nbtI.getCompound("ExtraAttributes").hasTag("id")) {
                     return;
                 }
-                MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(nbtI.getCompound("ExtraAttributes").getString("id"));
-                float num = plugin.statUpdates.getAbilityDamageModifier(mmoPlayer,mmoItem);
+                float num = plugin.statUpdates.getAbilityDamageModifier(mmoPlayer,e.getTarget(),item);
                 Location target = e.getTarget().getLocation();
 
                 target.add(1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)));
@@ -955,6 +988,7 @@ public class EventListener implements Listener {
     @EventHandler
     public void onJoin (PlayerJoinEvent e) {
         plugin.connectTime.put(e.getPlayer().getUniqueId(), System.currentTimeMillis());
+
         if (!plugin.tournament) {
             return;
         }
@@ -966,6 +1000,24 @@ public class EventListener implements Listener {
             loc.setY((double)(loc.getWorld().getHighestBlockYAt(loc) + 1));
             e.getPlayer().teleport(loc);
         }
+    }
+
+    @EventHandler
+    public void onEffectsLoad(SpellEffectsLoadingEvent e) {
+        //e.getSpellEffectManager().removeSpellEffect("armorstand");
+        e.getSpellEffectManager().addSpellEffect(BetterArmorStandEffect.class, "b_armorstand");
+
+    }
+    @EventHandler
+    public void onConditionsLoad(ConditionsLoadingEvent e) {
+        e.getConditionManager().addCondition(DayNumberCondition.class, "day-number");
+        e.getConditionManager().addCondition(DoshCondition.class, "dosh");
+        e.getConditionManager().addCondition(SkillLevelCondition.class, "skill-lvl");
+        e.getConditionManager().addCondition(TGTDayCondition.class, "t-day");
+        e.getConditionManager().addCondition(TGTNightCondition.class, "t-night");
+        e.getConditionManager().addCondition(TournamentCondition.class, "tournament");
+        e.getConditionManager().addCondition(HasMMOItem.class, "has-mmo-item");
+        e.getConditionManager().addCondition(HasMMOItemAmount.class, "has-mmo-item-amount");
     }
 
 

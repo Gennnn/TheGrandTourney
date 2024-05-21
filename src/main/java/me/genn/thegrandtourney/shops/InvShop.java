@@ -149,7 +149,7 @@ public class InvShop implements Listener {
                     }
                     meta.setLore(lore);
                     item.setLore(lore);
-                    inv.setItem(slotsToFill[i], item);;
+                    inv.setItem(slotsToFill[i], item);
                 }
 
             }
@@ -325,10 +325,7 @@ public class InvShop implements Listener {
                 }, 1L);
             }else if (shop != null && item != null && event.getCurrentItem() != null && event.getCurrentItem().hasItemMeta() && event.getCurrentItem().getItemMeta().hasDisplayName() && !event.getCurrentItem().getItemMeta().getDisplayName().equalsIgnoreCase(" ") && event.getWhoClicked().getOpenInventory().getTopInventory().contains(event.getCurrentItem()) && event.getRawSlot() != 49) {
                 this.purchaseItem(shop, player, item, event.getCurrentItem().getAmount());
-                boolean close = true;
-                if (!item.closeAfter) {
-                    close = false;
-                }
+                boolean close = item.closeAfter;
                 if (close) {
                     this.shopsOpen.remove(player.getName());
                     this.quantities.remove(player.getName());

@@ -19,7 +19,7 @@ public abstract class DisplayMessage {
      */
     public void showToAll()	{
         showTo(Bukkit.getServer().getOnlinePlayers());
-    };
+    }
 
     /**
      * Show message to specifics players

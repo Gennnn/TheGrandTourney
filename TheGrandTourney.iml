@@ -24,6 +24,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="tablistmanager-plugin-1.2.2" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.guava:guava:31.1-jre" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.guava:failureaccess:1.0.1" level="project" />
@@ -117,7 +118,16 @@
     <orderEntry type="module-library">
       <library name="Maven: ch.twidev.spectraldamage:spectraldamage:2.5.1">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/src/main/resources/spectraldamage-2.5.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/src/main/external-resources/spectraldamage-2.5.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Maven: com.ernestorb.tablistmanager:tablistmanager:1.1.0">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/src/main/external-resources/tablistmanager-plugin-1.2.2.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -126,7 +136,16 @@
     <orderEntry type="module-library">
       <library name="Maven: me.genn.gennsgym:gennsgym:1.0.0">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/src/main/resources/GennsGym1.19Check.jar!/" />
+          <root url="jar://$MODULE_DIR$/src/main/external-resources/GennsGym1.19Check.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Maven: me.genn.customspells:tournamentspells:1.0.0">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/src/main/external-resources/TournamentSpells.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -139,7 +158,7 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.9.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.libraryaddict:LibsDisguises:v10.0.25" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.PlaceholderAPI:PlaceholderAPI:master-68f467ab29-1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.PlaceholderAPI:PlaceholderAPI:master-d5e96bd6a6-1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.TechFortress:GriefPrevention:master-17.0.0-g14ce8e6-40" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.Xezard:XGlow:master-54ac265afb-1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.Xezard.XGlow:XGlowAPI:master-54ac265afb-1" level="project" />

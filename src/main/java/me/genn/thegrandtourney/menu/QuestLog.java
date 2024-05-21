@@ -142,20 +142,25 @@ public class QuestLog implements Listener {
                 } else if (name.equalsIgnoreCase(back)) {
                     e.setCancelled(true);
                     plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(close)) {
                     e.setCancelled(true);
                     e.getInventory().close();
                 } else if (name.equalsIgnoreCase(nextPage)) {
                     this.loadMenuQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) + 1, this.showingCompleteForPlayer.get(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     e.setCancelled(true);
                 } else if (name.equalsIgnoreCase(previousPage)) {
                     this.loadMenuQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) -1, this.showingCompleteForPlayer.get(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: In Progress Quests")) {
                     this.loadMenuQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, true);
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Completed Quests")) {
                     this.loadMenuQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, false);
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     e.setCancelled(true);
                 } else if (e.getCurrentItem().getType() == Material.PLAYER_HEAD && !this.showingCompleteForPlayer.get(e.getWhoClicked().getUniqueId())) {
                     ItemStack item = e.getCurrentItem();
@@ -164,6 +169,7 @@ public class QuestLog implements Listener {
                         plugin.players.get(e.getWhoClicked().getUniqueId()).trackedObjective = objective;
                         e.getWhoClicked().sendMessage(ChatColor.GREEN + "Set tracked quest to: " + item.getItemMeta().getDisplayName() + ChatColor.GREEN + ".");
                     }
+                    Bukkit.getPlayer(e.getWhoClicked().getUniqueId()).playSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), "block.note_block.harp", 0.75f,0.5f);
                     e.setCancelled(true);
                 } else {
                     e.setCancelled(true);

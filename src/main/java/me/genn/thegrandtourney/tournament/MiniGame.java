@@ -901,10 +901,8 @@ public class MiniGame {
                 }
             }
 
-            return false;
-        } else {
-            return false;
         }
+        return false;
     }
 
     public boolean canInteract(Block block) {
@@ -918,10 +916,8 @@ public class MiniGame {
                 }
             }
 
-            return false;
-        } else {
-            return false;
         }
+        return false;
     }
 
     public boolean isRunning() {

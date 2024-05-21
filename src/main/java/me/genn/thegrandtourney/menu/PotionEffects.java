@@ -1,6 +1,8 @@
 package me.genn.thegrandtourney.menu;
 
+import de.tr7zw.nbtapi.NBTItem;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.PotionEffect;
 import org.bukkit.Bukkit;
@@ -14,6 +16,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.potion.Potion;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
@@ -78,27 +81,46 @@ public class PotionEffects implements Listener {
             }
         }
         int c = 0;
-        Iterator<PotionEffect> effects = mmoPlayer.potionEffects.iterator();
+
+        Iterator<PotionEffect> effects = sortPotionEffects(mmoPlayer, mmoPlayer.potionEffects).iterator();
         while (effects.hasNext()) {
             PotionEffect effect = effects.next();
-            ItemStack effectItem = effect.activatingItem;
+            ItemStack effectItem = effect.activatingItem.clone();
             String remaining = ChatColor.GRAY + "Remaining: ";
             remaining = remaining + formatTime(effect.expiryTime);
             if (ChatColor.stripColor(effectItem.getItemMeta().getDisplayName()).equalsIgnoreCase("Unknown Source")) {
                 List<String> effectLore = new ArrayList<>(effectItem.getLore());
-                effectLore.add(effectLore.size()-2," ");
-                effectLore.add(effectLore.size()-2, remaining);
-                effectLore.add(effectLore.size()-2, " ");
+                effectLore.add(" ");
+                effectLore.add(remaining);
+                effectLore.add(" ");
                 effectItem.setLore(effectLore);
             } else {
-                List<String> effectLore = new ArrayList<>(effectItem.getLore());
-                effectLore.add(effectLore.size()-1," ");
-                effectLore.add(effectLore.size()-1, remaining);
-                effectLore.add(effectLore.size()-1, " ");
-                effectItem.setLore(effectLore);
+                NBTItem nbtI = new NBTItem(effectItem);
+                if (nbtI.hasTag("ExtraAttributes") && nbtI.getCompound("ExtraAttributes").hasTag("id")) {
+                    MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(nbtI.getCompound("ExtraAttributes").getString("id"));
+                    List<String> effectLore = new ArrayList<>();
+                    effectLore.addAll(mmoItem.abilityBlock);
+                    effectLore.add(" ");
+                    effectLore.add(remaining);
+                    effectLore.add(" ");
+                    String finalString = MMOItem.getRarityColor(mmoItem.rarity) + net.md_5.bungee.api.ChatColor.BOLD.toString() + mmoItem.rarity.toString().toUpperCase();
+                    if (mmoItem.categoryString != null) {
+                        finalString += " " + mmoItem.categoryString.toUpperCase();
+                    }
+                    effectLore.add(finalString);
+                    effectItem.setLore(effectLore);
+                } else {
+                    List<String> effectLore = new ArrayList<>(effectItem.getLore());
+                    effectLore.add(effectLore.size()-1, remaining);
+                    effectLore.add(effectLore.size()-1," ");
+                    effectItem.setLore(effectLore);
+                }
             }
             inv.setItem(slotsToFill[c], effectItem);
             c++;
+            for (int i = c; i < slotsToFill.length; i++) {
+                inv.setItem(slotsToFill[i], new ItemStack(Material.AIR));
+            }
         }
         player.openInventory(inv);
 
@@ -122,32 +144,67 @@ public class PotionEffects implements Listener {
                         Inventory displayInv = player.getOpenInventory().getTopInventory();
                         int c = 0;
                         MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
-                        Iterator<PotionEffect> effects = mmoPlayer.potionEffects.iterator();
+                        Iterator<PotionEffect> effects = sortPotionEffects(mmoPlayer, mmoPlayer.potionEffects).iterator();
                         while (effects.hasNext()) {
                             PotionEffect effect = effects.next();
-                            ItemStack effectItem = effect.activatingItem;
+                            ItemStack effectItem = effect.activatingItem.clone();
                             String remaining = ChatColor.GRAY + "Remaining: ";
                             remaining = remaining + formatTime(effect.expiryTime);
                             if (ChatColor.stripColor(effectItem.getItemMeta().getDisplayName()).equalsIgnoreCase("Unknown Source")) {
                                 List<String> effectLore = new ArrayList<>(effectItem.getLore());
-                                effectLore.set(effectLore.size()-4," ");
-                                effectLore.set(effectLore.size()-3, remaining);
-                                effectLore.set(effectLore.size()-2, " ");
+                                effectLore.add(" ");
+                                effectLore.add( remaining);
+                                effectLore.add( " ");
                                 effectItem.setLore(effectLore);
                             } else {
-                                List<String> effectLore = new ArrayList<>(effectItem.getLore());
-                                effectLore.set(effectLore.size()-3," ");
-                                effectLore.set(effectLore.size()-2, remaining);
-                                effectLore.set(effectLore.size()-1, " ");
-                                effectItem.setLore(effectLore);
+                                NBTItem nbtI = new NBTItem(effectItem);
+                                if (nbtI.hasTag("ExtraAttributes") && nbtI.getCompound("ExtraAttributes").hasTag("id")) {
+                                    MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(nbtI.getCompound("ExtraAttributes").getString("id"));
+                                    List<String> effectLore = new ArrayList<>();
+                                    effectLore.addAll(mmoItem.abilityBlock);
+                                    effectLore.add(" ");
+                                    effectLore.add(remaining);
+                                    effectLore.add(" ");
+                                    String finalString = MMOItem.getRarityColor(mmoItem.rarity) + net.md_5.bungee.api.ChatColor.BOLD.toString() + mmoItem.rarity.toString().toUpperCase();
+                                    if (mmoItem.categoryString != null) {
+                                        finalString += " " + mmoItem.categoryString.toUpperCase();
+                                    }
+                                    effectLore.add(finalString);
+                                    effectItem.setLore(effectLore);
+                                } else {
+                                    List<String> effectLore = new ArrayList<>(effectItem.getLore());
+                                    effectLore.add(effectLore.size()-1, remaining);
+                                    effectLore.add(effectLore.size()-1," ");
+                                    effectItem.setLore(effectLore);
+                                }
                             }
                             displayInv.setItem(slotsToFill[c], effectItem);
                             c++;
                         }
+                        for (int i = c; i < slotsToFill.length; i++) {
+                            displayInv.setItem(slotsToFill[i], new ItemStack(Material.AIR));
+                        }
                     }
                 }
             }
-        }.runTaskTimer(plugin,0L,20L);
+        }.runTaskTimer(plugin,1L,20L);
+    }
+
+    private List<PotionEffect> sortPotionEffects(MMOPlayer mmoPlayer, HashSet<PotionEffect> set) {
+        List<PotionEffect> effectList = new ArrayList<>(set);
+        if (this.filterDuration.contains(mmoPlayer.getMinecraftUUID())) {
+            effectList.sort(new Comparator<PotionEffect>() {
+                @Override
+                public int compare(PotionEffect o1, PotionEffect o2) {
+                    return Long.compare(-o1.expiryTime, -o2.expiryTime);
+                }
+            });
+        } else {
+            Comparator<PotionEffect> nameComp = Comparator.comparing(PotionEffect::getName);
+            effectList.sort(nameComp);
+        }
+        return effectList;
+
     }
 
     private void setMenuItem(ItemStack item, String displayName, List<String> lore, int slot, Inventory inv) {
@@ -173,13 +230,16 @@ public class PotionEffects implements Listener {
                     e.getInventory().close();
                 } else if (name.equalsIgnoreCase(back)) {
                     plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(sort)) {
                     if (this.filterDuration.contains(e.getWhoClicked().getUniqueId())) {
                         this.filterDuration.remove(e.getWhoClicked().getUniqueId());
                         this.loadMenuPotionEffects(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                        plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     } else {
                         this.filterDuration.add(e.getWhoClicked().getUniqueId());
                         this.loadMenuPotionEffects(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                        plugin.menus.playClickSound(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                     }
                 }
             }

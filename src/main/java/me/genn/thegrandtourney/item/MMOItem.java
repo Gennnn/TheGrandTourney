@@ -183,9 +183,9 @@ public class MMOItem {
         nbtI.addCompound("ExtraAttributes");
         NBTCompound comp = nbtI.getCompound("ExtraAttributes");
         comp.setString("id", item.internalName.toUpperCase());
-        item.isCharm = config.getBoolean("charm");
+        item.isCharm = config.getBoolean("accessory");
         if (item.isCharm) {
-            comp.setBoolean("charm", true);
+            comp.setBoolean("accessory", true);
         }
         item.bukkitItem = nbtI.getItem();
         if (config.contains("recipe")) {
@@ -255,7 +255,7 @@ public class MMOItem {
     }
 
     public static void removeItem(Player player, MMOItem item, int quantity) {
-        if (player.getInventory().getContents().length <= 0) {
+        if (player.getInventory().getContents().length == 0) {
             return;
         }
 
@@ -283,7 +283,6 @@ public class MMOItem {
             }
         }
     }
-
     public static List<String> assembleFullLore(MMOItem item, List<String> masterStatBlock, List<String> masterAbilityBlock) {
         List<String> lore = new ArrayList<>();
         List<String> statBlock = new ArrayList<>(masterStatBlock);
@@ -308,6 +307,7 @@ public class MMOItem {
         lore.add(finalString);
         return lore;
     }
+
 
 
 }

@@ -108,7 +108,7 @@ public class Dialogue {
     private void speakRangedStationMaster(int lineNum, Player player) {
         plugin.getLogger().log(Level.INFO,"Top of created dialogue ");
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -124,9 +124,7 @@ public class Dialogue {
             if (this.objectiveUpdate.statusUpdate.size() > 0) {
                 plugin.questHandler.objectiveUpdater.performStatusUpdates(player, trait.getQuestName(), this.objectiveUpdate);
             }
-            plugin.getLogger().log(Level.INFO,"Pre probably faulty line ");
             Step step = tgtNpc.steps.stream().filter(obj -> obj.dialogue.containsAll(lines)).findFirst().orElse(null);
-            plugin.getLogger().log(Level.INFO,"Post probably faulty line ");
             if (trait.stepToCraft.equalsIgnoreCase(step.stepName)) {
                 plugin.menus.openStationMasterMenu(player, trait.xpType, trait);
             }
@@ -175,7 +173,7 @@ public class Dialogue {
     }
     private void speakUnrangedStationMaster(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -231,7 +229,7 @@ public class Dialogue {
     }
     private void speakRangedSlayer(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -291,7 +289,7 @@ public class Dialogue {
 
     private void speakUnrangedSlayer(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -342,7 +340,7 @@ public class Dialogue {
 
     private void speakRangedRetrieval(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -401,7 +399,7 @@ public class Dialogue {
 
     private void speakUnrangedRetrieval(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -451,7 +449,7 @@ public class Dialogue {
     }
     private void speakRangedQuest(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -509,7 +507,7 @@ public class Dialogue {
 
     private void speakUnrangedQuest(int lineNum, Player player) {
         String line = lines.get(lineNum);
-        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE.toString() + "> " + ChatColor.translateAlternateColorCodes('&', line));
+        player.sendMessage(ChatColor.WHITE + "<" + ChatColor.RESET + npc.getFullName() + ChatColor.WHITE + "> " + ChatColor.translateAlternateColorCodes('&', line));
         playSpeakSound(player, talkSound, talkVolume, talkPitch);
 
 
@@ -568,7 +566,7 @@ public class Dialogue {
         this.playSpeakSound(player, "entity.player.levelup", 1.0F, 1.5F);
         player.sendMessage(ChatColor.GOLD + "■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■");
         player.sendMessage(ChatColor.YELLOW + ChatColor.BOLD.toString() + "  QUEST COMPLETED " + ChatColor.RESET + ChatColor.YELLOW + ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&',questName)));
-        player.sendMessage("\n" + ChatColor.GREEN + ChatColor.BOLD.toString() + "  REWARDS");
+        player.sendMessage("\n" + ChatColor.GREEN + ChatColor.BOLD + "  REWARDS");
         player.sendMessage(postDialogueComponentText);
         player.sendMessage("\n" + ChatColor.GOLD + "■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■");
         ChainCommand chain = new ChainCommand(this.rewards, player);

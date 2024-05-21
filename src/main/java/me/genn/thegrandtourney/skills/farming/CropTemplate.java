@@ -67,11 +67,7 @@ public class CropTemplate {
         template.drops.addDropsFromSection(drops);
         template.regenerationTime = config.getInt("regeneration-time", 10);
         template.name = config.getName();
-        if (template.block == template.regeneratingBlock) {
-            template.agedCrop = true;
-        } else {
-            template.agedCrop = false;
-        }
+        template.agedCrop = template.block == template.regeneratingBlock;
         String base64Grown = config.getString("grown-base64");
         if (base64Grown != null) {
             template.grownBase64String = base64Grown;

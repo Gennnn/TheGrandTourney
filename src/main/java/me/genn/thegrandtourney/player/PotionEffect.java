@@ -76,4 +76,8 @@ public class PotionEffect {
 
     }
 
+    public String getName() {
+        return this.name;
+    }
+
 }

@@ -43,6 +43,7 @@ public class Ore implements Listener, TournamentObject {
     public Location loc;
     BukkitTask healthRegenTask;
     BukkitTask healthBarTask;
+    ArmorStand healthStand;
 
     public Ore(TGT plugin, OreTemplate template) {
         this.displayArmorStands = new ArrayList<>();
@@ -97,34 +98,46 @@ public class Ore implements Listener, TournamentObject {
         spawn(loc);
     }
     public void spawnHealthbar() {
-        ArmorStand as = (ArmorStand) hitbox.getLocation().getWorld().spawn(new Location(hitbox.getLocation().getWorld(), hitbox.getLocation().getX(), hitbox.getLocation().getY() - 0.5D, hitbox.getLocation().getZ()), ArmorStand.class);
-        as.setGravity(false);
-        as.setCustomName(template.displayName);
-        as.setCustomNameVisible(true);
-        as.setVisible(false);
-        as.setMarker(true);
+        this.healthStand = (ArmorStand) hitbox.getLocation().getWorld().spawn(new Location(hitbox.getLocation().getWorld(), hitbox.getLocation().getX(), hitbox.getLocation().getY() - 0.5D, hitbox.getLocation().getZ()), ArmorStand.class);
+        this.healthStand.setGravity(false);
+        this.healthStand.setCustomName(template.displayName);
+        this.healthStand.setCustomNameVisible(true);
+        this.healthStand.setVisible(false);
+        this.healthStand.setMarker(true);
+        this.healthStand.setVisibleByDefault(false);
         this.healthBarTask = new BukkitRunnable() {
             @Override
             public void run() {
                 if (!Ore.this.hitbox.isValid() || !(Ore.this.health > 0)) {
                     cancel();
-                    as.remove();
+                    Ore.this.healthStand.remove();
                     return;
                 }
-                as.teleport(Ore.this.hitbox.getLocation().clone().add(0, hitBoxHeight, 0));
-                as.setCustomName(oreName(Ore.this, template.displayName));
+                List<Entity> nearby = healthStand.getNearbyEntities(15,7.5,15);
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.canSee(healthStand) && !nearby.contains(player)) {
+                        player.hideEntity(plugin, healthStand);
+                    }
+                    if (!player.canSee(healthStand) && nearby.contains(player)) {
+                        player.showEntity(plugin,healthStand);
+                    }
+
+                }
+
+                Ore.this.healthStand.teleport(Ore.this.hitbox.getLocation().clone().add(0, hitBoxHeight, 0));
+                Ore.this.healthStand.setCustomName(oreName(Ore.this, template.displayName));
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
     }
     public String oreName(Ore ore, String name) {
-        String str = ChatColor.RED.toString() + name;
+        String str = ChatColor.RED + name;
         if (ore.health == ore.maxHealth) {
-            str = str + " " + ChatColor.GREEN.toString();
+            str = str + " " + ChatColor.GREEN;
         } else {
-            str = str + " " + ChatColor.YELLOW.toString();
+            str = str + " " + ChatColor.YELLOW;
         }
-        str = str + (int)ore.health + ChatColor.WHITE.toString() + "/" + ChatColor.GREEN.toString() + (int)ore.maxHealth + ChatColor.RED.toString() + "❤";
+        str = str + (int)ore.health + ChatColor.WHITE + "/" + ChatColor.GREEN + (int)ore.maxHealth + ChatColor.RED + "❤";
         return str;
     }
     public void spawnArmorStands(Location loc) {
@@ -301,7 +314,7 @@ public class Ore implements Listener, TournamentObject {
                 po.amount = 25;
                 po.speed = 0.35F;
                 MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, hitbox.getLocation(), 32.0D, players);
-                double coords[] = lerp3D(0.5, p.getLocation().getX(), p.getLocation().getY(), p.getLocation().getZ(), hitbox.getLocation().getX(), hitbox.getLocation().getY(), hitbox.getLocation().getZ());
+                double[] coords = lerp3D(0.5, p.getLocation().getX(), p.getLocation().getY(), p.getLocation().getZ(), hitbox.getLocation().getX(), hitbox.getLocation().getY(), hitbox.getLocation().getZ());
                 Location middlePoint = new Location(p.getWorld(), coords[0], coords[1] + 0.2, coords[2]);
                 if (!e.isCancelled()) {
                     if (crit) {

@@ -23,7 +23,7 @@ import java.util.List;
 
 public class AccessoryBag implements Listener {
     TGT plugin;
-    final String title = "Accessory Bag";
+    final String title = "Accessory Pouch";
     final String back = ChatColor.GREEN + "Go Back";
     final String previousPage = ChatColor.GREEN + "Previous Page";
     final String nextPage = ChatColor.GREEN + "Next Page";
@@ -59,7 +59,7 @@ public class AccessoryBag implements Listener {
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
         meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS);
         item.setItemMeta(meta);
-        Inventory inv = Bukkit.createInventory(player, size, "Accessory Bag");
+        Inventory inv = Bukkit.createInventory(player, size, title);
         for (int i = 0; i < inv.getSize(); i++) {
             if (i >= slots && i < (size-9)) {
                 inv.setItem(i, item);
@@ -103,27 +103,27 @@ public class AccessoryBag implements Listener {
     @EventHandler
     public void onItemMove(InventoryClickEvent e) {
         if (e.getWhoClicked().getOpenInventory().getTitle().equalsIgnoreCase(title)) {
+            Player player = Bukkit.getPlayer(e.getWhoClicked().getUniqueId());
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta() && e.getCurrentItem().getItemMeta().hasDisplayName()){
                 String name = e.getCurrentItem().getItemMeta().getDisplayName();
+
                 if (name.equalsIgnoreCase(" ")) {
                     e.setCancelled(true);
                 } else if (name.equalsIgnoreCase(back)) {
                     e.setCancelled(true);
                     plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(close)) {
                     e.setCancelled(true);
                     e.getInventory().close();
                 } else {
                     if (e.getCurrentItem().getItemMeta().hasLore()) {
-                        List<String> lore = e.getCurrentItem().getItemMeta().getLore();
-                        String last = lore.get(lore.size()-1);
-                        if (!last.contains("CHARM")) {
-                            if (!e.getCurrentItem().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Bag")) {
-
-
+                        if (!isAccessory(e.getCurrentItem())) {
+                            if (!e.getCurrentItem().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Pouch")) {
                                 e.setCancelled(true);
                                 if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCurrentItem(), "tgt_menu")) {
-                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Pouch!");
+                                    plugin.shopHandler.playNoMoneySound(player);
                                 }
                             }
                         }
@@ -137,13 +137,12 @@ public class AccessoryBag implements Listener {
                     e.setCancelled(true);
                 } else {
                     if (e.getCursor().getItemMeta().hasLore()) {
-                        List<String> lore = e.getCursor().getItemMeta().getLore();
-                        String last = lore.get(lore.size()-1);
-                        if (!last.contains("CHARM")) {
-                            if (!e.getCursor().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Bag")) {
+                        if (!isAccessory(e.getCursor())) {
+                            if (!e.getCursor().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Pouch")) {
                                 e.setCancelled(true);
                                 if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCursor(), "tgt_menu")) {
-                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Bag!");
+                                    e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Pouch!");
+                                    plugin.shopHandler.playNoMoneySound(player);
                                 }
 
                             }
@@ -167,7 +166,7 @@ public class AccessoryBag implements Listener {
                     NBTItem nbtI = new NBTItem(item);
                     if (nbtI.hasTag("ExtraAttributes")) {
                         NBTCompound comp = nbtI.getCompound("ExtraAttributes");
-                        if (comp.hasTag("charm")) {
+                        if (comp.hasTag("accessory")) {
                             charms.add(item);
                         }
                     }
@@ -175,5 +174,16 @@ public class AccessoryBag implements Listener {
             }
             mmoPlayer.setAccessoryBagContents(charms);
         }
+    }
+
+    private boolean isAccessory(ItemStack item) {
+        if (item != null && item.hasItemMeta() && item.getItemMeta().hasLore() && item.getItemMeta().hasDisplayName()) {
+            NBTItem nbtI = new NBTItem(item);
+            if (nbtI.hasTag("ExtraAttributes")) {
+                NBTCompound comp = nbtI.getCompound("ExtraAttributes");
+                return comp.hasTag("accessory");
+            }
+        }
+        return false;
     }
 }

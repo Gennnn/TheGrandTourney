@@ -39,7 +39,7 @@ public class ActionBarDisplay {
 
     private String constructMessage(Player p, String middleMessage) {
         String leftSide = getLeftSide(p);
-        String rightSide = ChatColor.GREEN.toString() + "    " + MagicSpells.getManaHandler().getMana(p) + "/" + MagicSpells.getManaHandler().getMaxMana(p) + "⚡ Stamina";
+        String rightSide = ChatColor.GREEN + "    " + MagicSpells.getManaHandler().getMana(p) + "/" + MagicSpells.getManaHandler().getMaxMana(p) + "⚡ Stamina";
         int rightStringLength = getTrueStringLength(rightSide);
         int leftStringLength = getTrueStringLength(leftSide);
         while (rightStringLength > leftStringLength) {

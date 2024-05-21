@@ -151,7 +151,7 @@ public class SkillXpSelector implements Listener {
         double numerator = ( mmoPlayer.getXpForType(type) - ( Xp.xpForLevel.get(mmoPlayer.getLvlForType(type))));
         double denominator = (( Xp.xpForLevel.get(mmoPlayer.getLvlForType(type) + 1)) - Xp.xpForLevel.get(mmoPlayer.getLvlForType(type) ));
         double progress = 100 * (numerator/denominator);
-        lore.add(ChatColor.GRAY + "Progress to Level " + Xp.intToRoman(mmoPlayer.getLvlForType(type) + 1) + ": " + ChatColor.YELLOW.toString() + String.format("%,.2f", progress) + "%" );
+        lore.add(ChatColor.GRAY + "Progress to Level " + Xp.intToRoman(mmoPlayer.getLvlForType(type) + 1) + ": " + ChatColor.YELLOW + String.format("%,.2f", progress) + "%" );
         int numOfFilledBars = (int)((progress/100) * 20);
         int numOfEmtptyBars = 20 - numOfFilledBars;
         String barString = "";
@@ -161,7 +161,7 @@ public class SkillXpSelector implements Listener {
         for (int i = 0; i < numOfEmtptyBars; i++) {
             barString = barString.concat(ChatColor.GRAY + "-");
         }
-        barString = barString + " " + ChatColor.YELLOW.toString() + String.format("%.1f", numerator) + ChatColor.GOLD + "/" + ChatColor.YELLOW.toString() + denominator;
+        barString = barString + " " + ChatColor.YELLOW + String.format("%.1f", numerator) + ChatColor.GOLD + "/" + ChatColor.YELLOW + denominator;
         lore.add(barString);
         lore.add("");
         lore.add(ChatColor.GRAY + "Level " + Xp.intToRoman(mmoPlayer.getLvlForType(type) + 1) + " Rewards:");

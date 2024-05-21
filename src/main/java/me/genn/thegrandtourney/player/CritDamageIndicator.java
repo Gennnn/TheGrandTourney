@@ -46,22 +46,22 @@ public class CritDamageIndicator implements DamageTypeFactory {
 
     public String randomColor(String string, int i) {
         if (i % 7 == 0) {
-            return ChatColor.DARK_PURPLE.toString() + string;
+            return ChatColor.DARK_PURPLE + string;
 
         } else if (i % 6 == 0) {
-            return ChatColor.LIGHT_PURPLE.toString() + string;
+            return ChatColor.LIGHT_PURPLE + string;
 
         } else if (i % 5 == 0) {
-            return ChatColor.AQUA.toString() + string;
+            return ChatColor.AQUA + string;
 
         } else if (i % 4 == 0) {
-            return ChatColor.GREEN.toString() + string;
+            return ChatColor.GREEN + string;
         } else if (i % 3 == 0) {
-            return ChatColor.YELLOW.toString() + string;
+            return ChatColor.YELLOW + string;
         } else if (i % 2 == 0) {
-            return ChatColor.GOLD.toString() + string;
+            return ChatColor.GOLD + string;
         } else {
-            return ChatColor.RED.toString() + string;
+            return ChatColor.RED + string;
         }
 
     }

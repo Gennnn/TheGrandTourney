@@ -13,6 +13,7 @@ depend:
   - Vault
   - GennsGym
 
+
 commands:
   testgen:
     description: test generation
@@ -90,3 +91,7 @@ commands:
     description: temporarily increases a stat
   potion-effect:
     description: potion buff
+  bank:
+    description: open bank
+  bank-dosh:
+    description: add money to bank

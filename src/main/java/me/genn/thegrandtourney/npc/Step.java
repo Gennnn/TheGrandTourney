@@ -1,5 +1,6 @@
 package me.genn.thegrandtourney.npc;
 
+import com.nisovin.magicspells.castmodifiers.ModifierSet;
 import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import me.genn.thegrandtourney.xp.XpType;
 import net.md_5.bungee.api.chat.BaseComponent;
@@ -19,12 +20,11 @@ public class Step {
     public List<String> rewards;
     public List<String> commands = new ArrayList<>();
     public ObjectiveUpdate objectiveUpdate;
-    public XpType requiredXpType;
-    public int requiredLvl;
-    public String stepToJumpIfFail;
+    public List<String> modifiersString;
+    public String stepJumpIfFail;
 
 
-    Step(String name, List<String> dialogue, TextComponent narration, boolean ranged, String jumpTo, List<String> rewards, ObjectiveUpdate objectiveUpdate, List<String> commands, XpType requiredXpType, int requiredLvl, String stepToJumpIfFail) {
+    Step(String name, List<String> dialogue, TextComponent narration, boolean ranged, String jumpTo, List<String> rewards, ObjectiveUpdate objectiveUpdate, List<String> commands, List<String> modifierStrings, String stepJumpIfFail) {
         this.stepName = name;
         this.dialogue = dialogue;
         this.narration = narration;
@@ -33,9 +33,11 @@ public class Step {
         this.rewards = rewards;
         this.objectiveUpdate = objectiveUpdate;
         this.commands = commands;
-        this.requiredXpType = requiredXpType;
-        this.requiredLvl = requiredLvl;
-        this.stepToJumpIfFail = stepToJumpIfFail;
+        for (int i = 0; i < modifierStrings.size(); i++) {
+            modifierStrings.set(i, modifierStrings.get(i) + "$$aaa");
+        }
+        this.modifiersString = modifierStrings;
+        this.stepJumpIfFail = stepJumpIfFail;
     }
 
     public String getName() {

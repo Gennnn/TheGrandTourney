@@ -1531,7 +1531,6 @@ public class Grid {
                     Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
                     if (schematic.linkedSchematic == null) {
                         paste(paste, getCellsForDistrict(paste.schematic.district));
-                        return;
                     } else {
                         Schematic linkedSchem = schematic.linkedSchematic;
                         List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
@@ -1567,15 +1566,14 @@ public class Grid {
 
                         schematicList.remove(schematic);
                         generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-                        return;
                     }
+                    return;
                 }
             } else {
                 if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
                     Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
                     if (schematic.linkedSchematic == null) {
                         paste(paste, getCellsForDistrict(paste.schematic.district));
-                        return;
                     } else {
                         Schematic linkedSchem = schematic.linkedSchematic;
                         List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
@@ -1611,8 +1609,8 @@ public class Grid {
 
                         schematicList.remove(schematic);
                         generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-                        return;
                     }
+                    return;
                 }
             }
 

@@ -3,6 +3,8 @@ package me.genn.thegrandtourney.npc;
 import java.util.*;
 import java.util.logging.Level;
 
+import com.nisovin.magicspells.MagicSpells;
+import com.nisovin.magicspells.castmodifiers.ModifierSet;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.player.ObjectiveUpdate;
@@ -141,15 +143,17 @@ public class Quest extends Trait {
 
     public void zap(Player player, String string, boolean dialogue) {
         Step step = steps.stream().filter(obj -> obj.stepName.equalsIgnoreCase(string)).findFirst().orElse(null);
-        if (step != null && step.requiredXpType != null && step.requiredLvl > 0 && step.stepToJumpIfFail != null) {
-            if (plugin.players.get(player.getUniqueId()).getLvlForType(step.requiredXpType) < step.requiredLvl) {
-                this.questProgress.put(player.getUniqueId(), step.stepToJumpIfFail);
+        if (step != null && step.modifiersString != null && step.stepJumpIfFail != null) {
+            ModifierSet modifiers = new ModifierSet(step.modifiersString);
+            if (!modifiers.check(player)) {
+                this.questProgress.put(player.getUniqueId(), step.stepJumpIfFail);
                 if (dialogue) {
                     this.dialogueTree(player);
                 }
                 return;
             }
         }
+
         this.questProgress.put(player.getUniqueId(), string);
         //System.out.println("Progress for " + player.getName() + " is now " + this.questProgress.get(player.getUniqueId()));
         if (dialogue) {
@@ -251,11 +255,7 @@ public class Quest extends Trait {
     }
 
     public boolean hasEquipment() {
-        if (this.heldItem == null &&  this.helmet == null && this.chestplate == null && this.leggings == null && this.boots == null) {
-            return false;
-        } else {
-            return true;
-        }
+        return this.heldItem != null || this.helmet != null || this.chestplate != null || this.leggings != null || this.boots != null;
     }
 
     public String getQuestName() {

@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import com.nisovin.magicspells.castmodifiers.ModifierSet;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import me.genn.thegrandtourney.xp.Xp;
@@ -240,19 +241,19 @@ public class TGTNpc {
                 }
                 objectiveUpdate.completingStep = objectiveSection.getBoolean("completing-step", false);
             }
-            if (stepContent.contains("requirement")) {
-                ConfigurationSection requirementSection = stepContent.getConfigurationSection("requirement");
-                String[] parts = requirementSection.getString("level").split(" ");
-                requirementType = Xp.parseXpType(parts[0]);
-                requirementLvl = Integer.parseInt(parts[1]);
-                failStepToJump = requirementSection.getString("fail-step");
+
+            List<String> modifierStrings = new ArrayList<>();
+            String stepJumpIfFail = null;
+            if (stepContent.contains("modifiers")) {
+                modifierStrings.addAll(stepContent.getStringList("modifiers"));
+                stepJumpIfFail = stepContent.getString("fail-step");
             }
 
             if (narration.getText().length() == 0) {
-                Step stepObj = new Step(stepKey, dialogue, null, ranged, jumpTo, rewards, objectiveUpdate,commands,requirementType,requirementLvl,failStepToJump);
+                Step stepObj = new Step(stepKey, dialogue, null, ranged, jumpTo, rewards, objectiveUpdate,commands,modifierStrings,stepJumpIfFail);
                 npc.steps.add(stepObj);
             } else {
-                Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate,commands,requirementType,requirementLvl,failStepToJump);
+                Step stepObj = new Step(stepKey, dialogue, narration, ranged, jumpTo, rewards, objectiveUpdate,commands,modifierStrings,stepJumpIfFail);
                 npc.steps.add(stepObj);
             }
 

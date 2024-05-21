@@ -1,6 +1,7 @@
 package me.genn.thegrandtourney.skills.foraging;
 
 import com.nisovin.magicspells.MagicSpells;
+import com.nisovin.magicspells.mana.ManaChangeReason;
 import com.nisovin.magicspells.shaded.effectlib.util.ParticleOptions;
 import com.sk89q.worldedit.IncompleteRegionException;
 import com.sk89q.worldedit.LocalSession;
@@ -13,6 +14,7 @@ import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.world.World;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.player.CritDamageIndicator;
+import me.genn.thegrandtourney.player.MMOPlayer;
 import me.genn.thegrandtourney.player.NormalDamageIndicator;
 import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.skills.TournamentZone;
@@ -25,6 +27,7 @@ import org.bukkit.block.Block;
 import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_19_R1.entity.CraftEntity;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -46,6 +49,7 @@ public class ForagingZone implements Listener, TournamentZone {
     Map<UUID, ArmorStand> healthStands;
     public Location centerLoc;
     public String name;
+    Random r = new Random();
 
     public ForagingZone(TGT plugin, ForagingZoneTemplate template) {
         this.plugin = plugin;
@@ -153,13 +157,19 @@ public class ForagingZone implements Listener, TournamentZone {
     }
     @EventHandler
     public void onLogBreak(BlockBreakEvent e) {
-
-
-
             if (template.logBlocks.contains(e.getBlock().getType())) {
                 e.setCancelled(true);
+                ParticleOptions po = new ParticleOptions((float) 0.25, (float) 0.3, (float) 0.25, 0.2F,8, 1F, (Color) null, e.getBlock().getType(), (byte) 0);
+                List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+                if (!MagicSpells.getManaHandler().hasMana(e.getPlayer(), template.staminaCost)) {
+                    MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, e.getBlock().getLocation(), 32.0D, players);
+                    e.getPlayer().playSound(e.getBlock().getLocation(), "block.anvil.place",0.5F, 2F);
+                    e.setCancelled(true);
+                    return;
+                }
                 for (Tree tree : treesInZone) {
                     if (tree.isBlockOnTree(e.getBlock()) && tree.health > 0) {
+                        MagicSpells.getManaHandler().removeMana(e.getPlayer(), template.staminaCost, ManaChangeReason.OTHER);
                         tree.lastActionTime = System.currentTimeMillis();
                         boolean crit = false;
                         if (tree.criticalBlock != null) {
@@ -174,13 +184,26 @@ public class ForagingZone implements Listener, TournamentZone {
                         } else {
                             tree.health = tree.health - dam;
                         }
+                        Location damageIndicatorLoc = e.getBlock().getLocation().clone();
+                        damageIndicatorLoc.add(1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)), 0.8 * r.nextDouble(), 1.35 * r.nextDouble() * (1 - (r.nextDouble()*2)));
+                        Entity indicator;
                         if (crit) {
                             e.getBlock().getLocation().getWorld().playSound(e.getBlock().getLocation(), "entity.vex.hurt", 0.75f, 2f);
                             e.getBlock().getLocation().getWorld().playSound(e.getBlock().getLocation(), "entity.shulker.open", 2f, 0f);
-                            plugin.listener.spectralDamage.spawnDamageIndicator(e.getPlayer(), e.getBlock().getLocation(), new CritDamageIndicator(), (int)dam);
+                            indicator = plugin.listener.spectralDamage.spawnDamageIndicator(e.getPlayer(), e.getBlock().getLocation(), new CritDamageIndicator(), (int)dam);
                         } else {
-                            plugin.listener.spectralDamage.spawnDamageIndicator(e.getPlayer(), e.getBlock().getLocation(), new NormalDamageIndicator(), (int)dam);
+                            indicator =  plugin.listener.spectralDamage.spawnDamageIndicator(e.getPlayer(), e.getBlock().getLocation(), new NormalDamageIndicator(), (int)dam);
                         }
+                        Entity finalIndicator = indicator;
+                        new BukkitRunnable() {
+
+                            @Override
+                            public void run() {
+                                if (finalIndicator.isValid()) {
+                                    finalIndicator.remove();
+                                }
+                            }
+                        }.runTaskLater(plugin, 30L);
                         template.chopDrops.calculateDrops(e.getPlayer(), plugin.players.get(e.getPlayer().getUniqueId()).getLoggingFortune());
                         tree.dropFruit();
                         if (tree.health <= 0) {
@@ -195,7 +218,7 @@ public class ForagingZone implements Listener, TournamentZone {
                             for (Block block : tree.logBlocks) {
                                 Material restoreMat = block.getType();
                                 block.setType(Material.AIR);
-                                ParticleOptions po = new ParticleOptions((float) 0.2, (float) 0.3, (float) 0.2, 0.2F,5, 1F, (Color) null,restoreMat, (byte) 0);
+                                po = new ParticleOptions((float) 0.2, (float) 0.3, (float) 0.2, 0.2F,5, 1F, (Color) null,restoreMat, (byte) 0);
                                 List<Player> targetP = new ArrayList<>(Bukkit.getOnlinePlayers());
                                 MagicSpells.getEffectManager().display(Particle.BLOCK_CRACK, po, block.getLocation(), 32.0D, targetP);
                                 block.getLocation().getWorld().playSound(block.getLocation(), "block.wood.break", 0.5f, 0.5f);
@@ -299,13 +322,13 @@ public class ForagingZone implements Listener, TournamentZone {
         return new double[]{ x1+(x2-x1)*amount, y1+(y2-y1)*amount, z1+(z2-z1)*amount };
     }
     public String logName(Tree tree, String name) {
-        String str = ChatColor.RED.toString() + name;
+        String str = ChatColor.RED + name;
         if (tree.health == tree.maxHealth) {
-            str = str + " " + ChatColor.GREEN.toString();
+            str = str + " " + ChatColor.GREEN;
         } else {
-            str = str + " " + ChatColor.YELLOW.toString();
+            str = str + " " + ChatColor.YELLOW;
         }
-        str = str + (int)tree.health + ChatColor.WHITE.toString() + "/" + ChatColor.GREEN.toString() + (int)tree.maxHealth + ChatColor.RED.toString() + "❤";
+        str = str + (int)tree.health + ChatColor.WHITE + "/" + ChatColor.GREEN + (int)tree.maxHealth + ChatColor.RED + "❤";
         return str;
     }
 

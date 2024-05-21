@@ -13,6 +13,7 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.player.BankTransaction;
 import me.genn.thegrandtourney.player.MMOPlayer;
+import me.genn.thegrandtourney.xp.Xp;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -72,7 +73,7 @@ public class Bank implements Listener {
         } else {
             this.accessingRemotely.remove(player.getUniqueId());
         }
-        Inventory inv = Bukkit.createInventory(player, 36);
+        Inventory inv = Bukkit.createInventory(player, 36, title);
         setMenuItem(new ItemStack(Material.BARRIER), close, new ArrayList<>(), 31, inv);
         List<String> lore = new ArrayList<>();
         if (remote) {
@@ -81,7 +82,7 @@ public class Bank implements Listener {
             lore.clear();
         }
         lore.add(ChatColor.GRAY + "Upon dying, you'll lose half of");
-        lore.add(ChatColor.GRAY + "the " + ChatColor.GOLD + " Dosh " + ChatColor.GRAY + " in your Purse.");
+        lore.add(ChatColor.GRAY + "the " + ChatColor.GOLD + "Dosh" + ChatColor.GRAY + " in your Purse.");
         lore.add(ChatColor.GRAY + "Store it in the Bank to keep it safe!");
         setMenuItem(new ItemStack(Material.REDSTONE_TORCH), info, lore, 32, inv);
         lore.clear();
@@ -181,7 +182,7 @@ public class Bank implements Listener {
         }
         fillRemainderOfInventory(inv);
         this.pageForPlayer.put(player.getUniqueId(), page);
-
+        player.openInventory(inv);
     }
     private void createDepositMenu(Player player, MMOPlayer mmoPlayer) {
         if (waitingForSignData.contains(player.getUniqueId()) && customAmount.containsKey(player.getUniqueId())) {
@@ -189,9 +190,11 @@ public class Bank implements Listener {
             mmoPlayer.addBankGold(amount);
             mmoPlayer.removePurseGold(amount);
             player.sendMessage(ChatColor.GREEN + "You deposited " + ChatColor.GOLD + getMoneyString(amount) + " Dosh " + ChatColor.GREEN + "into your Bank!");
-            waitingForSignData.remove(player.getUniqueId());
-            customAmount.remove(player.getUniqueId());
+            mmoPlayer.addBankTransaction(amount,System.currentTimeMillis(),ChatColor.AQUA + player.getName());
+            plugin.shopHandler.playBuySound(player);
         }
+        waitingForSignData.remove(player.getUniqueId());
+        customAmount.remove(player.getUniqueId());
         Inventory inv = Bukkit.createInventory(player, 36, depositTitle);
         List<String> lore = new ArrayList<>();
         double goldAmt = mmoPlayer.getBankGold();
@@ -268,9 +271,11 @@ public class Bank implements Listener {
             mmoPlayer.removeBankGold(amount);
             mmoPlayer.addPurseGold(amount);
             player.sendMessage(ChatColor.GREEN + "You withdrew " + ChatColor.GOLD + getMoneyString(amount) + " Dosh " + ChatColor.GREEN + "from your Bank!");
-            waitingForSignData.remove(player.getUniqueId());
-            customAmount.remove(player.getUniqueId());
+            mmoPlayer.addBankTransaction(-amount,System.currentTimeMillis(),ChatColor.AQUA + player.getName());
+            plugin.shopHandler.playBuySound(player);
         }
+        waitingForSignData.remove(player.getUniqueId());
+        customAmount.remove(player.getUniqueId());
         Inventory inv = Bukkit.createInventory(player, 36, withdrawalTitle);
         List<String> lore = new ArrayList<>();
         double goldAmt = mmoPlayer.getBankGold();
@@ -323,7 +328,7 @@ public class Bank implements Listener {
         }
         lore.add(" ");
         lore.add(ChatColor.YELLOW + "Click to withdraw Dosh!");
-        setMenuItem(new ItemStack(Material.CHEST).asQuantity(1), twentyDeposit, lore, 14,inv);
+        setMenuItem(new ItemStack(Material.DROPPER).asQuantity(1), twentyWithdrawal, lore, 14,inv);
         lore.clear();
 
         if ((int)goldAmt == goldAmt) {
@@ -354,24 +359,20 @@ public class Bank implements Listener {
                     e.getWhoClicked().closeInventory();
                 } else if (name.equalsIgnoreCase(back)) {
                     plugin.menus.openHomeMenu(player);
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(deposit)) {
                     this.createDepositMenu(player,mmoPlayer);
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(withdraw)) {
                     this.createWithdrawMenu(player,mmoPlayer);
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(transactionHistory)) {
                     if (this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) != 0 && (e.getClick() == ClickType.RIGHT || e.getClick() == ClickType.SHIFT_RIGHT)) {
-                        if (this.accessingRemotely.contains(e.getWhoClicked().getUniqueId())) {
-                            this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), true, this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) -1);
-                        } else {
-                            this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), false, this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) -1);
-                        }
+                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.accessingRemotely.contains(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) -1);
                     } else if ((this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) * 10)+10 <= mmoPlayer.transactionHistory.size() && (e.getClick() == ClickType.LEFT || e.getClick() == ClickType.SHIFT_LEFT)) {
-                        if (this.accessingRemotely.contains(e.getWhoClicked().getUniqueId())) {
-                            this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), true, this.pageForPlayer.get(e.getWhoClicked().getUniqueId())+1);
-                        } else {
-                            this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), false, this.pageForPlayer.get(e.getWhoClicked().getUniqueId())+1);
-                        }
+                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.accessingRemotely.contains(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId())+1);
                     }
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(mobileBanking) && mmoPlayer.mobileBankLvl < 4) {
                     purchaseBankUpgrade(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 }
@@ -393,23 +394,25 @@ public class Bank implements Listener {
                     }
                     if (amount < 1) {
                         e.getWhoClicked().sendMessage(ChatColor.RED + "You don't have any Dosh to deposit!");
+                        plugin.shopHandler.playNoMoneySound(player);
                         return;
                     }
                     mmoPlayer.addBankGold(amount);
                     mmoPlayer.removePurseGold(amount);
                     e.getWhoClicked().sendMessage(ChatColor.GREEN + "You deposited " + ChatColor.GOLD + getMoneyString(amount) + " Dosh " + ChatColor.GREEN + "into your Bank!");
+                    mmoPlayer.addBankTransaction(amount,System.currentTimeMillis(),ChatColor.AQUA + player.getName());
+                    plugin.shopHandler.playBuySound(player);
+                    this.createDepositMenu(player, mmoPlayer);
                 } else if (name.equalsIgnoreCase(customDeposit)) {
                     openInputSign(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()),"Enter amount", "to deposit", "deposit");
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(close)) {
                     e.getWhoClicked().closeInventory();
                 } else if (name.equalsIgnoreCase(back)) {
                     this.customAmount.remove(player.getUniqueId());
                     this.waitingForSignData.remove(player.getUniqueId());
-                    if (this.accessingRemotely.contains(e.getWhoClicked().getUniqueId())) {
-                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), true,0);
-                    } else {
-                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), false,0);
-                    }
+                    this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.accessingRemotely.contains(e.getWhoClicked().getUniqueId()),0);
+                    plugin.menus.playClickSound(player);
                 }
             }
         } else if (e.getWhoClicked().getOpenInventory().getTitle().equalsIgnoreCase(withdrawalTitle)) {
@@ -429,23 +432,25 @@ public class Bank implements Listener {
                     }
                     if (amount < 1) {
                         e.getWhoClicked().sendMessage(ChatColor.RED + "You don't have any Dosh to withdraw!");
+                        plugin.shopHandler.playNoMoneySound(player);
                         return;
                     }
                     mmoPlayer.removeBankGold(amount);
                     mmoPlayer.addPurseGold(amount);
+                    mmoPlayer.addBankTransaction(-amount,System.currentTimeMillis(),ChatColor.AQUA + player.getName());
                     e.getWhoClicked().sendMessage(ChatColor.GREEN + "You withdrew " + ChatColor.GOLD + getMoneyString(amount) + " Dosh " + ChatColor.GREEN + "from your Bank!");
+                    this.createWithdrawMenu(player, mmoPlayer);
+                    plugin.shopHandler.playBuySound(player);
                 } else if (name.equalsIgnoreCase(customDeposit)) {
                     openInputSign(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()),"Enter amount", "to withdraw", "withdraw");
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(close)) {
                     e.getWhoClicked().closeInventory();
                 } else if (name.equalsIgnoreCase(back)) {
                     this.customAmount.remove(player.getUniqueId());
                     this.waitingForSignData.remove(player.getUniqueId());
-                    if (this.accessingRemotely.contains(e.getWhoClicked().getUniqueId())) {
-                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), true,0);
-                    } else {
-                        this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), false,0);
-                    }
+                    this.loadBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.accessingRemotely.contains(e.getWhoClicked().getUniqueId()),0);
+                    plugin.menus.playClickSound(player);
                 }
             }
         }
@@ -578,12 +583,15 @@ public class Bank implements Listener {
             mmoPlayer.removePurseGold(cost);
             mmoPlayer.mobileBankLvl++;
             if (mmoPlayer.mobileBankLvl < 4) {
-                player.sendMessage(ChatColor.GREEN + "You upgraded your " + ChatColor.YELLOW + "Mobile Banking " + ChatColor.GREEN + "to level " + ChatColor.YELLOW + mmoPlayer.mobileBankLvl + ChatColor.GREEN + "!");
+                player.sendMessage(ChatColor.GREEN + "You upgraded your " + ChatColor.YELLOW + "Mobile Banking " + ChatColor.GREEN + "to " + ChatColor.YELLOW + "Level " + Xp.intToRoman(mmoPlayer.mobileBankLvl) + ChatColor.GREEN + "!");
             } else {
-                player.sendMessage(ChatColor.GREEN + "You upgraded your " + ChatColor.YELLOW + "Mobile Banking " + ChatColor.GREEN + "to " + ChatColor.AQUA + ChatColor.BOLD.toString() + "MAX LEVEL" + ChatColor.RESET + ChatColor.GREEN + "!");
+                player.sendMessage(ChatColor.GREEN + "You upgraded your " + ChatColor.YELLOW + "Mobile Banking " + ChatColor.GREEN + "to " + ChatColor.AQUA + ChatColor.BOLD + "MAX LEVEL" + ChatColor.RESET + ChatColor.GREEN + "!");
             }
+            plugin.shopHandler.playBuySound(player);
+            this.loadBank(player, this.accessingRemotely.contains(player.getUniqueId()), this.pageForPlayer.get(player.getUniqueId()));
         } else {
             player.sendMessage(ChatColor.RED + "You don't have enough Dosh!");
+            plugin.shopHandler.playNoMoneySound(player);
         }
     }
 
@@ -594,9 +602,7 @@ public class Bank implements Listener {
             retList.add(ChatColor.GRAY + "No transactions made");
             return retList;
         }
-        if (startIndex != 0) {
-            retList.add(ChatColor.GRAY + "▲ ▲ ▲");
-        }
+
         for (int i = startIndex; i < startIndex + 10; i++) {
             if (i < mmoPlayer.transactionHistory.size()) {
                 String ledger = "";
@@ -606,20 +612,19 @@ public class Bank implements Listener {
                 } else {
                     ledger = ledger + ChatColor.GREEN + "+ ";
                 }
-                ledger = ledger + ChatColor.GOLD + String.format("%,d",Math.abs(transaction.amount)) + ChatColor.GRAY + ", ";
+                ledger = ledger + ChatColor.GOLD + getMoneyString(Math.abs(transaction.amount)) + ChatColor.GRAY + ", ";
                 ledger = ledger + ChatColor.YELLOW + formatTime(transaction.time) + ChatColor.GRAY + " by " + transaction.cause;
                 retList.add(ledger);
             }
         }
-        if (mmoPlayer.transactionHistory.size() >= startIndex+10) {
-            retList.add(ChatColor.GRAY + "▼ ▼ ▼");
-        }
+
         retList.add(" ");
         if (startIndex != 0) {
-            retList.add(ChatColor.YELLOW + "Click to view earlier transactions.");
+            retList.add(ChatColor.YELLOW + "▲ Right click to view more recent transactions.");
+
         }
         if (mmoPlayer.transactionHistory.size() >= startIndex+10) {
-            retList.add(ChatColor.YELLOW + "Right click to view more recent transactions.");
+            retList.add(ChatColor.YELLOW + "▼ Click to view earlier transactions.");
         }
         return retList;
     }

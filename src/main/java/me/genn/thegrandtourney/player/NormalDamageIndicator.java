@@ -33,7 +33,7 @@ public class NormalDamageIndicator implements DamageTypeFactory {
             }
             index++;
         }
-        str = ChatColor.GRAY.toString() + str;
+        str = ChatColor.GRAY + str;
         return str;
     }
 

@@ -7,9 +7,9 @@ import me.genn.thegrandtourney.skills.Recipe;
 import me.genn.thegrandtourney.skills.Station;
 import me.genn.thegrandtourney.util.IntMap;
 import me.genn.thegrandtourney.xp.XpType;
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -25,7 +25,6 @@ public class MMOPlayer {
     private float critDamage;
     private float speed;
     private float critChance;
-    private float mana;
     private float maxMana;
     private float vendorPrice;
     private float dialogueSpeed;
@@ -80,6 +79,16 @@ public class MMOPlayer {
     private float baseFlash;
     public Map<String, IntMap<MMOMob>> slayerMap;
 
+    public ItemStack[] getQuiverContents() {
+        return quiverContents;
+    }
+
+    public void setQuiverContents(ItemStack[] quiverContents) {
+        this.quiverContents = quiverContents;
+    }
+
+    private ItemStack[] quiverContents = new ItemStack[27];
+
     public MMOPlayer() {
         this.slayerMap = new HashMap<>();
         this.accessoryBagContents = new ArrayList<>();
@@ -87,6 +96,9 @@ public class MMOPlayer {
         this.objectives = new ArrayList<>();
         this.completedObjectives = new ArrayList<>();
         this.recipeBook = new ArrayList<>();
+        for (int i = 0; i < quiverContents.length; i++) {
+            quiverContents[i] = new ItemStack(Material.AIR);
+        }
     }
     public List<BankTransaction> transactionHistory = new ArrayList<>();
     public HashSet<StatBuff> buffs = new HashSet<>();
@@ -213,7 +225,7 @@ public class MMOPlayer {
     }
 
     public void sortLayers() {
-        Collections.sort(absorptionLayers, Comparator.comparingLong(StatBuff::getExpiryTime));
+        absorptionLayers.sort(Comparator.comparingLong(StatBuff::getExpiryTime));
     }
 
 
@@ -291,14 +303,6 @@ public class MMOPlayer {
         this.baseAbilityDamage = baseAbilityDamage;
     }
 
-    public float getBaseMana() {
-        return baseMana;
-    }
-
-    public void setBaseMana(float baseMana) {
-        this.baseMana = baseMana;
-    }
-
     public float getBaseMaxMana() {
         return baseMaxMana;
     }
@@ -346,11 +350,9 @@ public class MMOPlayer {
     private float baseCritDamage;
     private float baseSpeed;
     private float baseCritChance;
-    private float baseMana;
     private float baseMaxMana;
     private float baseVendorPrice;
     private float baseDialogueSpeed;
-    private double gold;
     private int combatLvl;
     private int miningLvl;
     private int loggingLvl;
@@ -628,6 +630,27 @@ public class MMOPlayer {
 
     private Location respawnLocation;
 
+    public float getLuck() {
+        return luck;
+    }
+
+    public void setLuck(float luck) {
+        this.luck = luck;
+    }
+
+    private float luck = 0.0f;
+
+    public float getBaseLuck() {
+        return baseLuck;
+    }
+
+    public void setBaseLuck(float baseLuck) {
+        this.baseLuck = baseLuck;
+    }
+
+    private float baseLuck = 0.0f;
+
+
 
     public float getAttackSpeed() {
         return attackSpeed;
@@ -639,17 +662,8 @@ public class MMOPlayer {
 
     private float attackSpeed;
 
-    public float getBaseAttackSpeed() {
-        return baseAttackSpeed;
-    }
-
-    public void setBaseAttackSpeed(float baseAttackSpeed) {
-        this.baseAttackSpeed = baseAttackSpeed;
-    }
-
-    private float baseAttackSpeed;
     private UUID minecraftUUID;
-
+    double bankBalance = 0.0d;
 
     public double getPurseGold() {
         return plugin.econ.getBalance(Bukkit.getOfflinePlayer(minecraftUUID));
@@ -663,22 +677,30 @@ public class MMOPlayer {
             plugin.econ.withdrawPlayer(Bukkit.getOfflinePlayer(minecraftUUID), amount);
             return true;
         } else {
+            plugin.econ.withdrawPlayer(Bukkit.getOfflinePlayer(minecraftUUID), plugin.econ.getBalance(Bukkit.getOfflinePlayer(minecraftUUID)));
             return false;
         }
     }
     public double getBankGold() {
-        return plugin.econ.bankBalance("Bank." + Bukkit.getPlayer(minecraftUUID).getName()).balance;
+
+        return this.bankBalance;
     }
     public void addBankGold(double amount) {
-        plugin.econ.bankDeposit("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount);
+        this.bankBalance += amount;
     }
     public boolean removeBankGold(double amount) {
-        if (plugin.econ.bankHas("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount).type == EconomyResponse.ResponseType.SUCCESS) {
-            plugin.econ.bankWithdraw("Bank." + Bukkit.getPlayer(minecraftUUID).getName(), amount);
+        if (this.bankBalance >= amount) {
+            this.bankBalance -= amount;
             return true;
         } else {
+            this.bankBalance = 0;
             return false;
         }
+    }
+
+    public void addBankTransaction(double amount, long time, String actor) {
+        BankTransaction transaction = new BankTransaction((float)amount,time,actor);
+        this.transactionHistory.add(0,transaction);
     }
     public float getHealth() {
         return health;
@@ -742,11 +764,8 @@ public class MMOPlayer {
 
     public float vigor = 0.0f;
     public float baseVigor = 0.0f;
-    public float getMana() {
-        return mana;
-    }
+
     public void setMana(float mana) {
-        this.mana = mana;
     }
 
     public float getMaxMana() {

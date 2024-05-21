@@ -159,19 +159,23 @@ public class Storage implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onItemMove(InventoryClickEvent e) {
         if (e.getWhoClicked().getOpenInventory().getTitle().startsWith(title)) {
+            Player player = Bukkit.getPlayer(e.getWhoClicked().getUniqueId());
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta() && e.getCurrentItem().getItemMeta().hasDisplayName()){
                 String name = e.getCurrentItem().getItemMeta().getDisplayName();
                 if (name.equalsIgnoreCase(" ")) {
                     e.setCancelled(true);
                 } else if (name.equalsIgnoreCase(back)) {
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                     plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
                 } else if (name.equalsIgnoreCase(close)) {
                     e.setCancelled(true);
                     e.getInventory().close();
                 }  else if (name.equalsIgnoreCase(nextPage)) {
+                    plugin.menus.playClickSound(player);
                     this.loadStorageMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) + 1);
                 } else if (name.equalsIgnoreCase(previousPage)) {
+                    plugin.menus.playClickSound(player);
                     this.loadStorageMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) - 1);
                 }
             } else if (e.getCursor() != null && e.getCursor().hasItemMeta() && e.getCursor().getItemMeta().hasDisplayName()) {
@@ -207,11 +211,10 @@ public class Storage implements Listener {
                     } else {
                         mmoPlayer.storageContents.put(counter, item);
                     }
-                    counter++;
                 } else {
                     mmoPlayer.storageContents.put(counter, new ItemStack(Material.AIR));
-                    counter++;
                 }
+                counter++;
             }
 
         }

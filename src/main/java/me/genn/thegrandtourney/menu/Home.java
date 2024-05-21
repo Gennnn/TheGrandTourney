@@ -27,11 +27,12 @@ public class Home implements Listener {
     final String recipes = ChatColor.GREEN + "Recipe Book";
     final String skills = ChatColor.GREEN + "Skill Progress";
     final String quests = ChatColor.GREEN + "Quest Log";
-    final String accessories = ChatColor.GREEN + "Accessory Bag";
+    final String accessories = ChatColor.GREEN + "Accessory Pouch";
     final String storage = ChatColor.GREEN + "Storage";
     final String activeEffects = ChatColor.GREEN + "Active Effects";
     final String mobileBanking = ChatColor.GREEN + "Mobile Banking";
     final String close = ChatColor.RED + "Close";
+    final String quiver = ChatColor.GREEN + "Quiver";
     TGT plugin;
 
     public Home(TGT plugin) {
@@ -50,24 +51,26 @@ public class Home implements Listener {
         meta.setDisplayName(ChatColor.YELLOW + "Your Player Stats");
         List<String> lore = new ArrayList<>();
         lore.add("");
-        lore.add("  " + ChatColor.RED + "❤ Health " + ChatColor.WHITE + mmoPlayer.getMaxHealth());
-        lore.add("  " + ChatColor.AQUA + "❈ Defense " + ChatColor.WHITE + mmoPlayer.getDefense());
-        lore.add("  " + ChatColor.WHITE + "✦ Speed " + mmoPlayer.getSpeed());
-        lore.add("  " + ChatColor.RED + "❁ Strength " + ChatColor.WHITE + mmoPlayer.getDamage());
-        lore.add("  " + ChatColor.GREEN + "⚡ Vigor " + ChatColor.WHITE + mmoPlayer.getVigor());
-        lore.add("  " + ChatColor.DARK_GREEN + "⌛ Stamina Regen " + ChatColor.WHITE + (MagicSpells.getManaHandler().getRegenAmount(player)));
-        lore.add("  " + ChatColor.BLUE + "☠ Crit Damage " + ChatColor.WHITE + mmoPlayer.getCritDamage());
-        lore.add("  " + ChatColor.BLUE + "☣ Crit Chance " + ChatColor.WHITE + mmoPlayer.getCritChance());
-        lore.add("  " + ChatColor.RED + "๑ Ability Damage " + ChatColor.WHITE + mmoPlayer.getAbilityDamage());
-        lore.add("  " + ChatColor.GOLD + "☘ Mining Fortune " + ChatColor.WHITE + mmoPlayer.getMiningFortune());
+        lore.add("  " + ChatColor.RED + "❤ Health " + ChatColor.WHITE + formatDouble(mmoPlayer.getMaxHealth()));
+        lore.add("  " + ChatColor.AQUA + "❈ Defense " + ChatColor.WHITE + formatDouble(mmoPlayer.getDefense()));
+        lore.add("  " + ChatColor.WHITE + "✦ Speed " + formatDouble(mmoPlayer.getSpeed()));
+        lore.add("  " + ChatColor.RED + "❁ Strength " + ChatColor.WHITE + formatDouble(mmoPlayer.getDamage()));
+        lore.add("  " + ChatColor.GREEN + "⚡ Vigor " + ChatColor.WHITE + formatDouble(mmoPlayer.getVigor()));
+        lore.add("  " + ChatColor.BLUE + "☠ Crit Damage " + ChatColor.WHITE + formatDouble(mmoPlayer.getCritDamage()));
+        lore.add("  " + ChatColor.LIGHT_PURPLE + "◎ Focus " + ChatColor.WHITE + formatDouble(mmoPlayer.getFocus()));
+        lore.add("  " + ChatColor.RED + "๑ Ability Damage " + ChatColor.WHITE + formatDouble(mmoPlayer.getAbilityDamage()));
+        lore.add("  " + ChatColor.GOLD + "☘ Luck " + ChatColor.WHITE + formatDouble(mmoPlayer.getLuck()));
+        /*lore.add("  " + ChatColor.BLUE + "☣ Crit Chance " + ChatColor.WHITE + mmoPlayer.getCritChance());*/
+        /*lore.add("  " + ChatColor.GOLD + "☘ Mining Fortune " + ChatColor.WHITE + mmoPlayer.getMiningFortune());
         lore.add("  " + ChatColor.GOLD + "☘ Farming Fortune " + ChatColor.WHITE + mmoPlayer.getFarmingFortune());
-        lore.add("  " + ChatColor.GOLD + "☘ Logging Fortune " + ChatColor.WHITE + mmoPlayer.getLoggingFortune());
-        lore.add("  " + ChatColor.DARK_AQUA + "☂ Fishing Speed " + ChatColor.WHITE + mmoPlayer.getLure());
-        lore.add("  " + ChatColor.AQUA + "☈ Lure " + ChatColor.WHITE + mmoPlayer.getFlash());
-        lore.add("  " + ChatColor.DARK_AQUA + "α Sea Creature Chance " + ChatColor.WHITE + mmoPlayer.getSeaCreatureChance());
-        lore.add("  " + ChatColor.LIGHT_PURPLE + "⌚ Dialogue Speed " +ChatColor.WHITE+ mmoPlayer.getDialogueSpeed());
-        lore.add("  " + ChatColor.GOLD + "$ Shop Discount " + ChatColor.WHITE + mmoPlayer.getVendorPrice());
-        lore.add("  " + ChatColor.RED + "◎ Focus " + ChatColor.WHITE + mmoPlayer.getFocus());
+        lore.add("  " + ChatColor.GOLD + "☘ Logging Fortune " + ChatColor.WHITE + mmoPlayer.getLoggingFortune());*/
+        lore.add("  " + ChatColor.AQUA + "☂ Fishing Speed " + ChatColor.WHITE + formatDouble(mmoPlayer.getLure()));
+        lore.add("  " + ChatColor.YELLOW + "☈ Lure " + ChatColor.WHITE + formatDouble(mmoPlayer.getFlash()));
+        lore.add("  " + ChatColor.DARK_AQUA + "α Sea Creature Chance " + ChatColor.WHITE + formatDouble(mmoPlayer.getSeaCreatureChance()));
+        /*lore.add("  " + ChatColor.LIGHT_PURPLE + "⌚ Dialogue Speed " +ChatColor.WHITE+ mmoPlayer.getDialogueSpeed());
+        lore.add("  " + ChatColor.GOLD + "$ Shop Discount " + ChatColor.WHITE + mmoPlayer.getVendorPrice());*/
+        lore.add("  " + ChatColor.RED + "❣ Health Regen " + ChatColor.WHITE + formatDouble(mmoPlayer.getHealthRegen()));
+        lore.add("  " + ChatColor.DARK_GREEN + "⌛ Stamina Regen " + ChatColor.WHITE + formatDouble(MagicSpells.getManaHandler().getRegenAmount(player)));
         meta.setLore(lore);
         SkullMeta skullMeta = (SkullMeta) meta;
         skullMeta.setPlayerProfile(player.getPlayerProfile());
@@ -127,9 +130,9 @@ public class Home implements Listener {
         meta.setDisplayName(accessories);
         lore.clear();
         lore.add("");
-        lore.add(ChatColor.GRAY + "A special bag that can hold your charms.");
-        lore.add(ChatColor.GRAY + "Charms will only function while in your inventory");
-        lore.add(ChatColor.GRAY + "or while in this bag.");
+        lore.add(ChatColor.GRAY + "A special bag that can hold your accessories.");
+        lore.add(ChatColor.GRAY + "Accessories will only function while in your");
+        lore.add(ChatColor.GRAY + "accessory pouch.");
         lore.add("");
         lore.add(ChatColor.YELLOW + "Click to open!");
         meta.setLore(lore);
@@ -178,6 +181,7 @@ public class Home implements Listener {
         MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWZkMTA4MzgzZGZhNWIwMmU4NjYzNTYwOTU0MTUyMGU0ZTE1ODk1MmQ2OGMxYzhmOGYyMDBlYzdlODg2NDJkIn19fQ==", item);
         meta = item.getItemMeta();
         meta.setDisplayName(mobileBanking);
+        lore.add(" ");
         lore.add(ChatColor.GRAY + "Deposit and withdraw your Dosh");
         lore.add(ChatColor.GRAY + "from anywhere!");
         lore.add(" ");
@@ -188,8 +192,32 @@ public class Home implements Listener {
         meta.setLore(lore);
         item.setItemMeta(meta);
         inv.setItem(30,item);
+        item = new ItemStack(Material.PLAYER_HEAD);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzg1NmNmOTcxNjIzOWE3NzA2MjY4NjUyZWZmM2IyOWNlNWRhY2RmYWIxZmIyZmIzMGE1NGIwNzk2NzQwMDYyIn19fQ==", item);
+        meta = item.getItemMeta();
+        meta.setDisplayName(quiver);
+        lore.clear();
+        lore.add(" ");
+        lore.add(ChatColor.GRAY + "Store all of your arrows");
+        lore.add(ChatColor.GRAY + "in one spot!");
+        lore.add(" ");
+        lore.add(ChatColor.YELLOW + "Click to open!");
+        meta.setLore(lore);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS);
+        item.setItemMeta(meta);
+        inv.setItem(32, item);
         fillRemainderOfInventory(inv);
         player.openInventory(inv);
+    }
+
+    private String formatDouble(double amount) {
+        if ((int)amount == amount) {
+            return String.format("%,d",(int)amount);
+        } else {
+            return String.format("%,.1f",amount);
+        }
     }
 
     public void fillRemainderOfInventory(Inventory inv) {
@@ -211,23 +239,33 @@ public class Home implements Listener {
         if (e.getWhoClicked().getOpenInventory().getTitle().equalsIgnoreCase(title)) {
             e.setCancelled(true);
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta() && e.getCurrentItem().getItemMeta().hasDisplayName()){
+                Player player = Bukkit.getPlayer(e.getWhoClicked().getUniqueId());
                 String name = e.getCurrentItem().getItemMeta().getDisplayName();
                 if (name.equalsIgnoreCase(recipes)) {
-                    plugin.menus.openRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openRecipeBook(player);
+                    player.playSound(player, "item.book.page_turn", 0.5f,1.5f);
                 } else if (name.equalsIgnoreCase(skills)) {
-                    plugin.menus.openSkillMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openSkillMenu(player);
+                    player.playSound(player, "entity.player.levelup", 0.5f,1.75f);
                 } else if (name.equalsIgnoreCase(quests)) {
-                    plugin.menus.openQuestLog(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openQuestLog(player);
+                    player.playSound(player, "item.book.page_turn", 0.5f,0.75f);
                 } else if (name.equalsIgnoreCase(accessories)) {
-                    plugin.menus.openAccessoryBag(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openAccessoryBag(player);
+                    player.playSound(player, "entity.horse.saddle", 0.5f,1.25f);
                 } else if (name.equalsIgnoreCase(storage)) {
-                    plugin.menus.openStorage(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openStorage(player);
+                    player.playSound(player, "block.chest.open", 0.5f,0.5f);
                 } else if (name.equalsIgnoreCase(close)) {
                     e.getInventory().close();
                 } else if (name.equalsIgnoreCase(activeEffects)) {
-                    plugin.menus.openActiveEffectsMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.openActiveEffectsMenu(player);
+                    player.playSound(player, "block.brewing_stand.brew", 0.5f, 1.0f);
                 } else if (name.equalsIgnoreCase(mobileBanking)) {
-                    plugin.accessMobileBank(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.accessMobileBank(player);
+                } else if (name.equalsIgnoreCase(quiver)) {
+                    plugin.menus.openQuiver(player);
+                    player.playSound(player,"entity.horse.saddle", 0.5f, 2.0f);
                 }
             }
         }

@@ -16,8 +16,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 public class ShopHandler {
-    String soundSale;
-    String soundNoMoney;
+    public String soundSale;
+    public String soundNoMoney;
     Map<String, ShopItem> items;
     public Map<String, Shop> shops;
     public InvShop invShops;
@@ -66,5 +66,12 @@ public class ShopHandler {
             }
         }
 
+    }
+
+    public void playBuySound(Player player) {
+        player.playSound(player, this.soundSale, this.buyVolume, this.buyPitch);
+    }
+    public void playNoMoneySound(Player player) {
+        player.playSound(player, this.soundNoMoney, this.noMoneyVolume, this.noMoneyPitch);
     }
 }

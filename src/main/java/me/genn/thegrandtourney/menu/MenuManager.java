@@ -17,6 +17,7 @@ public class MenuManager {
     private StationMasterRecipeBook stationMasterRecipeBook;
     private PotionEffects potionEffects;
     private Bank bank;
+    public Quiver quiver;
     TGT plugin;
 
     public MenuManager(TGT plugin) {
@@ -30,6 +31,7 @@ public class MenuManager {
         this.stationMasterRecipeBook = new StationMasterRecipeBook(plugin);
         this.potionEffects = new PotionEffects(plugin);
         this.bank = new Bank(plugin);
+        this.quiver = new Quiver(plugin);
     }
 
     public void openHomeMenu(Player player) {
@@ -52,4 +54,9 @@ public class MenuManager {
     public void openActiveEffectsMenu(Player player) {this.potionEffects.loadMenuPotionEffects(player);}
     public void openBankMenu(Player player){this.bank.loadBank(player,false,0);}
     public void openRemoteBankMenu(Player player){this.bank.loadBank(player,true,0);}
+    public void openQuiver(Player player){this.quiver.loadQuiver(player);}
+
+    public void playClickSound(Player player) {
+        player.playSound(player, "ui.button.click", 0.25f, 1.0f);
+    }
 }

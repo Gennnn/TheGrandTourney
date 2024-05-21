@@ -167,7 +167,7 @@ public class Tree {
 
             }
         }.runTaskTimer(plugin, 0L, 40L);
-        Bukkit.broadcastMessage("Registered tree with base at " + startingLoc.toString());
+        Bukkit.broadcastMessage("Registered tree with base at " + startingLoc);
     }
 
     public Location getOffsetLoc(Block block) {
@@ -404,10 +404,7 @@ public class Tree {
     }
 
     public boolean isBlockOnTree(Block block) {
-        if (this.choppableBlocks.contains(block)) {
-            return true;
-        }
-        return false;
+        return this.choppableBlocks.contains(block);
     }
 
     public void cycleCriticalBlock() {
@@ -559,9 +556,6 @@ public class Tree {
             return true;
         }
         testBlock = block.getLocation().toBlockLocation().clone().add(0,0,-1).getBlock();
-        if (testBlock.getType() == Material.AIR) {
-            return true;
-        }
-        return false;
+        return testBlock.getType() == Material.AIR;
     }
 }

@@ -187,16 +187,12 @@ public class Craft implements Listener {
     }
     public boolean boundsCheck(Player player, Station station) {
         Location loc = player.getLocation();
-        if (loc.getX() >= station.minLoc.getX()
+        return loc.getX() >= station.minLoc.getX()
                 && loc.getY() >= station.minLoc.getY()
-        && loc.getZ() >= station.minLoc.getZ()
-        && loc.getX() <= station.maxLoc.getX()
-        && loc.getY() <= station.maxLoc.getY()
-        && loc.getZ() <= station.maxLoc.getZ()) {
-            return true;
-        } else {
-            return false;
-        }
+                && loc.getZ() >= station.minLoc.getZ()
+                && loc.getX() <= station.maxLoc.getX()
+                && loc.getY() <= station.maxLoc.getY()
+                && loc.getZ() <= station.maxLoc.getZ();
     }
     public void initializeTimingRunnable(Player player) {
         Craft.this.timingRunnable = new BukkitRunnable() {
@@ -218,7 +214,7 @@ public class Craft implements Listener {
                 } else if (Craft.this.timingCount[0] == 0) {
                     Craft.this.timingCount[0] = 2;
                     player.playSound(player, "block.note_block.harp", 1.0f, 1.0f);
-                    instructionAs.setCustomName(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() + "L-CLICK!");
+                    instructionAs.setCustomName(ChatColor.YELLOW + ChatColor.BOLD.toString() + "L-CLICK!");
 
                 }
             }
@@ -261,11 +257,11 @@ public class Craft implements Listener {
             ArmorStand instructionAs = entity.getLocation().getWorld().spawn(loc, ArmorStand.class);
             instructionAs.setGravity(false);
             if (Craft.this.currentCraft.equalsIgnoreCase("mashing")) {
-                instructionAs.setCustomName(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() + "L-CLICK!");
+                instructionAs.setCustomName(ChatColor.YELLOW + ChatColor.BOLD.toString() + "L-CLICK!");
             } else if (Craft.this.currentCraft.equalsIgnoreCase("timing")) {
                 instructionAs.setCustomName(ChatColor.RED + "Wait...");
             } else {
-                instructionAs.setCustomName(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() + "R-CLICK!");
+                instructionAs.setCustomName(ChatColor.YELLOW + ChatColor.BOLD.toString() + "R-CLICK!");
             }
             instructionAs.setCustomNameVisible(true);
             instructionAs.setVisible(false);
@@ -280,9 +276,9 @@ public class Craft implements Listener {
                         cancel();
                     } else {
                         if (instructionAs.getCustomName().startsWith(ChatColor.YELLOW.toString())) {
-                            instructionAs.setCustomName(ChatColor.WHITE.toString() + ChatColor.BOLD.toString() + ChatColor.stripColor(instructionAs.getCustomName()));
+                            instructionAs.setCustomName(ChatColor.WHITE + ChatColor.BOLD.toString() + ChatColor.stripColor(instructionAs.getCustomName()));
                         } else if (instructionAs.getCustomName().startsWith(ChatColor.WHITE.toString())) {
-                            instructionAs.setCustomName(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() + ChatColor.stripColor(instructionAs.getCustomName()));
+                            instructionAs.setCustomName(ChatColor.YELLOW + ChatColor.BOLD.toString() + ChatColor.stripColor(instructionAs.getCustomName()));
                         }
                     }
                 }
@@ -350,7 +346,7 @@ public class Craft implements Listener {
         player.teleport(plugin.players.get(player.getUniqueId()).craftStart);
         player.hideBossBar(plugin.currentlyDisplayedBossBar.get(player));
         plugin.players.get(player.getUniqueId()).isCrafting = false;
-        player.sendMessage(ChatColor.RED + ChatColor.BOLD.toString() + "CRAFT FAILED! " + ChatColor.RESET + ChatColor.GRAY.toString() + "You failed to complete the craft in time!");
+        player.sendMessage(ChatColor.RED + ChatColor.BOLD.toString() + "CRAFT FAILED! " + ChatColor.RESET + ChatColor.GRAY + "You failed to complete the craft in time!");
         player.playSound(player, "entity.ender_dragon.hurt", 2.0f, 0.0f);
         if (this.timingRunnable != null && !this.timingRunnable.isCancelled()) {
             this.timingRunnable.cancel();
@@ -524,8 +520,8 @@ public class Craft implements Listener {
                         return;
                     }
                 }
+                float num = 0;
                 if (this.timingCount[0] == 2) {
-                    float num = 0;
                     if (mmoPlayer.currentStation.type == XpType.TAILORING) {
                         num = ((mmoPlayer.getFocus() + 1) + ((mmoPlayer.getCritDamage() - mmoPlayer.getBaseCritDamage())/2))*5;
                     } else if (mmoPlayer.currentStation.type == XpType.BLACKSMITHING) {
@@ -534,9 +530,7 @@ public class Craft implements Listener {
                     this.currentTaskProgress = this.currentTaskProgress + num;
                     this.timingCount[0] = 1;
                     timingTableEffects(player, entity.getLocation());
-                    e.setCancelled(true);
                 } else {
-                    float num = 0;
                     if (mmoPlayer.currentStation.type == XpType.TAILORING) {
                         num = (float) (((mmoPlayer.getFocus() + 1) + ((mmoPlayer.getCritDamage() - mmoPlayer.getBaseCritDamage())/2))*2.5);
                     } else if (mmoPlayer.currentStation.type == XpType.BLACKSMITHING) {
@@ -548,8 +542,8 @@ public class Craft implements Listener {
                         this.currentTaskProgress = this.currentTaskProgress - num;
                     }
                     timingTableFailEffects(player, entity.getLocation());
-                    e.setCancelled(true);
                 }
+                e.setCancelled(true);
 
             }
         }
@@ -978,9 +972,7 @@ public class Craft implements Listener {
             } else if (type == XpType.CARPENTRY) {
                 check = " SAW";
             }
-            if (ChatColor.stripColor(line).contains(check)) {
-                return true;
-            }
+            return ChatColor.stripColor(line).contains(check);
         }
         return false;
     }

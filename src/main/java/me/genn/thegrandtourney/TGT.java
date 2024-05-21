@@ -11,8 +11,11 @@ import java.util.logging.Level;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 
+import com.ernestorb.tablistmanager.TablistManager;
+import com.ernestorb.tablistmanager.plugin.TablistManagerPlugin;
 import com.nisovin.magicspells.MagicSpells;
 import com.nisovin.magicspells.mana.ManaChangeReason;
+import com.nisovin.magicspells.util.managers.SpellEffectManager;
 import com.sk89q.worldedit.EmptyClipboardException;
 import com.sk89q.worldedit.MaxChangedBlocksException;
 
@@ -60,10 +63,12 @@ import me.genn.thegrandtourney.tournament.MiniGameListener;
 import me.genn.thegrandtourney.tournament.MiniGameMonitor;
 import me.genn.thegrandtourney.util.CasterSpeak;
 import me.genn.thegrandtourney.util.SchematicCreator;
+import me.genn.thegrandtourney.util.TabList;
 import me.genn.thegrandtourney.util.ToastMessage;
 import me.genn.thegrandtourney.xp.RewardTableHandler;
 import me.genn.thegrandtourney.xp.Xp;
 import me.genn.thegrandtourney.xp.XpType;
+
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCRegistry;
@@ -82,6 +87,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -144,11 +150,11 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public Long currentGameTime;
     public int dayLength = 600;
     public int nightLength = 300;
-    boolean night = false;
+    public boolean night = false;
     boolean gameRunning = false;
     boolean gameEnded = false;
     int daysBeforeTournament = 3;
-    int day = 1;
+    public int day = 1;
     Random random = new Random();
     Map<String, MiniGame> games = new HashMap<>();
     List<MiniGame> gameList = new ArrayList<>();
@@ -169,13 +175,15 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     public ActionBarDisplay actionBarMessenger;
 
     public ShopHandler shopHandler;
-    String[] statNames = new String[]{"strength", "defense","health","crit-damage","crit-chance","speed","vigor","stamina-regen","health-regen","ability-damage","mining-fortune","farming-fortune","foraging-fortune","fishing-speed","lure","sea-creature-chance","dialogue-speed","shop-discount","focus","stamina","absorption","evasiveness"};
+    String[] statNames = new String[]{"strength", "defense","health","crit-damage","crit-chance","speed","vigor","stamina-regen","health-regen","ability-damage","mining-fortune","farming-fortune","foraging-fortune","fishing-speed","lure","sea-creature-chance","dialogue-speed","shop-discount","focus","stamina","absorption","evasiveness","luck"};
     String[] potionNames = new String[]{"restoration", "adrenaline","agility","critical","dodge","spirit","regeneration","speed","strength","heal","absorption","resistance","spelunker","angler","harvester"};
 
     int autoStartTime = 90;
     int minPlayers = 4;
     int endTimerDuration = 300;
-
+    /*public TablistManager tablistManager;
+    public TabList tabList;
+*/
     public static TGT getInstance() {
         return plugin;
     }
@@ -225,7 +233,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection defaultStats = config.getConfigurationSection("default-stats");
         if (defaultStats == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "STATS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "STATS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -249,6 +257,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.defaultStatValues.put("foraging-fortune", (float)defaultStats.getDouble("foraging-fortune", 0.0f));
         this.defaultStatValues.put("farming-fortune", (float)defaultStats.getDouble("farming-fortune", 0.0f));
         this.defaultStatValues.put("focus", (float)defaultStats.getDouble("focus", 0.0f));
+        this.defaultStatValues.put("luck",(float)defaultStats.getDouble("luck",0.0f));
         this.dayLength = config.getInt("day-length", 600);
         this.nightLength = config.getInt("night-length", 300);
         this.daysBeforeTournament = config.getInt("days-before-tournament", 3);
@@ -266,7 +275,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             blacklistedCells.addAll(config.getStringList("blacklisted-cells"));
         }
         this.registry = CitizensAPI.getNPCRegistry();
-
+        this.listener = new EventListener(this);
+        Bukkit.getPluginManager().registerEvents(this.listener, this);
 
         if (!config.contains("items")) {
             config.createSection("items");
@@ -297,7 +307,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection itemsSection = config.getConfigurationSection("items");
         if (itemsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "ITEM CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "ITEM CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -343,7 +353,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection oresSection = config.getConfigurationSection("ores");
         if (oresSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "ORES CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "ORES CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -388,7 +398,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection cropsSection = config.getConfigurationSection("crops");
         if (cropsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "CROPS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "CROPS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -433,7 +443,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection foragingZonesSection = config.getConfigurationSection("foraging-zones");
         if (foragingZonesSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "FORAGING CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "FORAGING CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -480,7 +490,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection mobsSection = config.getConfigurationSection("mobs");
         if (mobsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "MOBS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "MOBS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -525,7 +535,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection zonesSection = config.getConfigurationSection("fishing-zones");
         if (zonesSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "FISHING CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "FISHING CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -571,7 +581,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection spawnersSection = config.getConfigurationSection("spawners");
         if (spawnersSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "SPAWNERS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "SPAWNERS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -617,7 +627,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection levelRewardsSection = config.getConfigurationSection("level-rewards");
         if (levelRewardsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "LEVEL REWARDS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "LEVEL REWARDS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -664,7 +674,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection npcsSection = config.getConfigurationSection("npcs");
         if (npcsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "NPC CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "NPC CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -720,7 +730,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection dungeonsSection = config.getConfigurationSection("dungeons");
         if (dungeonsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "DUNGEONS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "DUNGEONS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -765,7 +775,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection gamesSection = config.getConfigurationSection("games");
         if (gamesSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "GAMES CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "GAMES CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -826,7 +836,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         ConfigurationSection linkedSchematicsSection = config.getConfigurationSection("schematics.linked-schematics");
         ConfigurationSection mainSchematicsSection = config.getConfigurationSection("schematics.main-schematics");
         if (linkedSchematicsSection == null || mainSchematicsSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "SCHEMATIC CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "SCHEMATIC CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -886,7 +896,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
         ConfigurationSection shopSection = config.getConfigurationSection("shops");
         if (shopSection == null) {
-            this.getLogger().severe(ChatColor.RED.toString() + "SHOPS CONFIG IS NULL!");
+            this.getLogger().severe(ChatColor.RED + "SHOPS CONFIG IS NULL!");
             this.setEnabled(false);
             return;
         }
@@ -899,7 +909,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
          */
 
 
-        this.listener = new EventListener(this);
+
         if (!this.setupEconomy()) {
             this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
             this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
@@ -907,7 +917,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             this.setEnabled(false);
             return;
         }
-        Bukkit.getPluginManager().registerEvents(this.listener, this);
+
         Bukkit.getPluginManager().registerEvents(this, this);
         Iterator iter = Bukkit.getOnlinePlayers().iterator();
         while (iter.hasNext()) {
@@ -928,6 +938,44 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         if (this.autoStartTime > 0) {
             GennsGym.startCountdown(this.autoStartTime, this.minPlayers);
         }
+        /*final boolean[] pass = {false};
+        final SpellEffectManager[] spellEffectManager = {null};
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+                  if (spellEffectManager[0] != null) {
+                      pass[0] = true;
+                      this.cancel();
+                      return;
+                  } else {
+                      spellEffectManager[0] = MagicSpells.getInstance().getSpellEffectManager();
+                  }
+            }
+        }.runTaskTimer(this, 4L, 20L);
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+                if (pass[0] == true) {
+                    spellEffectManager[0].addSpellEffect(BetterArmorStandEffect.class,"betterarmorstand");
+                    MagicSpells msPlugin = MagicSpells.getInstance();
+                    msPlugin.unload();
+                    msPlugin.load();
+                    Bukkit.broadcastMessage("Successfully got and loaded effect");
+                    this.cancel();
+                    return;
+                } else {
+                    Bukkit.broadcastMessage("Waiting...");
+                }
+            }
+        }.runTaskTimer(this, 20L, 20L);*/
+        /*Plugin pl = this.getServer().getPluginManager().getPlugin("TablistManager");
+        if (pl instanceof TablistManagerPlugin) {
+            this.tablistManager =((TablistManagerPlugin)pl).getManager();
+        }
+        this.tabList = new TabList(this);*/
+
     }
 
 
@@ -1163,7 +1211,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.objective = this.scoreboard.getObjective("Game");
         if (this.objective == null) {
             this.objective = this.scoreboard.registerNewObjective("Game", "Game");
-            this.objective.setDisplayName(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() + "THE TOURNAMENT");
+            this.objective.setDisplayName(ChatColor.YELLOW + ChatColor.BOLD.toString() + "THE TOURNAMENT");
             this.objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         }
 
@@ -1224,7 +1272,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 objectiveText.setScore(counter);
                 counter++;
                 double progress = (players.get(player.getUniqueId()).currentCraftObj.totalCraftScore-players.get(player.getUniqueId()).currentCraftObj.totalProgress)/players.get(player.getUniqueId()).currentCraftObj.totalCraftScore;
-                Score objectTitle = obj.getScore(ChatColor.WHITE + "Craft Progress: "  + ChatColor.YELLOW.toString() + String.format("%,.1f", 100-(progress*100)) + "%");
+                Score objectTitle = obj.getScore(ChatColor.WHITE + "Craft Progress: "  + ChatColor.YELLOW + String.format("%,.1f", 100-(progress*100)) + "%");
                 objectTitle.setScore(counter);
                 counter++;
                 Score blankScore2 = obj.getScore("  ");
@@ -1244,7 +1292,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 counter++;
             }
 
-            Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + players.get(player.getUniqueId()).getPurseGold());
+            Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + getMoneyString(players.get(player.getUniqueId()).getPurseGold()));
             purseScore.setScore(counter);
             counter++;
             Score blankScore3 = obj.getScore("   ");
@@ -1271,7 +1319,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         } else {
             if (this.currentGame == null || !this.currentGame.gameRunning) {
 
-                Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + players.get(player.getUniqueId()).getPurseGold());
+                Score purseScore = obj.getScore(ChatColor.WHITE + "Purse: " + ChatColor.GOLD + getMoneyString(players.get(player.getUniqueId()).getPurseGold()));
                 purseScore.setScore(counter);
                 counter++;
 
@@ -1301,12 +1349,11 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 if (this.gameCount-1 >= this.totalGameCount) {
                     Score finalGameScore = obj.getScore(ChatColor.YELLOW + ChatColor.BOLD.toString() + "Final Round");
                     finalGameScore.setScore(counter);
-                    counter++;
                 } else {
                     Score remainingGameScore = obj.getScore(ChatColor.YELLOW +ChatColor.BOLD.toString() + "Game" + " " + (this.gameCount-1) + "/" + this.totalGameCount );
                     remainingGameScore.setScore(counter);
-                    counter++;
                 }
+                counter++;
                 Score blankScore4 = obj.getScore("     ");
                 blankScore4.setScore(counter);
                 counter++;
@@ -1356,7 +1403,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
-                        counter++;
                     } else {
                         Score blankScore1point5 = obj.getScore("        ");
                         blankScore1point5.setScore(counter);
@@ -1384,8 +1430,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
-                        counter++;
                     }
+                    counter++;
                 } else if (this.currentGame.type == MiniGame.MiniGameType.TIMED) {
                     MiniGame game = this.currentGame;
                     if (game.teamsEnabled) {
@@ -1418,7 +1464,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
-                        counter++;
                     } else {
 
                         Score blankScore1point5 = obj.getScore("        ");
@@ -1447,13 +1492,20 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                         counter++;
                         Score blankScore3 = obj.getScore("    ");
                         blankScore3.setScore(counter);
-                        counter++;
                     }
+                    counter++;
                 }
             }
         }
         player.setScoreboard(playerScoreboard);
 
+    }
+    private String getMoneyString(double amount) {
+        if ((int)amount == amount) {
+            return String.format("%,d",(int)amount);
+        } else {
+            return String.format("%,.1f",amount);
+        }
     }
     public int formatTournamentScoresBlock(Player player, Objective obj, int counter) {
         Map<UUID, Integer> values = sortByValue(this.gameScore);
@@ -2251,10 +2303,10 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                     int num = Integer.parseInt(args[2]);
                     if (args[1].equalsIgnoreCase("storage")) {
                         this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
-                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
                     } else if (args[1].equalsIgnoreCase("accessory")) {
                         this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
-                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                        sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
 
                     } else {
                         sender.sendMessage(ChatColor.RED + "The slot type you specified is invalid!");
@@ -2274,13 +2326,13 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                     if (args[0].equalsIgnoreCase("storage")) {
                         this.players.get(player.getUniqueId()).setStorageSlots(this.players.get(player.getUniqueId()).getStorageSlots() + num);
                         if (player.isOp() && debugEnabled(player)) {
-                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " storage slots for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
 
                         }
                     } else if (args[0].equalsIgnoreCase("accessory")) {
                         this.players.get(player.getUniqueId()).setAccessoryBagSlots(this.players.get(player.getUniqueId()).getAccessoryBagSlots() + num);
                         if (player.isOp() && debugEnabled(player)) {
-                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW.toString() + player.getName() + ChatColor.GREEN + ".");
+                            sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + num + ChatColor.GREEN + " accessory bag slots for " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
 
                         }
                     } else {
@@ -2360,7 +2412,36 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                     sender.sendMessage(ChatColor.RED + "You must input a number!");
                 }
             }
-        } else if (command.getName().equalsIgnoreCase("grant-recipe")) {
+        } else if (command.getName().equalsIgnoreCase("bank-dosh")) {
+            if (args.length >= 2) {
+                Player player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                try {
+                    double amount = Double.parseDouble(args[1]);
+                    if (plugin.players.containsKey(player.getUniqueId())) {
+                        plugin.players.get(player.getUniqueId()).addBankGold(amount);
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            } else if (args.length == 1) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+                }
+                Player player = (Player) sender;
+                try {
+                    double amount = Double.parseDouble(args[0]);
+                    if (plugin.players.containsKey(player.getUniqueId())) {
+                        plugin.players.get(player.getUniqueId()).addBankGold(amount);
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "You must input a number!");
+                }
+            }
+        }else if (command.getName().equalsIgnoreCase("grant-recipe")) {
             if (args.length == 1) {
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
@@ -2660,6 +2741,22 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 spawnRewardChest((Player)sender, args);
             }
 
+        } else if (command.getName().equalsIgnoreCase("bank")) {
+            if (args.length == 0) {
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "Only players may use this command!");
+                    return true;
+                }
+                this.menus.openBankMenu((Player)sender);
+            } else if (args.length > 0) {
+                Player player = Bukkit.getPlayerExact(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "You must specify a valid player!");
+                    return true;
+                }
+                this.menus.openBankMenu(player);
+            }
+
         } else if (command.getName().equalsIgnoreCase("startgame")) {
             if (!this.gameRunning && !this.gameEnded) {
                 GennsGym.stopCountdown();
@@ -2861,6 +2958,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             return true;
         } else if (statName.equalsIgnoreCase("health-regen")) {
             mmoPlayer.setBaseHealthRegen((float) (mmoPlayer.getBaseHealthRegen() + value));
+            return true;
+        } else if (statName.equalsIgnoreCase("luck")) {
+            mmoPlayer.setBaseLuck((float) (mmoPlayer.getBaseLuck() + value));
             return true;
         }
         return false;
@@ -3120,6 +3220,8 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         mmoPlayer.setBaseLoggingFortune(mmoPlayer.getLoggingFortune());
         mmoPlayer.setVigor(defaultStatValues.get("vigor"));
         mmoPlayer.setBaseVigor(mmoPlayer.getVigor());
+        mmoPlayer.setLuck(defaultStatValues.get("luck"));
+        mmoPlayer.setBaseLuck(mmoPlayer.getLuck());
         MagicSpells.getManaHandler().setMaxMana(player, (int)mmoPlayer.getMaxMana());
         MagicSpells.getManaHandler().setMana(player, (int)mmoPlayer.getMaxMana(), ManaChangeReason.OTHER);
         mmoPlayer.setCombatLvl(0);
@@ -3139,10 +3241,10 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         mmoPlayer.setLoggingProg(0.0f);
         mmoPlayer.setFarmingProg(0.0f);
         mmoPlayer.setSmithingProg(0.0f);
-        mmoPlayer.setCookingProg(0.0f);;
+        mmoPlayer.setCookingProg(0.0f);
         mmoPlayer.setRespawnLocation(player.getLocation().getWorld().getSpawnLocation());
+        plugin.econ.withdrawPlayer(Bukkit.getOfflinePlayer(player.getUniqueId()), plugin.econ.getBalance(Bukkit.getOfflinePlayer(player.getUniqueId())));
         mmoPlayer.removePurseGold(mmoPlayer.getPurseGold());
-        plugin.econ.createBank("Bank." + player.getName(), Bukkit.getOfflinePlayer(player.getUniqueId()));
         mmoPlayer.removeBankGold(mmoPlayer.getBankGold());
         this.gameScore.put(player.getUniqueId(), 0);
         player.setLevel(0);
@@ -3152,37 +3254,74 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     }
 
     public void accessMobileBank(Player player) {
+        int cdTime;
         MMOPlayer mmoPlayer = plugin.players.get(player.getUniqueId());
         if (mmoPlayer.mobileBankLvl == 0) {
+            player.sendMessage(ChatColor.RED + "You need to unlock Mobile Banking at a Banker first!");
+            plugin.shopHandler.playNoMoneySound(player);
             return;
         } else if (mmoPlayer.mobileBankLvl == 1) {
             if (mmoPlayer.lastMobileBankUse + (600 * 1000L) <= System.currentTimeMillis()) {
-                this.menus.openRemoteBankMenu(player);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        TGT.this.menus.openRemoteBankMenu(player);
+
+                    }
+                }.runTaskLater(plugin, 1L);
+                mmoPlayer.lastMobileBankUse = System.currentTimeMillis();
+                player.playSound(player, "entity.villager.yes", 0.5f, 1.5f);
                 return;
             }
-
+            cdTime = 10;
         } else if (mmoPlayer.mobileBankLvl == 2) {
             if (mmoPlayer.lastMobileBankUse + (300 * 1000L) <= System.currentTimeMillis()) {
-                this.menus.openRemoteBankMenu(player);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        TGT.this.menus.openRemoteBankMenu(player);
+
+                    }
+                }.runTaskLater(plugin, 1L);
+                mmoPlayer.lastMobileBankUse = System.currentTimeMillis();
+                player.playSound(player, "entity.villager.yes", 0.5f, 1.5f);
                 return;
             }
-
+            cdTime = 5;
         } else if (mmoPlayer.mobileBankLvl == 3) {
             if (mmoPlayer.lastMobileBankUse + (120 * 1000L) <= System.currentTimeMillis()) {
-                this.menus.openRemoteBankMenu(player);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        TGT.this.menus.openRemoteBankMenu(player);
+
+                    }
+                }.runTaskLater(plugin, 1L);
+                mmoPlayer.lastMobileBankUse = System.currentTimeMillis();
+                player.playSound(player, "entity.villager.yes", 0.5f, 1.5f);
                 return;
             }
-
+            cdTime = 2;
         } else {
-            this.menus.openRemoteBankMenu(player);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    TGT.this.menus.openRemoteBankMenu(player);
+
+                }
+            }.runTaskLater(plugin, 1L);
+            mmoPlayer.lastMobileBankUse = System.currentTimeMillis();
+            player.playSound(player, "entity.villager.yes", 0.5f, 1.5f);
             return;
         }
-        int secsOnCd = (int)(System.currentTimeMillis() - mmoPlayer.lastMobileBankUse)/1000;
-        player.sendMessage(ChatColor.RED + "Your Mobile Banking is still on cooldown for " + formatMinsAndSecsRemaining(secsOnCd) + ".");
+        player.sendMessage(ChatColor.RED + "Your Mobile Banking is still on cooldown for " + formatMinsAndSecsRemaining(mmoPlayer.lastMobileBankUse,cdTime) + ".");
+        player.playSound(player, "entity.enderman.teleport", 0.75f, 0.5f);
     }
-    private String formatMinsAndSecsRemaining(long time) {
+    private String formatMinsAndSecsRemaining(long time, int minsOnCd) {
         String retString = "";
         time = System.currentTimeMillis() - time;
+        long cdTime = (minsOnCd*60)*1000L;
+        time = cdTime - time;
         long mins = TimeUnit.MILLISECONDS.toMinutes(time);
         time = time - TimeUnit.MINUTES.toMillis(mins);
         long secs = TimeUnit.MILLISECONDS.toSeconds(time);
@@ -3236,7 +3375,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 this.actionBarMessenger.display(p);
                 plugin.questHandler.checkInvForFulfillingItems(p);
                 plugin.questHandler.updateTrackingDetails(p);
-                if (plugin.itemHandler.getItemFromString("tgt_menu") != null) {
+                /*if (plugin.itemHandler.getItemFromString("tgt_menu") != null) {
                     if (p.getInventory().getItem(8) != null) {
                         NBTItem nbtI = new NBTItem(p.getInventory().getItem(8));
                         NBTCompound comp = nbtI.getCompound("ExtraAttributes");
@@ -3251,11 +3390,14 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                         ItemStack item = plugin.itemHandler.getItemFromString("tgt_menu");
                         p.getInventory().setItem(8, item);
                     }
-                }
+                }*/
             } else {
                 this.getLogger().severe("PLAYER " + p.getName() + " HAS NO MMOPLAYER ENTRY");
             }
         }
+
+    }
+    private void playerMenuSlot(Player player) {
 
     }
     public void healthRegen() {
@@ -3279,6 +3421,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             }
         }
     }
+
     public void updatePlayerHealth(MMOPlayer player, float change) {
         float newHealth = player.getHealth() + change;
         Player bukkitPlayer = Bukkit.getPlayer(player.getMinecraftUUID());
@@ -3364,11 +3507,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         }
     }
 
-    public double calculateDamage(MMOPlayer player, ItemStack item, boolean isCrit) {
-
-        Player bukkitPlayer = Bukkit.getPlayer(player.getMinecraftUUID());
+    public double calculateDamage(MMOPlayer player, Entity target, ItemStack item, boolean isCrit) {
         float damage = 1;
-        if (item != null && item.hasItemMeta() && item.getItemMeta().hasLore()) {
+        if (item != null && item.hasItemMeta() && item.getItemMeta().hasLore() && item.getType() != Material.BOW) {
             Iterator iter = item.getItemMeta().getLore().iterator();
             while (iter.hasNext()) {
                 String line = (String) iter.next();
@@ -3379,7 +3520,34 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 }
             }
         }
-        double returnDam = statUpdates.calculateNormalDamage(damage, player, isCrit);
+        double returnDam = statUpdates.calculateNormalDamage(damage, player, target, item, isCrit);
+        return returnDam;
+    }
+    public double calculateBowDamage(MMOPlayer player, ItemStack item, boolean isCrit, ItemStack arrowItem) {
+        float damage = 1;
+        if (item != null && item.hasItemMeta() && item.getItemMeta().hasLore() && item.getType() == Material.BOW) {
+            Iterator iter = item.getItemMeta().getLore().iterator();
+            while (iter.hasNext()) {
+                String line = (String) iter.next();
+                if (ChatColor.stripColor(line).startsWith("Damage: ")) {
+                    line = ChatColor.stripColor(line);
+                    line = line.replaceFirst("(Damage: +\\+)", "");
+                    damage = Float.parseFloat(line);
+                }
+            }
+            if (arrowItem != null && arrowItem.hasItemMeta() && arrowItem.getItemMeta().hasLore()) {
+                iter = arrowItem.getItemMeta().getLore().iterator();
+                while (iter.hasNext()) {
+                    String line = (String) iter.next();
+                    if (ChatColor.stripColor(line).startsWith("Arrow Damage: ")) {
+                        line = ChatColor.stripColor(line);
+                        line = line.replaceFirst("(Arrow Damage: +\\+)", "");
+                        damage += Float.parseFloat(line);
+                    }
+                }
+            }
+        }
+        double returnDam = statUpdates.calculateNormalDamage(damage, player, null, item, isCrit);
         return returnDam;
     }
 
@@ -3408,15 +3576,14 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
 
     public double calculateDamageAxe(MMOPlayer player, ItemStack item, boolean isCrit) {
 
-        Player bukkitPlayer = Bukkit.getPlayer(player.getMinecraftUUID());
         float damage = 1;
         if (item != null && item.hasItemMeta() && item.getItemMeta().hasLore()) {
             Iterator iter = item.getItemMeta().getLore().iterator();
             while (iter.hasNext()) {
                 String line = (String) iter.next();
-                if (ChatColor.stripColor(line).startsWith("Logging Damage: ")) {
+                if (ChatColor.stripColor(line).startsWith("Chopping Damage: ")) {
                     line = ChatColor.stripColor(line);
-                    line = line.replaceFirst("(Logging Damage: +\\+)", "");
+                    line = line.replaceFirst("(Chopping Damage: +\\+)", "");
                     damage = Float.parseFloat(line);
                 }
             }

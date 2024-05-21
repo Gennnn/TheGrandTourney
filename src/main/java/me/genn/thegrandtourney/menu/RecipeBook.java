@@ -185,6 +185,7 @@ public class RecipeBook implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onClick(InventoryClickEvent e) {
         if (e.getWhoClicked().getOpenInventory().getTitle().startsWith(title)) {
+            Player player = Bukkit.getPlayer(e.getWhoClicked().getUniqueId());
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta() && e.getCurrentItem().getItemMeta().hasDisplayName()){
                 String name = e.getCurrentItem().getItemMeta().getDisplayName();
                 if (name.equalsIgnoreCase(" ")) {
@@ -192,32 +193,41 @@ public class RecipeBook implements Listener {
                 } else if (name.equalsIgnoreCase(back)) {
                     e.setCancelled(true);
                     plugin.menus.openHomeMenu(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(player);
                 } else if (name.equalsIgnoreCase(close)) {
                     e.setCancelled(true);
                     e.getInventory().close();
                 } else if (name.equalsIgnoreCase(nextPage)) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) + 1, this.showingTypeForPlayer.get(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (name.equalsIgnoreCase(previousPage)) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), this.pageForPlayer.get(e.getWhoClicked().getUniqueId()) -1, this.showingTypeForPlayer.get(e.getWhoClicked().getUniqueId()));
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: All Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.BLACKSMITHING);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Smithing Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.TAILORING);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Tailoring Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.CARPENTRY);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 }else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Carpentry Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.COOKING);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Cooking Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.ALCHEMY);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 } else if (ChatColor.stripColor(name).equalsIgnoreCase("Showing: Alchemy Recipes")) {
                     this.loadMenuRecipeBook(Bukkit.getPlayer(e.getWhoClicked().getUniqueId()), 0, XpType.ALL);
+                    plugin.menus.playClickSound(player);
                     e.setCancelled(true);
                 }  else {
                     e.setCancelled(true);

@@ -123,6 +123,7 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+
     </repositories>
     <dependencyManagement>
         <dependencies>
@@ -148,6 +149,7 @@
             <version>5.1.0</version>
             <scope>provided</scope>
         </dependency>
+
         <dependency>
             <groupId>net.citizensnpcs</groupId>
             <artifactId>citizens-main</artifactId>
@@ -199,7 +201,14 @@
             <artifactId>spectraldamage</artifactId>
             <version>2.5.1</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/src/main/resources/spectraldamage-2.5.1.jar</systemPath>
+            <systemPath>${project.basedir}/src/main/external-resources/spectraldamage-2.5.1.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.ernestorb.tablistmanager</groupId>
+            <artifactId>tablistmanager</artifactId>
+            <version>1.1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/external-resources/tablistmanager-plugin-1.2.2.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>me.genn.gennsgym</groupId>
@@ -212,7 +221,20 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
-            <systemPath>${project.basedir}/src/main/resources/GennsGym1.19Check.jar</systemPath>
+            <systemPath>${project.basedir}/src/main/external-resources/GennsGym1.19Check.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>me.genn.customspells</groupId>
+            <artifactId>tournamentspells</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+            <systemPath>${project.basedir}/src/main/external-resources/TournamentSpells.jar</systemPath>
         </dependency>
         <!--
         <dependency>

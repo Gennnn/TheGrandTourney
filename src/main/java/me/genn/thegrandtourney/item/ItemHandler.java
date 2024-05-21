@@ -163,21 +163,29 @@ public class ItemHandler {
     }
 
     public boolean itemIsMMOItemOfName(ItemStack item, String name) {
-        if (item == null || item.getType() == Material.AIR) {
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || item.getAmount() <= 0) {
             return false;
         }
         NBTItem nbtItem = new NBTItem(item);
         if (nbtItem.hasTag("ExtraAttributes")) {
             NBTCompound comp = nbtItem.getCompound("ExtraAttributes");
-            if (comp.hasTag("id") && comp.getString("id").equalsIgnoreCase(name)) {
-                return true;
-            } else {
-                return false;
-            }
+            return comp.hasTag("id") && comp.getString("id").equalsIgnoreCase(name);
         } else {
             return false;
         }
     }
+    public MMOItem getMMOItem(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return null;
+        }
+        NBTItem nbtItem = new NBTItem(item);
+        if (nbtItem.hasTag("ExtraAttributes") && nbtItem.getCompound("ExtraAttributes").hasTag("id") && this.containsName(this.allItems, nbtItem.getCompound("ExtraAttributes").getString("id"))) {
+            return getMMOItemFromString(nbtItem.getCompound("ExtraAttributes").getString("id"));
+        } else {
+            return null;
+        }
+    }
+
 
 
 
