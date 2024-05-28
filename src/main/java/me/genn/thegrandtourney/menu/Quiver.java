@@ -180,7 +180,7 @@ public class Quiver implements Listener {
                 NBTCompound comp = nbtItem.getCompound("ExtraAttributes");
                 if (comp.hasTag("id")) {
                     String id = comp.getString("id");
-                    return id.equalsIgnoreCase("tgt_menu");
+                    return id.equalsIgnoreCase(plugin.menuItemName);
                 }
             }
         }
@@ -255,7 +255,7 @@ public class Quiver implements Listener {
                 e.getPlayer().getInventory().getItem(8).setType(Material.ARROW);
             }
         } else {
-            e.getPlayer().getInventory().setItem(8,plugin.itemHandler.getItemFromString("tgt_menu"));
+            e.getPlayer().getInventory().setItem(8,plugin.itemHandler.getItemFromString(plugin.menuItemName));
             this.usingQuiverIndex.remove(e.getPlayer().getUniqueId());
         }
     }
@@ -270,7 +270,7 @@ public class Quiver implements Listener {
                     mmoPlayer.getQuiverContents()[this.usingQuiverIndex.get(player.getUniqueId())] = new ItemStack(Material.AIR);
                     ItemStack arrow = getFirstArrowsInQuiver(player);
                     if (arrow == null) {
-                        player.getInventory().setItem(8,plugin.itemHandler.getItemFromString("tgt_menu"));
+                        player.getInventory().setItem(8,plugin.itemHandler.getItemFromString(plugin.menuItemName));
                         this.usingQuiverIndex.remove(player.getUniqueId());
                         return;
                     }
@@ -298,7 +298,7 @@ public class Quiver implements Listener {
                 if (!containsArrows(player.getInventory())) {
                     ItemStack arrow = getFirstArrowsInQuiver(player);
                     if (arrow == null) {
-                        player.getInventory().setItem(8, plugin.itemHandler.getItemFromString("tgt_menu"));
+                        player.getInventory().setItem(8, plugin.itemHandler.getItemFromString(plugin.menuItemName));
                         this.usingQuiverIndex.remove(player.getUniqueId());
                         return;
                     }

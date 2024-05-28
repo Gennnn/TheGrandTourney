@@ -121,7 +121,7 @@ public class AccessoryBag implements Listener {
                         if (!isAccessory(e.getCurrentItem())) {
                             if (!e.getCurrentItem().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Pouch")) {
                                 e.setCancelled(true);
-                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCurrentItem(), "tgt_menu")) {
+                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCurrentItem(), plugin.menuItemName)) {
                                     e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Pouch!");
                                     plugin.shopHandler.playNoMoneySound(player);
                                 }
@@ -140,7 +140,7 @@ public class AccessoryBag implements Listener {
                         if (!isAccessory(e.getCursor())) {
                             if (!e.getCursor().getItemMeta().getDisplayName().equalsIgnoreCase(ChatColor.GREEN + "Accessory Pouch")) {
                                 e.setCancelled(true);
-                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCursor(), "tgt_menu")) {
+                                if (!plugin.itemHandler.itemIsMMOItemOfName(e.getCursor(), plugin.menuItemName)) {
                                     e.getWhoClicked().sendMessage(ChatColor.RED + "You can't place that item in the Accessory Pouch!");
                                     plugin.shopHandler.playNoMoneySound(player);
                                 }

@@ -176,8 +176,8 @@ public class Craft implements Listener {
                     player.teleport(tpLocation);
                     player.sendMessage(ChatColor.RED + "You can't leave the designated crafting area!");
                 }
-                player.setExp(expProg);
-                player.setLevel(0);
+                /*player.setExp(expProg);
+                player.setLevel(0);*/
                 countdown[1]++;
                 countdown[0]--;
             }

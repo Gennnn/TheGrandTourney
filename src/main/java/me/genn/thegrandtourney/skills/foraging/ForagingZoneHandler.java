@@ -10,28 +10,33 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
 import me.genn.thegrandtourney.skills.fishing.FishingZoneTemplate;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
-public class ForagingZoneHandler {
+public class ForagingZoneHandler implements IHandler {
 
-    public List<ForagingZoneTemplate> allZones;
+    public List<ForagingZoneTemplate> allZones = new ArrayList<>();
 
-    public List<ForagingZone> allSpawnedZones;
+    public List<ForagingZone> allSpawnedZones = new ArrayList<>();
+    TGT plugin;
 
 
 
-    public ForagingZoneHandler() {
-    }
-    public void registerZones(TGT plugin, ConfigurationSection config) throws IOException {
+    public ForagingZoneHandler(TGT plugin) {
+        this.plugin = plugin;
         this.allZones = new ArrayList<>();
         this.allSpawnedZones = new ArrayList<>();
+    }
+    public void registerZones(ConfigurationSection config) throws IOException {
+
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -75,5 +80,10 @@ public class ForagingZoneHandler {
             ForagingZone zone = getClosestZone(zones, originLoc);
             return zone;
         }
+    }
+
+    @Override
+    public void register(YamlConfiguration configuration) throws IOException {
+        this.registerZones(configuration.getConfigurationSection("foraging-zones"));
     }
 }

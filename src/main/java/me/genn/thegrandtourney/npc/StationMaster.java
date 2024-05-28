@@ -80,12 +80,10 @@ public class StationMaster extends Quest {
     public void dialogueTree(Player player) {
         if (this.station == null) {
            this.station = plugin.tableHandler.getStationForCraft(this.xpType, npc.getEntity().getLocation());
-            plugin.getLogger().log(Level.INFO,"Logged " + this.xpType.getName() + " station");
         }
         String state = this.questProgress.get(player.getUniqueId());
 
         if (this.containsName(this.steps, state)) {
-            plugin.getLogger().log(Level.INFO,"Got past contains name");
             Step step = steps.stream().filter(obj -> obj.stepName.equalsIgnoreCase(state)).findFirst().orElse(null);
             if (step.stepName.contains("refuse") || step.stepName.contains("walkaway")) {
                 if (!this.onRefusalCd.contains(player)) {
@@ -95,7 +93,6 @@ public class StationMaster extends Quest {
                 this.playSound(player, "random.orb", 1.0F, 1.5F);
                 this.playSound(player, "random.levelup", 1.0F, 2.0F);
             }
-            plugin.getLogger().log(Level.INFO,"Successfully creating dialogue...");
             this.createDialogue(step.dialogue, step.narration, player, step.ranged, step.rewards, step.objectiveUpdate, step.commands);
             if (step.jumpTo != null && !step.jumpTo.equalsIgnoreCase("none")) {
                 this.questProgress.put(player.getUniqueId(), step.jumpTo);

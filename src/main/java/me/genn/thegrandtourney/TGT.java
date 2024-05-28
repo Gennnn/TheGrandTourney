@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 import com.comphenix.protocol.ProtocolLibrary;
@@ -59,12 +61,10 @@ import me.genn.thegrandtourney.skills.mining.Ore;
 import me.genn.thegrandtourney.skills.mining.OreHandler;
 import me.genn.thegrandtourney.skills.mining.OreTemplate;
 import me.genn.thegrandtourney.tournament.MiniGame;
+import me.genn.thegrandtourney.tournament.MiniGameHandler;
 import me.genn.thegrandtourney.tournament.MiniGameListener;
 import me.genn.thegrandtourney.tournament.MiniGameMonitor;
-import me.genn.thegrandtourney.util.CasterSpeak;
-import me.genn.thegrandtourney.util.SchematicCreator;
-import me.genn.thegrandtourney.util.TabList;
-import me.genn.thegrandtourney.util.ToastMessage;
+import me.genn.thegrandtourney.util.*;
 import me.genn.thegrandtourney.xp.RewardTableHandler;
 import me.genn.thegrandtourney.xp.Xp;
 import me.genn.thegrandtourney.xp.XpType;
@@ -74,6 +74,7 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCRegistry;
 import net.citizensnpcs.api.trait.TraitInfo;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import net.milkbowl.vault.economy.Economy;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
@@ -83,6 +84,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
@@ -156,8 +158,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     int daysBeforeTournament = 3;
     public int day = 1;
     Random random = new Random();
-    Map<String, MiniGame> games = new HashMap<>();
-    List<MiniGame> gameList = new ArrayList<>();
     boolean override = false;
     int totalGameCount = 5;
     int gameCount = 0;
@@ -181,6 +181,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     int autoStartTime = 90;
     int minPlayers = 4;
     int endTimerDuration = 300;
+    public String menuItemName;
+    YamlConfiguration config;
+    public MiniGameHandler gameHandler;
     /*public TablistManager tablistManager;
     public TabList tabList;
 */
@@ -211,7 +214,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.connectTime = new HashMap<>();
         this.selectedMiniGames = new ArrayList<>();
         this.gameScore = new HashMap<>();
-        this.gameList = new ArrayList<>();
         this.debugEnabled = new ArrayList<>();
         this.gameCaster = new CasterSpeak(this);
         defaultStatValues = new HashMap<>();
@@ -222,7 +224,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         if (!configFile.exists()) {
             this.saveDefaultConfig();
         }
-        YamlConfiguration config = new YamlConfiguration();
+        this.config = new YamlConfiguration();
         try {
             config.load(configFile);
         } catch (Exception var5) {
@@ -237,18 +239,18 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             this.setEnabled(false);
             return;
         }
-        this.defaultStatValues.put("health", (float) defaultStats.getDouble("health",0.0));
+        this.defaultStatValues.put("health", (float) defaultStats.getDouble("health",100.0));
         this.defaultStatValues.put("defense", (float) defaultStats.getDouble("defense",0.0));
         this.defaultStatValues.put("strength", (float) defaultStats.getDouble("strength",0.0));
-        this.defaultStatValues.put("crit-damage", (float) defaultStats.getDouble("crit-damage",0.0));
-        this.defaultStatValues.put("speed", (float) defaultStats.getDouble("speed",0.0));
-        this.defaultStatValues.put("crit-chance", (float) defaultStats.getDouble("crit-chance",0.0));
-        this.defaultStatValues.put("stamina", (float) defaultStats.getDouble("stamina",0.0));
+        this.defaultStatValues.put("crit-damage", (float) defaultStats.getDouble("crit-damage",50.0));
+        this.defaultStatValues.put("speed", (float) defaultStats.getDouble("speed",100.0));
+        this.defaultStatValues.put("crit-chance", (float) defaultStats.getDouble("crit-chance",30.0));
+        this.defaultStatValues.put("stamina", (float) defaultStats.getDouble("stamina",100.0));
         this.defaultStatValues.put("ability-damage", (float) defaultStats.getDouble("ability-damage",0.0));
         this.defaultStatValues.put("shop-discount", (float) defaultStats.getDouble("shop-discount",0.0));
         this.defaultStatValues.put("dialogue-speed", (float) defaultStats.getDouble("dialogue-speed",0.0));
         this.defaultStatValues.put("dosh", (float) defaultStats.getDouble("dosh", 0.0));
-        this.defaultStatValues.put("health-regen", (float) defaultStats.getDouble("health-regen", 0.0f));
+        this.defaultStatValues.put("health-regen", (float) defaultStats.getDouble("health-regen", 100.0f));
         this.defaultStatValues.put("stamina-regen", (float) defaultStats.getDouble("stamina-regen", 0.0f));
         this.defaultStatValues.put("fishing-speed", (float) defaultStats.getDouble("fishing-speed", 0.0f));
         this.defaultStatValues.put("lure", (float) defaultStats.getDouble("lure", 0.0f));
@@ -263,8 +265,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.daysBeforeTournament = config.getInt("days-before-tournament", 3);
         this.totalGameCount = config.getInt("tournament-games", 5);
         this.autoStartTime = config.getInt("auto-start-time", 0);
-        this.minPlayers = config.getInt("min-players");
-        this.endTimerDuration = config.getInt("end-timer-duration");
+        this.minPlayers = config.getInt("min-players", 4);
+        this.endTimerDuration = config.getInt("end-timer-duration", 300);
+        this.menuItemName = config.getString("menu-item-id", "tgt_menu");
 
         Bukkit.getWorlds().get(0).setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
         Bukkit.getWorlds().get(0).setGameRule(GameRule.DO_MOB_LOOT, false);
@@ -274,641 +277,52 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         if (config.contains("blacklisted-cells")) {
             blacklistedCells.addAll(config.getStringList("blacklisted-cells"));
         }
+        this.grid = new Grid(this);
+        this.grid.setBlacklistedCellsList(blacklistedCells);
+        this.grid.setSideRoadsPerDistrict(config.getInt("side-roads-per-district", 4));
+        this.grid.setBackRoadsPerDistrict(config.getInt("back-roads-per-district", 10));
+        this.grid.setSideRoadNoiseScale((float)config.getDouble("side-roads-noise-scale", 0.09f));
+        this.grid.setBackRoadNoiseScale((float)config.getDouble("side-roads-noise-scale", 0.11f));
+        this.grid.setRiverCount(config.getInt("rivers", 5));
+        this.grid.setRiverNoiseScale((float)config.getDouble("rivers-noise-scale", 0.07f));
+        this.grid.setSize(config.getInt("map-size", 200));
+        this.grid.setStartX(config.getDouble("start-x",12));
+        this.grid.setStartZ(config.getDouble("start-z",-13));
+        this.grid.setyLvl(config.getDouble("start-y",64));
+        this.grid.oceanXMin = config.getInt("ocean-fishing-min-x",0);
+        this.grid.oceanXMax = config.getInt("ocean-fishing-max-x",640);
+        this.grid.oceanZMin = config.getInt("ocean-fishing-min-z", -46);
+        this.grid.oceanZMax = config.getInt("ocean-fishing-min", -960);
+
         this.registry = CitizensAPI.getNPCRegistry();
         this.listener = new EventListener(this);
         Bukkit.getPluginManager().registerEvents(this.listener, this);
 
-        if (!config.contains("items")) {
-            config.createSection("items");
-        }
-        File itemFile = new File(this.getDataFolder(), "items.yml");
-
-        if (!itemFile.exists()) {
-            this.saveResource("items.yml", false);
-        }
-        YamlConfiguration items = new YamlConfiguration();
-        ConfigurationSection sec = config.getConfigurationSection("items");
-        if (sec == null) {
-            sec = config.createSection("items");
-        }
-        try {
-            items.load(itemFile);
-            Set<String> keys = items.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, items.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD ITEMS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection itemsSection = config.getConfigurationSection("items");
-        if (itemsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "ITEM CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.itemHandler = new ItemHandler(this);
-        try {
-            this.itemHandler.registerItems(this, itemsSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-        /*
-        START ORE REGISTER
-         */
-
-        if (!config.contains("ores")) {
-            config.createSection("ores");
-        }
-        File oreFile = new File(this.getDataFolder(), "ores.yml");
-
-        if (!oreFile.exists()) {
-            this.saveResource("ores.yml", false);
-        }
-        YamlConfiguration ores = new YamlConfiguration();
-        sec = config.getConfigurationSection("ores");
-        if (sec == null) {
-            sec = config.createSection("ores");
-        }
-        try {
-            ores.load(oreFile);
-            Set<String> keys = ores.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, ores.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD ORES FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection oresSection = config.getConfigurationSection("ores");
-        if (oresSection == null) {
-            this.getLogger().severe(ChatColor.RED + "ORES CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.oreHandler = new OreHandler();
-        try {
-            this.oreHandler.registerOreTemplates(this, oresSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        START CROP REGISTER
-         */
-
-        if (!config.contains("crops")) {
-            config.createSection("crops");
-        }
-        File cropFile = new File(this.getDataFolder(), "crops.yml");
-
-        if (!cropFile.exists()) {
-            this.saveResource("crops.yml", false);
-        }
-        YamlConfiguration crops = new YamlConfiguration();
-        sec = config.getConfigurationSection("crops");
-        if (sec == null) {
-            sec = config.createSection("crops");
-        }
-        try {
-            crops.load(cropFile);
-            Set<String> keys = crops.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, crops.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD CROPS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection cropsSection = config.getConfigurationSection("crops");
-        if (cropsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "CROPS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.cropHandler = new CropHandler();
-        try {
-            this.cropHandler.registerCropTemplates(this, cropsSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        START FORAGING ZONE REGISTER
-         */
-
-        if (!config.contains("foraging-zones")) {
-            config.createSection("foraging-zones");
-        }
-        File foragingZonesFile = new File(this.getDataFolder(), "foraging-zones.yml");
-
-        if (!foragingZonesFile.exists()) {
-            this.saveResource("foraging-zones.yml", false);
-        }
-        YamlConfiguration foragingZones = new YamlConfiguration();
-        sec = config.getConfigurationSection("foraging-zones");
-        if (sec == null) {
-            sec = config.createSection("foraging-zones");
-        }
-        try {
-            foragingZones.load(foragingZonesFile);
-            Set<String> keys = foragingZones.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, foragingZones.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD FORAGING ZONES FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection foragingZonesSection = config.getConfigurationSection("foraging-zones");
-        if (foragingZonesSection == null) {
-            this.getLogger().severe(ChatColor.RED + "FORAGING CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.foragingZoneHandler = new ForagingZoneHandler();
-        try {
-            this.foragingZoneHandler.registerZones(this, foragingZonesSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-
-        /*
-        START MOB REGISTER
-         */
-
-        if (!config.contains("mobs")) {
-            config.createSection("mobs");
-        }
-        File mobFile = new File(this.getDataFolder(), "mobs.yml");
-
-        if (!mobFile.exists()) {
-            this.saveResource("mobs.yml", false);
-        }
-        YamlConfiguration mobs = new YamlConfiguration();
-        sec = config.getConfigurationSection("mobs");
-        if (sec == null) {
-            sec = config.createSection("mobs");
-        }
-        try {
-            mobs.load(mobFile);
-            Set<String> keys = mobs.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, mobs.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD MOBS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection mobsSection = config.getConfigurationSection("mobs");
-        if (mobsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "MOBS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.mobHandler = new MobHandler();
-        try {
-            this.mobHandler.registerMobs(this, mobsSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        START FISHING ZONE REGISTER
-         */
-
-        if (!config.contains("fishing-zones")) {
-            config.createSection("fishing-zones");
-        }
-        File zoneFile = new File(this.getDataFolder(), "fishing-zones.yml");
-
-        if (!zoneFile.exists()) {
-            this.saveResource("fishing-zones.yml", false);
-        }
-        YamlConfiguration zones = new YamlConfiguration();
-        sec = config.getConfigurationSection("fishing-zones");
-        if (sec == null) {
-            sec = config.createSection("fishing-zones");
-        }
-        try {
-            zones.load(zoneFile);
-            Set<String> keys = zones.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, zones.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD FISHING FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection zonesSection = config.getConfigurationSection("fishing-zones");
-        if (zonesSection == null) {
-            this.getLogger().severe(ChatColor.RED + "FISHING CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.fishingZoneHandler = new FishingZoneHandler();
-        try {
-            this.fishingZoneHandler.registerZones(this, zonesSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        START SPAWNER REGISTER
-         */
-
-
-        if (!config.contains("spawners")) {
-            config.createSection("spawners");
-        }
-        File spawnerFile = new File(this.getDataFolder(), "spawners.yml");
-
-        if (!spawnerFile.exists()) {
-            this.saveResource("spawners.yml", false);
-        }
-        YamlConfiguration spawners = new YamlConfiguration();
-        sec = config.getConfigurationSection("spawners");
-        if (sec == null) {
-            sec = config.createSection("spawners");
-        }
-        try {
-            spawners.load(spawnerFile);
-            Set<String> keys = spawners.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, spawners.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD SPAWNERS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection spawnersSection = config.getConfigurationSection("spawners");
-        if (spawnersSection == null) {
-            this.getLogger().severe(ChatColor.RED + "SPAWNERS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.spawnerHandler = new SpawnerHandler();
-        try {
-            this.spawnerHandler.registerSpawners(this, spawnersSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        
-        /*
-        START REWARD TABLE REGISTER
-         */
-        
-
-        if (!config.contains("level-rewards")) {
-            config.createSection("level-rewards");
-        }
-        File levelRewardsFile = new File(this.getDataFolder(), "level-rewards.yml");
-
-        if (!levelRewardsFile.exists()) {
-            this.saveResource("level-rewards.yml", false);
-        }
-        YamlConfiguration levelRewards = new YamlConfiguration();
-        sec = config.getConfigurationSection("level-rewards");
-        if (sec == null) {
-            sec = config.createSection("level-rewards");
-        }
-        try {
-            levelRewards.load(levelRewardsFile);
-            Set<String> keys = levelRewards.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, levelRewards.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD LEVEL REWARDS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection levelRewardsSection = config.getConfigurationSection("level-rewards");
-        if (levelRewardsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "LEVEL REWARDS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.rewardsHandler = new RewardTableHandler();
-        try {
-            this.rewardsHandler.registerRewardTables(levelRewardsSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        
-        /*
-        START NPC REGISTER
-         */
-
-
-
-        if (!config.contains("npcs")) {
-            config.createSection("npcs");
-        }
-        File npcFile = new File(this.getDataFolder(), "npcs.yml");
-
-        if (!npcFile.exists()) {
-            this.saveResource("npcs.yml", false);
-        }
-        YamlConfiguration npcs = new YamlConfiguration();
-        sec = config.getConfigurationSection("npcs");
-        if (sec == null) {
-            sec = config.createSection("npcs");
-        }
-        try {
-            npcs.load(npcFile);
-            Set<String> keys = npcs.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, npcs.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD NPCS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection npcsSection = config.getConfigurationSection("npcs");
-        if (npcsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "NPC CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-        //schematics load
-        File skinAndSigFolderContents = new File(this.getDataFolder(), "npc-skins/");
-        File skinAndSigDirectory = new File(this.getDataFolder(), "npc-skins");
-        if (skinAndSigFolderContents.list().length == 0) {
-            this.getLogger().severe("FAILED TO LOAD NPC SKINS");
-            this.setEnabled(false);
-            return;
-        } else {
-            this.npcHandler = new NPCHandler(skinAndSigFolderContents, skinAndSigDirectory, this);
-            this.npcHandler.generate();
-            try {
-                this.npcHandler.registerNPCs(this, npcsSection);
-                this.npcHandler.registerSubNPCs(this);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-         /*
-        START DUNGEON REGISTER
-         */
-
-
-        if (!config.contains("dungeons")) {
-            config.createSection("dungeons");
-        }
-        File dungeonsFile = new File(this.getDataFolder(), "dungeons.yml");
-
-        if (!dungeonsFile.exists()) {
-            this.saveResource("dungeons.yml", false);
-        }
-        YamlConfiguration dungeons = new YamlConfiguration();
-        sec = config.getConfigurationSection("dungeons");
-        if (sec == null) {
-            sec = config.createSection("dungeons");
-        }
-        try {
-            dungeons.load(dungeonsFile);
-            Set<String> keys = dungeons.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, dungeons.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD DUNGEONS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection dungeonsSection = config.getConfigurationSection("dungeons");
-        if (dungeonsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "DUNGEONS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.dungeonHandler = new DungeonTemplateHandler();
-        try {
-            this.dungeonHandler.registerTemplates(plugin, dungeonsSection);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        MINIGAME REGISTER
-         */
-
-        if (!config.contains("games")) {
-            config.createSection("games");
-        }
-        File gamesFile = new File(this.getDataFolder(), "games.yml");
-
-        if (!gamesFile.exists()) {
-            this.saveResource("games.yml", false);
-        }
-        YamlConfiguration games = new YamlConfiguration();
-        sec = config.getConfigurationSection("games");
-        if (sec == null) {
-            sec = config.createSection("games");
-        }
-        try {
-            games.load(gamesFile);
-            Set<String> keys = games.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, games.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD GAMES FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection gamesSection = config.getConfigurationSection("games");
-        if (gamesSection == null) {
-            this.getLogger().severe(ChatColor.RED + "GAMES CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        Iterator var4 = gamesSection.getKeys(false).iterator();
-        while(var4.hasNext()) {
-            String key = (String)var4.next();
-            if (config.getBoolean("games." + key + ".enabled", true)) {
-                MiniGame game = new MiniGame(this, key, config.getConfigurationSection("games." + key));
-                this.games.put(key, game);
-                this.gameList.add(game);
-
-            }
-        }
+        loadItems();
+        loadOres();
+        loadCrops();
+        loadForagingZones();
+        loadMobs();
+        loadFishingZones();
+        loadSpawners();
+        loadLevelRewards();
+        loadNpcs();
+        loadDungeons();
+        loadSchematics();
+        loadShops();
+        loadGames();
 
         this.scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
 
         this.chooseGames();
-        Bukkit.broadcastMessage("Games list size is " + this.selectedMiniGames.size());
+        Bukkit.getLogger().log(Level.INFO, "Games list size is " + this.selectedMiniGames.size());
         this.chooseNextGame();
         this.getServer().getPluginManager().registerEvents(new MiniGameListener(this), this);
         this.getServer().getScheduler().scheduleSyncRepeatingTask(this, new MiniGameMonitor(this), 20L, 20L);
         GennsGym.initializeGameMode(this);
         GennsGym.setServerStatus("The Tournament");
 
-
-
-        /*
-        SCHEMATIC REGISTER
-         */
-        if (!config.contains("schematics")) {
-            config.createSection("schematics");
-        }
-        File schematicFile = new File(this.getDataFolder(), "schematics.yml");
-        if (!schematicFile.exists()) {
-            this.saveResource("schematics.yml", false);
-        }
-        YamlConfiguration schematics = new YamlConfiguration();
-        sec = config.getConfigurationSection("schematics");
-        if (sec == null) {
-            sec = config.createSection("schematics");
-        }
-        try {
-            schematics.load(schematicFile);
-            Set<String> keys = schematics.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, schematics.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD SCHEMATICS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-
-        ConfigurationSection linkedSchematicsSection = config.getConfigurationSection("schematics.linked-schematics");
-        ConfigurationSection mainSchematicsSection = config.getConfigurationSection("schematics.main-schematics");
-        if (linkedSchematicsSection == null || mainSchematicsSection == null) {
-            this.getLogger().severe(ChatColor.RED + "SCHEMATIC CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-        //schematics load
-        File linkedSchematicFolderContents = new File(this.getDataFolder(), "linked_schematics/");
-        File schematicFolderContents = new File(this.getDataFolder(), "schematics/");
-        File schemDirectory = new File(this.getDataFolder(), "schematics");
-        File linkedDirectory = new File(this.getDataFolder(), "linked_schematics");
-        if (schematicFolderContents.list().length == 0) {
-            this.getLogger().severe("FAILED TO LOAD SCHEMATICS");
-            this.setEnabled(false);
-            return;
-        } else {
-            this.schematicHandler = new SchematicHandler(schematicFolderContents, linkedSchematicFolderContents, schemDirectory, linkedDirectory);
-            this.schematicHandler.generate();
-            this.schematicHandler.registerLinkedSchematics(this, linkedSchematicsSection);
-            this.schematicHandler.registerSchematics(this, mainSchematicsSection);
-        }
         this.schematicCreator = new SchematicCreator(this);
-        this.grid = new Grid(this.schematicHandler, this);
-        this.grid.registerBlackList(blacklistedCells);
-        this.grid.oceanXMin = config.getInt("ocean-fishing-min-x",0);
-        this.grid.oceanXMax = config.getInt("ocean-fishing-max-x",640);
-        this.grid.oceanZMin = config.getInt("ocean-fishing-min-z", -46);
-        this.grid.oceanZMax = config.getInt("ocean-fishing-min", -960);
-
-        /*
-        SHOP REGISTER
-         */
-
-        if (!config.contains("shops")) {
-            config.createSection("shops");
-        }
-        File shopsFile = new File(this.getDataFolder(), "shops.yml");
-
-        if (!shopsFile.exists()) {
-            this.saveResource("shops.yml", false);
-        }
-        YamlConfiguration shops = new YamlConfiguration();
-        sec = config.getConfigurationSection("shops");
-        if (sec == null) {
-            sec = config.createSection("shops");
-        }
-        try {
-            shops.load(shopsFile);
-            Set<String> keys = shops.getKeys(true);
-            Iterator i$ = keys.iterator();
-            while(i$.hasNext()) {
-                String key = (String)i$.next();
-                sec.set(key, shops.get(key));
-            }
-        } catch (Exception var5) {
-            this.getLogger().severe("FAILED TO LOAD SHOPS FILE");
-            var5.printStackTrace();
-            this.setEnabled(false);
-            return;
-        }
-        ConfigurationSection shopSection = config.getConfigurationSection("shops");
-        if (shopSection == null) {
-            this.getLogger().severe(ChatColor.RED + "SHOPS CONFIG IS NULL!");
-            this.setEnabled(false);
-            return;
-        }
-
-        this.shopHandler = new ShopHandler(this);
-        this.shopHandler.registerShops(shopSection);
-
-        /*
-
-         */
-
-
 
         if (!this.setupEconomy()) {
             this.getLogger().severe("FAILED TO LOAD LINK TO VAULT");
@@ -924,9 +338,6 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             Player p = (Player) iter.next();
             this.players.put(p.getUniqueId(), this.createNewPlayer(p));
         }
-
-
-
         this.healthRegenTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
                 TGT.this.healthRegen();
@@ -935,48 +346,149 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
         this.registerTrait();
         GennsGym.initializeGameMode(this);
         this.initializeScoreboard();
-        if (this.autoStartTime > 0) {
-            GennsGym.startCountdown(this.autoStartTime, this.minPlayers);
-        }
-        /*final boolean[] pass = {false};
-        final SpellEffectManager[] spellEffectManager = {null};
         new BukkitRunnable() {
-
             @Override
             public void run() {
-                  if (spellEffectManager[0] != null) {
-                      pass[0] = true;
-                      this.cancel();
-                      return;
-                  } else {
-                      spellEffectManager[0] = MagicSpells.getInstance().getSpellEffectManager();
-                  }
-            }
-        }.runTaskTimer(this, 4L, 20L);
-        new BukkitRunnable() {
+                if (grid != null ) {
+                    if (grid.generationCompleted) {
+                        this.cancel();
+                        if (autoStartTime > 0) {
+                            GennsGym.startCountdown(autoStartTime, minPlayers);
+                        }
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                for (Player player : TGT.this.currentlyDisplayedBossBar.keySet()) {
+                                    BossBar bar = currentlyDisplayedBossBar.get(player);
+                                    player.hideBossBar(bar);
+                                }
 
-            @Override
-            public void run() {
-                if (pass[0] == true) {
-                    spellEffectManager[0].addSpellEffect(BetterArmorStandEffect.class,"betterarmorstand");
-                    MagicSpells msPlugin = MagicSpells.getInstance();
-                    msPlugin.unload();
-                    msPlugin.load();
-                    Bukkit.broadcastMessage("Successfully got and loaded effect");
-                    this.cancel();
-                    return;
-                } else {
-                    Bukkit.broadcastMessage("Waiting...");
+                            }
+                        }.runTaskLater(TGT.this, 100L);
+                        return;
+                    } else {
+                        float progress = grid.generationProgress;
+                        if (progress < 0) {
+                            progress = 0;
+                        }
+                        if (progress > 1) {
+                            progress = 1;
+                        }
+                        final BossBar bar = BossBar.bossBar(Component.text(ChatColor.AQUA + grid.taskBeingPerformed + ChatColor.DARK_AQUA + " (" + grid.tasksCompleted + "/" + grid.totalTasks + ")"), progress, BossBar.Color.BLUE, BossBar.Overlay.NOTCHED_10);
+                        for (Player player : Bukkit.getOnlinePlayers()) {
+                            if (currentlyDisplayedBossBar.containsKey(player)) {
+                                player.hideBossBar(currentlyDisplayedBossBar.get(player));
+                                currentlyDisplayedBossBar.remove(player);
+                            }
+                            currentlyDisplayedBossBar.put(player, bar);
+                            player.showBossBar(bar);
+                        }
+                    }
                 }
             }
-        }.runTaskTimer(this, 20L, 20L);*/
-        /*Plugin pl = this.getServer().getPluginManager().getPlugin("TablistManager");
-        if (pl instanceof TablistManagerPlugin) {
-            this.tablistManager =((TablistManagerPlugin)pl).getManager();
-        }
-        this.tabList = new TabList(this);*/
-
+        }.runTaskTimer(this, 40L, 20L);
     }
+
+    public void registerHandler(IHandler handler, YamlConfiguration config, String sectionName, String fileName) {
+        if (!config.contains(sectionName)) {
+            config.createSection(sectionName);
+        }
+        File file = new File(this.getDataFolder(), fileName);
+
+        if (!file.exists()) {
+            this.saveResource(fileName, false);
+        }
+        YamlConfiguration newConfig = new YamlConfiguration();
+        ConfigurationSection sec = config.getConfigurationSection(sectionName);
+        if (sec == null) {
+            sec = config.createSection(sectionName);
+        }
+        try {
+            newConfig.load(file);
+            Set<String> keys = newConfig.getKeys(true);
+            Iterator i$ = keys.iterator();
+            while(i$.hasNext()) {
+                String key = (String)i$.next();
+                sec.set(key, newConfig.get(key));
+            }
+        } catch (Exception var5) {
+            this.getLogger().severe(ChatColor.RED + "CONFIG=" + fileName + " IS NULL!" );
+            var5.printStackTrace();
+            this.setEnabled(false);
+            return;
+        }
+        ConfigurationSection configurationSection = config.getConfigurationSection(sectionName);
+        if (configurationSection == null) {
+            this.getLogger().severe(ChatColor.RED + "CONFIG=" + fileName + " IS NULL!" );
+            this.setEnabled(false);
+            return;
+        }
+        try {
+            handler.register(config);
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        this.getLogger().severe(ChatColor.RED + "CONFIG=" + fileName + " IS NULL!" );
+        return;
+    }
+
+    public void loadShops() {
+        this.shopHandler = new ShopHandler(this);
+        this.registerHandler(this.shopHandler, config, "shops", "shops.yml");
+    }
+    public void loadSchematics() {
+        this.schematicHandler = new SchematicHandler(this);
+        this.registerHandler(this.schematicHandler, config, "schematics", "schematics.yml");
+        if (this.grid != null) {
+            this.grid.setSchematicHandler(this.schematicHandler);
+        }
+    }
+    public void loadItems() {
+        this.itemHandler = new ItemHandler(this);
+        this.registerHandler(this.itemHandler, config, "items", "items.yml");
+    }
+    public void loadMobs() {
+        this.mobHandler = new MobHandler(this);
+        this.registerHandler(this.mobHandler, config, "mobs", "mobs.yml");
+    }
+    public void loadNpcs() {
+        this.npcHandler = new NPCHandler(this);
+        this.registerHandler(this.npcHandler, config, "npcs", "npcs.yml");
+    }
+    public void loadOres() {
+        this.oreHandler = new OreHandler(this);
+        this.registerHandler(this.oreHandler, config, "ores", "ores.yml");
+    }
+    public void loadCrops() {
+        this.cropHandler = new CropHandler(this);
+        this.registerHandler(this.cropHandler, config, "crops", "crops.yml");
+    }
+    public void loadFishingZones() {
+        this.fishingZoneHandler = new FishingZoneHandler(this);
+        this.registerHandler(this.fishingZoneHandler, config, "fishing-zones", "fishing-zones.yml");
+    }
+    public void loadForagingZones() {
+        this.foragingZoneHandler = new ForagingZoneHandler(this);
+        this.registerHandler(this.foragingZoneHandler, config, "foraging-zones", "foraging-zones.yml");
+    }
+    public void loadLevelRewards() {
+        this.rewardsHandler = new RewardTableHandler();
+        this.registerHandler(this.rewardsHandler, config, "level-rewards", "level-rewards.yml");
+    }
+    public void loadSpawners() {
+        this.spawnerHandler = new SpawnerHandler(this);
+        this.registerHandler(this.spawnerHandler, config, "spawners", "spawners.yml");
+    }
+    public void loadDungeons() {
+        this.dungeonHandler = new DungeonTemplateHandler(this);
+        this.registerHandler(this.dungeonHandler, config, "dungeons", "dungeons.yml");
+    }
+    public void loadGames() {
+        this.gameHandler = new MiniGameHandler(this);
+        this.registerHandler(this.gameHandler, config, "games", "games.yml");
+    }
+
 
 
     private int parseInt(String string) {
@@ -1142,9 +654,9 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
     }
     void chooseGames() {
         for (int i = 0; i < this.totalGameCount; i++) {
-            if (this.gameList.size() > 0) {
-                int index = this.random.nextInt(this.gameList.size());
-                this.selectedMiniGames.add(this.gameList.remove(index));
+            if (this.gameHandler.gameList.size() > 0) {
+                int index = this.random.nextInt(this.gameHandler.gameList.size());
+                this.selectedMiniGames.add(this.gameHandler.gameList.remove(index));
             }
         }
     }
@@ -1999,7 +1511,24 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
                 getLogger().log(Level.SEVERE, "Citizens 2.0 not found or not enabled");
                 return true;
             }
-            NPC npc = this.registry.getById(Integer.parseInt(args[0]));
+            NPC npc = null;
+            String idString = args[0];
+            if (idString.contains("%npc:")) {
+                String regex = "%npc:([^%]+)%";
+                Pattern pattern = Pattern.compile(regex);
+                Matcher matcher = pattern.matcher(idString);
+                if (matcher.find()) {
+                    String extracted = matcher.group(1);
+                    idString = idString.replace(matcher.group(0),extracted);
+                    npc = this.npcHandler.getNpcWithName(idString).npc;
+                }
+            } else {
+                npc = this.registry.getById(Integer.parseInt(idString));
+            }
+            if (npc == null) {
+                sender.sendMessage(ChatColor.RED + "An internal error occured!");
+                return true;
+            }
             if (npc.hasTrait(Quest.class)) {
                 Quest trait = npc.getTrait(Quest.class);
                 if (!trait.onRefusalCd.contains((OfflinePlayer)sender)) {
@@ -2780,7 +2309,7 @@ public class TGT extends JavaPlugin implements Listener, GameMode {
             if (args.length == 0) {
                 sender.sendMessage("Next game: " + (this.nextGame != null ? this.nextGame.name : "none"));
             } else {
-                MiniGame game = (MiniGame)this.games.get(args[0]);
+                MiniGame game = (MiniGame)this.gameHandler.games.get(args[0]);
                 if (game != null) {
                     this.nextGame = game;
                     sender.sendMessage("Next game set to " + this.nextGame.name);

@@ -15,4 +15,18 @@ public enum Direction {
      }
       return null;
 }
+
+    public static Direction getInverseDirection(Direction direction) {
+        if (direction == N) {
+            return S;
+        } else if (direction == S) {
+            return N;
+        } else if (direction == E) {
+            return W;
+        } else if (direction == W) {
+            return E;
+        } else {
+            return null;
+        }
+    }
 }

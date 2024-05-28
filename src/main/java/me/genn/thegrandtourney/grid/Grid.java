@@ -3,6 +3,8 @@ package me.genn.thegrandtourney.grid;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.logging.Level;
 
@@ -43,15 +45,65 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.joml.SimplexNoise;
 
 
 public class Grid {
+    public float generationProgress = 0.0f;
+    int riverCellsSize = 0;
+    int riverCellsGenerated = 0;
+    int roadCellsSize = 0;
+    int roadCellsGenerated = 0;
+    int nonRepeatableSchematicsSize = 0;
+    int nonRepeatableSchematicsGenerated = 0;
+    int repeatableSchematicsSize = 0;
+    int repeatableSchematicsGenerated = 0;
+    public String taskBeingPerformed = "Preparing to generate...";
+    public int totalTasks = 7;
+    public int tasksCompleted = 0;
     public int blocksPerCell;
-    public int size = 64;
+
+
+    public void setRiverNoiseScale(float riverNoiseScale) {
+        this.riverNoiseScale = riverNoiseScale;
+    }
+
+    float riverNoiseScale = 0.07f;
+    float sideRoadNoiseScale = 0.09f;
+    float backRoadNoiseScale = 0.11f;
+    int sideRoadsPerDistrict = 4;
+    int backRoadsPerDistrict = 10;
+    public int riverNumber = 5;
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public int size = 200;
     public Cell[][] grid;
-    public double yLvl = 65.0D;
-    public double startX = 0.0D;
-    public double startZ = -46.0D;
+    public AStarNode[][] riverNodeMap;
+    public AStarNode[][] sideRoadNodeMap;
+    public AStarNode[][] backRoadNodeMap;
+    public float[][] riverNoiseMap;
+    public float[][] sideRoadNoiseMap;
+    public float[][] backRoadNoiseMap;
+
+    public void setyLvl(double yLvl) {
+        this.yLvl = yLvl;
+    }
+
+    public void setStartX(double startX) {
+        this.startX = startX;
+    }
+
+    public void setStartZ(double startZ) {
+        this.startZ = startZ;
+    }
+
+    public double yLvl = 64.0D;
+    public double startX = 12.0D;
+    public double startZ = -13.0D;
     public int cellSize = 5;
     public byte ADark = 1;
     public byte ALight = 4;
@@ -61,8 +113,7 @@ public class Grid {
     public byte FLight = 5;
     public byte PDark = 9;
     public byte PLight = 3;
-    public Map<Integer, Cell> highways;
-    public List<Cell> cellsForBuildings;
+    public List<Cell> highwayCells = new ArrayList<>();
     public boolean districtCheck = false;
     public int numBackRoads = 5;
     SchematicHandler schemHandler;
@@ -72,6 +123,7 @@ public class Grid {
     public List<Cell> aristocracyCells;
     public List<Cell> slumsCells;
     public List<Cell> outskirtsCells;
+    public List<Cell> roadCells = new ArrayList<>();
     TGT plugin;
     Random r;
     public List<Schematic> localFarmRepeatable;
@@ -87,25 +139,72 @@ public class Grid {
     public List<Schematic> localSlumsOmni;
     public int runningDelay;
     public File schematicDetailsDirectory;
+
+    public void setOceanXMin(int oceanXMin) {
+        this.oceanXMin = oceanXMin;
+    }
+
+    public void setOceanXMax(int oceanXMax) {
+        this.oceanXMax = oceanXMax;
+    }
+
+    public void setOceanZMin(int oceanZMin) {
+        this.oceanZMin = oceanZMin;
+    }
+
+    public void setOceanZMax(int oceanZMax) {
+        this.oceanZMax = oceanZMax;
+    }
+
     public int oceanXMin;
     public int oceanXMax;
     public int oceanZMin;
     public int oceanZMax;
     long lastGeneration;
-    boolean generationCompleted = false;
+    public boolean generationCompleted = false;
     List<int[]> blacklistedCells = new ArrayList<>();
+    List<Cell> riverCells = new ArrayList<>();
+    int riverPasses = 0;
+    boolean riverPathing = false;
+
+    public void setBlacklistedCellsList(List<String> blacklistedCellsList) {
+        this.blacklistedCellsList = blacklistedCellsList;
+    }
+
+    List<String> blacklistedCellsList = new ArrayList<>();
 
 
-    public Grid(SchematicHandler schematicHandler, TGT plugin) {
-        this.schemHandler = schematicHandler;
+    public Grid(TGT plugin) {
         this.plugin = plugin;
         this.r = new Random();
         this.schematicDetailsDirectory = new File(plugin.getDataFolder(), "schematic-contents");
     }
 
+    public void setSchematicHandler(SchematicHandler schemHandler) {
+        this.schemHandler = schemHandler;
+    }
+
+    public void setSideRoadsPerDistrict(int num) {
+        this.sideRoadsPerDistrict = num;
+    }
+    public void setBackRoadsPerDistrict(int num) {
+        this.backRoadsPerDistrict = num;
+    }
+    public void setBackRoadNoiseScale(float num) {
+        this.backRoadNoiseScale = num;
+    }
+    public void setSideRoadNoiseScale(float num) {
+        this.sideRoadNoiseScale = num;
+    }
+    public void setRiverCount(int num) {
+        this.riverNumber = num;
+    }
+
     public void initialize() throws DataException, WorldEditException, IOException {
-        grid = new Cell[size][size + (int)(0.5*size)];
-        highways = new HashMap();
+        generationProgress = 0.0f;
+        taskBeingPerformed = "Generating grid...";
+        grid = new Cell[size][size];
+
         this.portCells = new ArrayList<>();
         this.aristocracyCells = new ArrayList<>();
         this.farmCells = new ArrayList<>();
@@ -122,76 +221,649 @@ public class Grid {
         this.localOutskirtsOmni = new ArrayList<>();
         this.localAristocracyOmni = new ArrayList<>();
         this.localSlumsOmni = new ArrayList<>();
-        cellsForBuildings = new ArrayList();
-        int cellNum = 0;
-        for (int z = 0; z < size + (int)(0.5*size); z++) {
+        for (int z = 0; z < size; z++) {
             for (int x = 0; x<size; x++) {
                 Cell cell = new Cell();
                 cell.isRoad = false;
                 cell.isOccupied = false;
-                grid[x][z] = cell;
                 cell.x = x;
                 cell.z = z;
-                cellsForBuildings.add(cell);
-                cellNum++;
+                grid[x][z] = cell;
             }
         }
-        this.setHighways(grid);
-        this.assignDistricts(grid);
-        if (districtCheck) {
-            for (int z = 0; z < size; z++) {
-                for (int x = 0; x<size; x++) {
-                    Cell cell = grid[x][z];
-                    Block cellBlock = (new Location(((World)Bukkit.getWorlds().get(0)), startX + (x * cellSize), yLvl, startZ + (z * -cellSize))).getBlock();
 
-                    if (cell.district == District.ARISTOCRACY) {
-                        if (x % 2 != 0) {
-                            this.fillCellWithData(ALight, x, z);
-                        } else {
-                            this.fillCellWithData(ADark, x, z);
-                        }
-                    } else if (cell.district == District.PORT) {
-                        if (x % 2 != 0) {
-                            this.fillCellWithData(PLight, x, z);
-                        } else {
-                            this.fillCellWithData(PDark, x, z);
-                        }
-                    } else if (cell.district == District.FARM) {
-                        if (x % 2 != 0) {
-                            this.fillCellWithData(FLight, x, z);
-                        } else  {
-                            this.fillCellWithData(FDark, x, z);
-                        }
-                    } else if (cell.district == District.SLUMS) {
-                        if (x % 2 != 0) {
-                            this.fillCellWithData(SLight, x, z);
-                        } else {
-                            this.fillCellWithData(SDark, x, z);
-                        }
-                    }
-                }
+        generationProgress = 0.10f;
+        taskBeingPerformed = "Creating noise and node maps...";
+        riverNoiseMap = new float[size/2][size/2];
+        sideRoadNoiseMap = new float[size][size];
+        backRoadNoiseMap = new float[size][size];
+        riverNodeMap = new AStarNode[size/2][size/2];
+        sideRoadNodeMap = new AStarNode[size][size];
+        backRoadNodeMap = new AStarNode[size][size];
+        generationProgress = 0.20f;
+        float xOffset = r.nextFloat(-10000f,10000f);
+        float zOffset = r.nextFloat(-10000f,10000f);
+        for (int x = 0; x < size/2; x++) {
+            for (int z = 0; z < size/2; z++) {
+                float noiseValue = Math.abs((float) SimplexNoise.noise(x * riverNoiseScale + xOffset, z * riverNoiseScale + zOffset));
+                riverNoiseMap[x][z] = noiseValue;
             }
         }
+        generationProgress = 0.3f;
+        xOffset = r.nextFloat(-10000f,10000f);
+        zOffset = r.nextFloat(-10000f,10000f);
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                float noiseValue = Math.abs((float) SimplexNoise.noise(x * sideRoadNoiseScale + xOffset, z * sideRoadNoiseScale + zOffset));
+                sideRoadNoiseMap[x][z] = noiseValue;
+            }
+        }
+        generationProgress = 0.4f;
+        xOffset = r.nextFloat(-10000f,10000f);
+        zOffset = r.nextFloat(-10000f,10000f);
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                float noiseValue = Math.abs((float) SimplexNoise.noise(x * backRoadNoiseScale + xOffset, z * backRoadNoiseScale + zOffset));
+                backRoadNoiseMap[x][z] = noiseValue;
+            }
+        }
+
+        generationProgress = 0.5f;
+        for (int x = 0; x < size/2f; x++) {
+            for (int z = 0; z < size/2f; z++) {
+                List<Cell> cells = new ArrayList<>();
+                cells.add(grid[2*x][2*z]);
+                cells.add(grid[(2*x)+1][2*z]);
+                cells.add(grid[(2*x)][(2*z)+1]);
+                cells.add(grid[(2*x)+1][(2*z)+1]);
+                //Bukkit.broadcastMessage("NOISE VALUE= " + riverNoiseMap[x][z]);
+
+                riverNodeMap[x][z] = new AStarNode(cells,x,z,riverNoiseMap[x][z] < 0.5f);
+                /*if (riverNodeMap[x][z].navigatable) {
+                    counter++;
+                }*/
+            }
+        }
+        generationProgress = 0.6f;
+
+        //Bukkit.broadcastMessage("Number of valid aStar cells " + counter + "/" + (riverNodeMap.length*riverNodeMap[0].length));
+        for (int x = 0; x< size; x++) {
+            for (int z = 0; z<size; z++) {
+                List<Cell> cells = new ArrayList<>();
+                cells.add(grid[x][z]);
+                AStarNode node = new AStarNode(cells,x,z,sideRoadNoiseMap[x][z] < 0.65f);
+                sideRoadNodeMap[x][z] = node;
+            }
+        }
+        generationProgress = 0.7f;
+        for (int x = 0; x< size; x++) {
+            for (int z = 0; z<size; z++) {
+                List<Cell> cells = new ArrayList<>();
+                cells.add(grid[x][z]);
+                AStarNode node = new AStarNode(cells,x,z,backRoadNoiseMap[x][z] < 0.5f);
+                backRoadNodeMap[x][z] = node;
+            }
+        }
+        generationProgress = 0.8f;
+        this.assignDistricts(grid);
+        generationProgress = 0.9f;
+        taskBeingPerformed = "Mapping restrictions...";
+        this.blacklistedCells.addAll(this.registerBlackList(this.blacklistedCellsList));
         for (int[] coords : this.blacklistedCells) {
             Cell cell = grid[coords[0]][coords[1]];
             cell.isOccupied = true;
+            int[] riverNode = getRiverNodeContainingCell(cell);
+            if (riverNode != null) {
+                riverNodeMap[riverNode[0]][riverNode[1]].navigatable = false;
+            }
+            backRoadNodeMap[cell.x][cell.z].navigatable = false;
+            sideRoadNodeMap[cell.x][cell.z].navigatable = false;
         }
-        for (int z = 0; z < size + (int)(0.5*size); z++) {
-            for (int x = 0; x<size; x++) {
-                Cell cell = grid[x][z];
-                if (!cell.isOccupied && !cell.isRoad) {
-                    //generate
-                } else if (cell.isRoad) {
-                    this.fillCellWithBlock(Material.SMOOTH_STONE, x, z );
-                    cell.isOccupied = true;
-                    highways.put(highways.size(), cell);
+        tasksCompleted++;
+        taskBeingPerformed = "Mapping rivers...";
+        //this.aStarCheck();
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+                if (riverPasses >= riverNumber) {
+                    taskBeingPerformed = "Mapping roads...";
+                    tasksCompleted++;
+                    generationProgress = 0.0f;
+                    //Bukkit.broadcastMessage("River cells " + riverCells.size());
+                    Grid.this.assignHighways();
+                    generationProgress = 0.5f;
+                    Grid.this.assignSideRoads();
+                    tasksCompleted++;
+                    generationProgress = 0.0f;
+                    taskBeingPerformed = "Generating rivers...";
+                    riverCellsSize = riverCells.size();
+                    /*Grid.this.generateSideRoads(grid);
+                    Grid.this.generateBackRoads(grid);*/
+                    try {
+                        Grid.this.generateRivers(Grid.this.riverCells.get(r.nextInt(riverCells.size())));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    this.cancel();
+                    return;
+                } else if (!riverPathing) {
+                    int startX = 0;
+                    int startZ = 0;
+                    int goalX = 0;
+                    int goalZ = 0;
+                    riverPathing = true;
+                    //Bukkit.broadcastMessage("Pathing true");
+                    do {
+                        startX = 0;
+                        startZ = 0;
+                        goalX = 0;
+                        goalZ = 0;
+                        int startCoordinate = r.nextInt((size/2));
+                        int endCoordinate = r.nextInt(size/2);
+                        if (r.nextInt(2) == 1) {
+                            startX = startCoordinate;
+                            if (r.nextInt(2) == 1) {
+                                startZ = (size/2)-1;
+                            }
+                            if (r.nextInt(2) == 1){
+                                goalX = endCoordinate;
+                                if (r.nextInt(2)==1) {
+                                    goalZ = (size/2)-1;
+                                }
+
+                            } else {
+                                goalZ = endCoordinate;
+                                if (r.nextInt(2)==1) {
+                                    goalX = (size/2)-1;
+                                }
+
+                            }
+                        } else {
+                            startZ = startCoordinate;
+                            if (r.nextInt(2) == 1) {
+                                startX = (size/2)-1;
+                            }
+                            if (r.nextInt(2) == 1){
+                                goalZ = endCoordinate;
+                                if (r.nextInt(2) == 1) {
+                                    goalX = (size/2)-1;
+                                }
+                            } else {
+                                goalX = endCoordinate;
+                                if (r.nextInt(2)==1) {
+                                    goalZ = (size/2)-1;
+                                }
+
+                            }
+                        }
+
+                        //Bukkit.broadcastMessage("Trying start " + startX + "," + startZ + " and goal " + goalX + "," + goalZ);
+                    } while (!riverNodeMap[startX][startZ].navigatable || !riverNodeMap[goalX][goalZ].navigatable || calculateDistance(new int[]{startX,startZ},new int[]{goalX,goalZ}) < 15);
+
+                    List<AStarNode> riverNodes = performRiverMapping(startX,startZ,goalX,goalZ);
+                    riverPasses++;
+                    generationProgress = (float) (1.0/riverPasses);
+                    if (riverNodes != null && riverNodes.size() > 0) {
+                        for (AStarNode node : riverNodes) {
+                            //Bukkit.broadcastMessage("Adding ASTARNODE " + node.x + "," + node.z);
+                            for (Cell cell : node.cells) {
+                                cell.isRiver = true;
+                                cell.isOccupied = true;
+                                if (!riverCells.contains(cell)) {
+                                    riverCells.add(cell);
+                                }
+
+                            }
+                        }
+                        //Bukkit.broadcastMessage("Added batch of " + riverNodes.size() + " river nodes");
+                    } else {
+                        //Bukkit.broadcastMessage("Batch was empty");
+                    }
+
+
+
+                }
+
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
+
+
+        //Grid.this.generateBackRoads(grid);
+
+
+        /*this.generateHighways(grid);
+        this.generateSideRoads(grid);
+        this.generateBackRoads(grid);
+        this.generateRivers(this.riverCells.get(r.nextInt(riverCells.size())));*/
+    }
+
+    public float calculateDistance(int[] p1, int[] p2) {
+        return (float) Math.sqrt(Math.pow(p1[0] - p2[0],2) + Math.pow(p1[1] - p2[1],2));
+    }
+
+
+    public void resetRiverMap() {
+        for (int x = 0; x < size/2; x++) {
+            for (int z = 0; z< size/2; z++) {
+                riverNodeMap[x][z].reset();
+            }
+        }
+    }
+
+    public int[] getRiverNodeContainingCell(Cell cell) {
+        for (int x = 0; x < size/2 ; x++) {
+            for (int z = 0; z < size/2; z++ ){
+                if (riverNodeMap[x][z].cells.contains(cell)) {
+                   return new int[]{x,z};
                 }
             }
         }
-        this.generateSideRoads(grid);
-        this.generateBackRoads(grid);
-        this.generateStructure(getSchematicsForDistrict(District.PORT), grid, getCellsForDistrict(District.PORT), District.PORT);
+        return null;
+    }
+    public List<AStarNode> performRiverMapping(int startX, int startZ, int goalX, int goalZ) {
+        resetRiverMap();
+        AStarNode startNode = new AStarNode(riverNodeMap[startX][startZ].cells, startX, startZ, riverNodeMap[startX][startZ].navigatable);
+        /*for (Cell cell : startNode.cells) {
+            fillCellWithBlock(Material.LIME_WOOL, cell.x,cell.z);
+        }*/
+        AStarNode goalNode = new AStarNode(riverNodeMap[goalX][goalZ].cells, goalX, goalZ, riverNodeMap[goalX][goalZ].navigatable);
+        /*for (Cell cell : goalNode.cells) {
+            fillCellWithBlock(Material.YELLOW_WOOL, cell.x,cell.z);
+        }*/
+        ArrayList<AStarNode> openList = new ArrayList<>();
+        List<AStarNode> closedList = new ArrayList<>();
 
+        int outerIterations = 0;
+        int maxIterations = Math.floorDiv((riverNodeMap.length * riverNodeMap[0].length),2);
+        int[] xDirections = {1,0,-1,0};
+        int[] zDirections = {0,1,0,-1};
+        openList.add(startNode);
+        AStarNode currentNode = null;
+        while (openList.size() > 0) {
+            outerIterations++;
+
+            if (outerIterations > maxIterations) {
+                riverPathing = false;
+                return getReturnPath(currentNode);
+            }
+            openList.sort(new Comparator<AStarNode>() {
+                @Override
+                public int compare(AStarNode o1, AStarNode o2) {
+                    return Float.compare(o1.f,o2.f);
+                }
+            });
+
+            currentNode = openList.remove(0);
+
+            if (openList.size() > 0) {
+                for (int i = 0; i < openList.size(); i++) {
+                }
+
+            }
+
+            closedList.add(currentNode);
+            /*for (Cell cell : startNode.cells) {
+                if (!(startNode.cells.contains(cell)) && !(goalNode.cells.contains(cell))) {
+                    fillCellWithBlock(Material.BLUE_WOOL, cell.x,cell.z);
+                }
+            }*/
+            //Bukkit.broadcastMessage("Added " + currentNode.x + "," + currentNode.z + " to closed list");
+            if (currentNode.equals(goalNode)) {
+                if (openList.get(0) != null && openList.get(0).f >= currentNode.f) {
+                    riverPathing = false;
+                    return getReturnPath(currentNode);
+                }
+            }
+            for (int i = 0; i < 4; i++) {
+                int[] position = new int[]{currentNode.x + xDirections[i], currentNode.z + zDirections[i]};
+                if (position[0] > riverNodeMap.length-1 || position[0] < 0 || position[1] > riverNodeMap[0].length-1 || position[1] < 0) {
+                    continue;
+                }
+                AStarNode newNode = new AStarNode(riverNodeMap[position[0]][position[1]].cells, position[0],position[1], riverNodeMap[position[0]][position[1]].navigatable, currentNode);
+
+                if (!newNode.navigatable) {
+                    continue;
+                }
+                if (closedList.contains(newNode)) {
+                    continue;
+                }
+                //if (riverNodeMap[newX][newZ].parent != null) continue;
+                AStarNode childNode = newNode;
+                childNode.g = (currentNode.g + calculateDistance(new int[]{childNode.x, childNode.z},new int[]{currentNode.x, currentNode.z}));
+                childNode.h = getEuclideanDistance(new int[]{childNode.x, childNode.z},new int[]{goalNode.x,goalNode.z});
+                childNode.f = childNode.g + childNode.h;
+
+                if (openList.contains(childNode)) {
+                    int index = openList.indexOf(childNode);
+                    if (childNode.g < openList.get(index).g) {
+                        openList.set(index, childNode);
+                    }
+                } else {
+                    openList.add(childNode);
+                }
+            }
+
+
+        }
+        this.riverPathing = false;
+        return null;
+    }
+
+    public List<AStarNode> performSideRoadMapping(int startX, int startZ, int goalX, int goalZ) {
+
+        AStarNode startNode = new AStarNode(sideRoadNodeMap[startX][startZ].cells, startX, startZ, sideRoadNodeMap[startX][startZ].navigatable);
+        /*for (Cell cell : startNode.cells) {
+            fillCellWithBlock(Material.LIME_WOOL, cell.x,cell.z);
+        }*/
+        AStarNode goalNode = new AStarNode(sideRoadNodeMap[goalX][goalZ].cells, goalX, goalZ, sideRoadNodeMap[goalX][goalZ].navigatable);
+        /*for (Cell cell : goalNode.cells) {
+            fillCellWithBlock(Material.YELLOW_WOOL, cell.x,cell.z);
+        }*/
+        ArrayList<AStarNode> openList = new ArrayList<>();
+        List<AStarNode> closedList = new ArrayList<>();
+
+        int outerIterations = 0;
+        int maxIterations = Math.floorDiv((sideRoadNodeMap.length * sideRoadNodeMap[0].length),2);
+        int[] xDirections = {1,0,-1,0};
+        int[] zDirections = {0,1,0,-1};
+        openList.add(startNode);
+        AStarNode currentNode = null;
+        while (openList.size() > 0) {
+            outerIterations++;
+
+            if (outerIterations > maxIterations) {
+                return getReturnPath(currentNode);
+            }
+            openList.sort(new Comparator<AStarNode>() {
+                @Override
+                public int compare(AStarNode o1, AStarNode o2) {
+                    return Float.compare(o1.f,o2.f);
+                }
+            });
+
+            currentNode = openList.remove(0);
+
+            if (openList.size() > 0) {
+                for (int i = 0; i < openList.size(); i++) {
+                }
+
+            }
+
+            closedList.add(currentNode);
+            /*for (Cell cell : startNode.cells) {
+                if (!(startNode.cells.contains(cell)) && !(goalNode.cells.contains(cell))) {
+                    fillCellWithBlock(Material.BLUE_WOOL, cell.x,cell.z);
+                }
+            }*/
+            //Bukkit.broadcastMessage("Added " + currentNode.x + "," + currentNode.z + " to closed list");
+            if (currentNode.equals(goalNode)) {
+                if (openList.get(0) != null && openList.get(0).f >= currentNode.f) {
+                    return getReturnPath(currentNode);
+                }
+            }
+            for (int i = 0; i < 4; i++) {
+                int[] position = new int[]{currentNode.x + xDirections[i], currentNode.z + zDirections[i]};
+                if (position[0] > sideRoadNodeMap.length-1 || position[0] < 0 || position[1] > sideRoadNodeMap[0].length-1 || position[1] < 0) {
+                    continue;
+                }
+                AStarNode newNode = new AStarNode(sideRoadNodeMap[position[0]][position[1]].cells, position[0],position[1], sideRoadNodeMap[position[0]][position[1]].navigatable, currentNode);
+
+                if (!newNode.navigatable) {
+                    continue;
+                }
+                if (closedList.contains(newNode)) {
+                    continue;
+                }
+                //if (riverNodeMap[newX][newZ].parent != null) continue;
+                AStarNode childNode = newNode;
+                childNode.g = (currentNode.g + calculateDistance(new int[]{childNode.x, childNode.z},new int[]{currentNode.x, currentNode.z}));
+                childNode.h = getEuclideanDistance(new int[]{childNode.x, childNode.z},new int[]{goalNode.x,goalNode.z});
+                childNode.f = childNode.g + childNode.h;
+
+                if (openList.contains(childNode)) {
+                    int index = openList.indexOf(childNode);
+                    if (childNode.g < openList.get(index).g) {
+                        openList.set(index, childNode);
+                    }
+                } else {
+                    openList.add(childNode);
+                }
+            }
+
+
+        }
+        return null;
+    }
+
+    public List<AStarNode> performSideRoadMappingOutskirts(int startX, int startZ, int goalX, int goalZ) {
+
+        AStarNode startNode = new AStarNode(sideRoadNodeMap[startX][startZ].cells, startX, startZ, sideRoadNodeMap[startX][startZ].navigatable);
+        /*for (Cell cell : startNode.cells) {
+            fillCellWithBlock(Material.LIME_WOOL, cell.x,cell.z);
+        }*/
+        AStarNode goalNode = new AStarNode(sideRoadNodeMap[goalX][goalZ].cells, goalX, goalZ, sideRoadNodeMap[goalX][goalZ].navigatable);
+        /*for (Cell cell : goalNode.cells) {
+            fillCellWithBlock(Material.YELLOW_WOOL, cell.x,cell.z);
+        }*/
+        ArrayList<AStarNode> openList = new ArrayList<>();
+        List<AStarNode> closedList = new ArrayList<>();
+
+        int outerIterations = 0;
+        int maxIterations = Math.floorDiv((sideRoadNodeMap.length * sideRoadNodeMap[0].length),2);
+        int[] xDirections = {1,0,-1,0};
+        int[] zDirections = {0,1,0,-1};
+        openList.add(startNode);
+        AStarNode currentNode = null;
+        while (openList.size() > 0) {
+            outerIterations++;
+
+            if (outerIterations > maxIterations) {
+                return getReturnPath(currentNode);
+            }
+            openList.sort(new Comparator<AStarNode>() {
+                @Override
+                public int compare(AStarNode o1, AStarNode o2) {
+                    return Float.compare(o1.f,o2.f);
+                }
+            });
+
+            currentNode = openList.remove(0);
+            closedList.add(currentNode);
+            /*for (Cell cell : startNode.cells) {
+                if (!(startNode.cells.contains(cell)) && !(goalNode.cells.contains(cell))) {
+                    fillCellWithBlock(Material.BLUE_WOOL, cell.x,cell.z);
+                }
+            }*/
+            //Bukkit.broadcastMessage("Added " + currentNode.x + "," + currentNode.z + " to closed list");
+            if (currentNode.equals(goalNode)) {
+                if (openList.get(0) != null && openList.get(0).f >= currentNode.f) {
+                    return getReturnPath(currentNode);
+                }
+            } else if (grid[currentNode.x][currentNode.z].isRoad && grid[currentNode.x][currentNode.z].roadTier == RoadTier.HIGHWAY) {
+                return getReturnPath(currentNode.parent);
+            }
+            for (int i = 0; i < 4; i++) {
+                int[] position = new int[]{currentNode.x + xDirections[i], currentNode.z + zDirections[i]};
+                if (position[0] > sideRoadNodeMap.length-1 || position[0] < 0 || position[1] > sideRoadNodeMap[0].length-1 || position[1] < 0) {
+                    continue;
+                }
+                AStarNode newNode = new AStarNode(sideRoadNodeMap[position[0]][position[1]].cells, position[0],position[1], sideRoadNodeMap[position[0]][position[1]].navigatable, currentNode);
+
+                if (!newNode.navigatable) {
+                    continue;
+                }
+                if (closedList.contains(newNode)) {
+                    continue;
+                }
+                if (grid[newNode.x][newNode.z].district != District.OUTSKIRTS) {
+                    continue;
+                }
+                //if (riverNodeMap[newX][newZ].parent != null) continue;
+                AStarNode childNode = newNode;
+                childNode.g = (currentNode.g + calculateDistance(new int[]{childNode.x, childNode.z},new int[]{currentNode.x, currentNode.z}));
+                childNode.h = getEuclideanDistance(new int[]{childNode.x, childNode.z},new int[]{goalNode.x,goalNode.z});
+                childNode.f = childNode.g + childNode.h;
+
+                if (openList.contains(childNode)) {
+                    int index = openList.indexOf(childNode);
+                    if (childNode.g < openList.get(index).g) {
+                        openList.set(index, childNode);
+                    }
+                } else {
+                    openList.add(childNode);
+                }
+            }
+
+
+        }
+        return null;
+    }
+
+    public float getEuclideanDistance(int[] p1, int[] p2) {
+        BigDecimal bd = new BigDecimal(Double.toString(this.calculateDistance(p1,p2)));
+        bd = bd.setScale(3, RoundingMode.HALF_UP);
+        return bd.floatValue();
+    }
+
+
+
+    public List<AStarNode> getReturnPath(AStarNode startNode) {
+        List<AStarNode> path = new ArrayList<>();
+        AStarNode current = startNode;
+        while (!(current.parent == null)) {
+            //Bukkit.broadcastMessage("Adding node " + current.x + "," + current.z);
+            path.add(current);
+            current = current.parent;
+        }
+        path.add(current);
+        Collections.reverse(path);
+        return path;
+    }
+
+    /*public void performRiverMapping(int startX, int startZ, int goalX, int goalZ) {
+        this.riverPathing = true;
+        AStarNode startNode = riverNodeMap[startX][startZ];
+        AStarNode goalNode = riverNodeMap[goalX][goalZ];
+        List<AStarNode> openList = new ArrayList<>();
+        List<AStarNode> closedList = new ArrayList<>();
+        List<AStarNode> retList = new ArrayList<>();
+        openList.add(startNode);
+        final int[] runningDelay = {1};
+        boolean[] pass = {false};
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    for (int j = 0; j < 100; j++) {
+
+                        if (openList.size() > 0) {
+                            AStarNode currentNode = openList.get(0);
+                            int currentIndex = 0;
+                            for (AStarNode iterNode : openList) {
+                                if (iterNode.f < currentNode.f) {
+                                    currentNode = iterNode;
+                                    currentIndex = openList.indexOf(iterNode);
+                                }
+                            }
+                            HeapopenList.remove(currentIndex);
+                            closedList.add(currentNode);
+                            if (currentNode.equals(goalNode)) {
+                                List<AStarNode> path = new ArrayList<>();
+                                AStarNode current = currentNode;
+                                while (!(current.parent == null)) {
+                                    path.add(current);
+                                    current = riverNodeMap[current.parent[0]][current.parent[1]];
+                                }
+                                Collections.reverse(path);
+                                retList.addAll(path);
+                                pass[0] = true;
+                                this.cancel();
+                                return;
+                            }
+                            List<AStarNode> children = new ArrayList<>();
+                            int[] xDirections = {1,0,-1,0};
+                            int[] zDirections = {0,1,0,-1};
+                            for (int i = 0; i < 4; i++ ){
+                                int x = xDirections[i];
+                                int z = zDirections[i];
+                                int newX = currentNode.x + x;
+                                int newZ = currentNode.z + z;
+                                if (newX > riverNodeMap.length-1 || newX < 0 || newZ > riverNodeMap[0].length-1 || newZ < 0) continue;
+                                if (!riverNodeMap[newX][newZ].navigatable) continue;
+                                AStarNode newNode = riverNodeMap[newX][newZ];
+                                newNode.parent = new int[]{currentNode.x, currentNode.z};
+                                children.add(newNode);
+                            }
+                            //Bukkit.broadcastMessage("Node " + currentNode.x + "," + currentNode.z +  " has " + children.size() + " children");
+                            for (AStarNode childNode : children) {
+                                if (AStarNode.contains(closedList,childNode)) {
+                                    continue;
+                                }
+                                childNode.g = currentNode.g+1;
+                                childNode.h = Math.abs(childNode.x - goalNode.x) + Math.abs(childNode.z - goalNode.z);
+                                childNode.f = childNode.g + childNode.h;
+                                if (AStarNode.contains(openList, childNode)) {
+                                    int childIndex = openList.indexOf(childNode);
+                                    if (childNode.g > openList.get(childIndex).g) {
+                                        openList.set(childIndex, childNode);
+                                    }
+                                }
+                                openList.add(childNode);
+                                //runningDelay[0]++;
+                                //Bukkit.broadcastMessage("Added " + childNode.x + "," + childNode.z +  " to openlist");
+                            }
+
+                        } else {
+                            pass[0] = true;
+                            this.cancel();
+                        }
+
+                    }
+
+                }
+            }.runTaskTimer(plugin, 0L, 1L);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (pass[0]) {
+                    if (retList.size() > 0) {
+                        Bukkit.broadcastMessage("Added to retlist");
+                        Grid.this.pathedRiverNodes.add(retList);
+                    }
+                    this.cancel();
+                    riverPathing = false;
+                    riverPasses++;
+                    return;
+                } else {
+                    Bukkit.broadcastMessage("Still pathing...");
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
+    }*/
+    public void aStarCheck() {
+        long[] runningDelay = {0};
+        for (int x = 0; x < size/2f; x++) {
+            int finalX = x;
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    for (int z = 0; z < size/2f; z++) {
+                        if (riverNodeMap[finalX][z].navigatable) {
+                            for (Cell cell : riverNodeMap[finalX][z].cells) {
+                                fillCellWithBlock(Material.GREEN_WOOL, cell.x, cell.z);
+                            }
+                        } else {
+                            for (Cell cell : riverNodeMap[finalX][z].cells) {
+                                fillCellWithBlock(Material.RED_WOOL, cell.x, cell.z);
+                            }
+                        }
+
+                    }
+                }
+            }.runTaskLater(plugin, runningDelay[0]);
+            runningDelay[0]+=2;
+
+        }
     }
 
     public void fillCellWithBlock(Material block, int gridX, int gridZ) {
@@ -207,35 +879,696 @@ public class Grid {
         }
     }
 
-    public void fillCellWithData(byte data, int gridX, int gridZ) {
-        Location startLoc = new Location(((World)Bukkit.getWorlds().get(0)), startX + (gridX * cellSize), yLvl, startZ + (gridZ * -cellSize));
-        for (int x = 0; x < cellSize; x++) {
-            for (int z = 0; z > -cellSize; z--) {
-                Location changeLoc = new Location(startLoc.getWorld(), startLoc.getX() + Double.valueOf(x), yLvl, startLoc.getZ() + Double.valueOf(z));
-                //Bukkit.broadcastMessage("Attempting to change data at coordinates: " + changeLoc.getX() + ", " + changeLoc.getY() + ", " + changeLoc.getZ());
-                Block blockLoc = changeLoc.getBlock();
-
-
-            }
-        }
-    }
-
-    public void setHighways(Cell[][] grid) {
+    public void assignHighways() {
         for (int x = 0; x < size; x++) {
             for (int z = (size/2)-1; z < (size/2)+1; z++) {
                 grid[x][z].isRoad = true;
+                grid[x][z].isOccupied = true;
+                grid[x][z].roadTier = RoadTier.HIGHWAY;
+                this.roadCells.add(grid[x][z]);
             }
         }
         for (int x = (size/2)-1; x < (size/2)+1; x++) {
             for (int z = 0; z < size; z++) {
                 grid[x][z].isRoad = true;
+                grid[x][z].isOccupied = true;
+                grid[x][z].roadTier = RoadTier.HIGHWAY;
+                this.roadCells.add(grid[x][z]);
+            }
+        }
+    }
+    public void generateRivers(Cell cell) throws IOException {
+        List<Direction> nearbyRivers = nearbyRiversOnly(cell.x,cell.z);
+        Direction pasteDir = Direction.N;
+        Schematic schematic;
+        List<Schematic> schemList = new ArrayList<>();
+        if (nearbyRivers.size() == 0) {
+            this.riverCells.remove(cell);
+            this.riverCellsGenerated++;
+            this.generationProgress = (float)riverCellsGenerated / (float)riverCellsSize;
+            this.generateRivers(this.riverCells.get(r.nextInt(this.riverCells.size())));
+            return;
+        }
+        if (nearbyRivers.size() == 1) {
+            schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.UNI));
+            if (nearbyRivers.contains(Direction.E)) {
+                pasteDir = Direction.E;
+            } else if (nearbyRivers.contains(Direction.S)) {
+                pasteDir = Direction.S;
+            } else if (nearbyRivers.contains(Direction.W)) {
+                pasteDir = Direction.W;
+            }
+        } else if (nearbyRivers.size() == 2) {
+            if (nearbyRivers.contains(Direction.N) && nearbyRivers.contains(Direction.S)) {
+                schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.STRAIGHT));
+                if (r.nextInt(2) == 1) {
+                    pasteDir = Direction.S;
+                } else {
+                    pasteDir = Direction.N;
+                }
+            } else if (nearbyRivers.contains(Direction.E) && nearbyRivers.contains(Direction.W)) {
+                schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.STRAIGHT));
+                if (r.nextInt(2) == 1) {
+                    pasteDir = Direction.E;
+                } else {
+                    pasteDir = Direction.W;
+                }
+            } else {
+                schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.CURVE));
+                if (nearbyRivers.contains(Direction.N) && nearbyRivers.contains(Direction.W)) {
+                    pasteDir = Direction.W;
+                } else if (nearbyRivers.contains(Direction.S) && nearbyRivers.contains(Direction.E)) {
+                    pasteDir = Direction.E;
+                } else if (nearbyRivers.contains(Direction.S) && nearbyRivers.contains(Direction.W)) {
+                    pasteDir = Direction.S;
+                }
+            }
+        } else if (nearbyRivers.size() == 3) {
+            schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.TRI));
+            if (nearbyRivers.contains(Direction.N) && nearbyRivers.contains(Direction.E) && nearbyRivers.contains(Direction.S)) {
+                pasteDir = Direction.E;
+            } else if (nearbyRivers.contains(Direction.W) && nearbyRivers.contains(Direction.E) && nearbyRivers.contains(Direction.S)) {
+                pasteDir = Direction.S;
+            } else if (nearbyRivers.contains(Direction.N) && nearbyRivers.contains(Direction.W) && nearbyRivers.contains(Direction.S)) {
+                pasteDir = Direction.W;
+            }
+        } else if (nearbyRivers.size() == 4) {
+            schemList.addAll(this.schemHandler.getRiversWithQualities(cell.district,RoadType.QUAD));
+            int rInt = r.nextInt(4);
+            if (rInt == 1) {
+                pasteDir = Direction.E;
+            } else if (rInt == 2) {
+                pasteDir = Direction.S;
+            } else if (rInt == 3) {
+                pasteDir = Direction.W;
+            }
+        }
+        schematic = schemList.get(r.nextInt(schemList.size()));
+        pasteRiverSchematic(cell, pasteDir, schematic);
+    }
+    public void generateRoads(Cell cell) throws IOException {
+            List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x,cell.z);
+            Direction pasteDir = Direction.N;
+            Schematic schematic;
+            List<Schematic> schemList = new ArrayList<>();
+            if (nearbyRoads.size() == 0) {
+                this.roadCells.remove(cell);
+                roadCellsGenerated++;
+                generationProgress = (float)roadCellsGenerated/(float)roadCellsSize;
+                this.generateRoads(this.roadCells.get(r.nextInt(this.roadCells.size())));
+                return;
+            }
+            if (nearbyRoads.size() == 1) {
+                schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.UNI));
+                if (nearbyRoads.contains(Direction.E)) {
+                    pasteDir = Direction.E;
+                } else if (nearbyRoads.contains(Direction.S)) {
+                    pasteDir = Direction.S;
+                } else if (nearbyRoads.contains(Direction.W)) {
+                    pasteDir = Direction.W;
+                }
+            } else if (nearbyRoads.size() == 2) {
+                if (nearbyRoads.contains(Direction.N) && nearbyRoads.contains(Direction.S)) {
+                    schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.STRAIGHT));
+                    if (r.nextInt(2) == 1) {
+                        pasteDir = Direction.S;
+                    } else {
+                        pasteDir = Direction.N;
+                    }
+                } else if (nearbyRoads.contains(Direction.E) && nearbyRoads.contains(Direction.W)) {
+                    schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.STRAIGHT));
+                    if (r.nextInt(2) == 1) {
+                        pasteDir = Direction.E;
+                    } else {
+                        pasteDir = Direction.W;
+                    }
+                } else {
+                    schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.CURVE));
+                    if (nearbyRoads.contains(Direction.N) && nearbyRoads.contains(Direction.W)) {
+                        pasteDir = Direction.W;
+                    } else if (nearbyRoads.contains(Direction.S) && nearbyRoads.contains(Direction.E)) {
+                        pasteDir = Direction.E;
+                    } else if (nearbyRoads.contains(Direction.S) && nearbyRoads.contains(Direction.W)) {
+                        pasteDir = Direction.S;
+                    }
+                }
+            } else if (nearbyRoads.size() == 3) {
+                schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.TRI));
+                if (nearbyRoads.contains(Direction.N) && nearbyRoads.contains(Direction.E) && nearbyRoads.contains(Direction.S)) {
+                    pasteDir = Direction.E;
+                } else if (nearbyRoads.contains(Direction.W) && nearbyRoads.contains(Direction.E) && nearbyRoads.contains(Direction.S)) {
+                    pasteDir = Direction.S;
+                } else if (nearbyRoads.contains(Direction.N) && nearbyRoads.contains(Direction.W) && nearbyRoads.contains(Direction.S)) {
+                    pasteDir = Direction.W;
+                }
+            } else if (nearbyRoads.size() == 4) {
+                schemList.addAll(this.schemHandler.getRoadsWithQualities(cell.district,cell.roadTier,RoadType.QUAD));
+                int rInt = r.nextInt(4);
+                if (rInt == 1) {
+                    pasteDir = Direction.E;
+                } else if (rInt == 2) {
+                    pasteDir = Direction.S;
+                } else if (rInt == 3) {
+                    pasteDir = Direction.W;
+                }
+            }
+            schematic = schemList.get(r.nextInt(schemList.size()));
+            pasteRoadSchematic(cell, pasteDir, schematic);
+    }
+
+    public void pasteRiverSchematic(Cell cell, Direction direction, Schematic schematic) throws IOException {
+        Paste paste = new Paste(schematic, schematic.xLength, schematic.zHeight, direction, cell.x, cell.z);
+        ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic"));
+        ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic")));
+        Clipboard clipboard = reader.read();
+        int rotation = 0;
+        if (paste.direction == Direction.E) {
+            rotation = 270;
+        } else if (paste.direction == Direction.S) {
+            rotation = 180;
+        } else if (paste.direction == Direction.W) {
+            rotation = 90;
+        }
+        int finalRotation = rotation;
+        Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+            @Override
+            public void run() {
+                EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
+                ClipboardHolder holder = new ClipboardHolder(clipboard);
+                if (finalRotation > 0) {
+                    holder.setTransform(new AffineTransform().rotateY(finalRotation));
+                }
+                if (paste.direction == Direction.N) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.E) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.S) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.W) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                editSession.close();
+                File configFile = new File(Grid.this.schematicDetailsDirectory, paste.schematic.fileName + ".yml");
+                if (configFile.exists()) {
+                    generateDetails(paste, configFile);
+                }
+                Grid.this.riverCells.remove(cell);
+                riverCellsGenerated++;
+                generationProgress = (float)riverCellsGenerated / (float)riverCellsSize;
+                if (Grid.this.riverCells.size() > 0) {
+                    try {
+                        generateRivers(Grid.this.riverCells.get(r.nextInt(Grid.this.riverCells.size())));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    try {
+                        generationProgress = 0.0f;
+                        tasksCompleted++;
+                        taskBeingPerformed = "Generating roads...";
+                        roadCellsSize = roadCells.size();
+                        generateRoads(Grid.this.roadCells.get(r.nextInt(Grid.this.roadCells.size())));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }, paste.schematic.area);
+    }
+
+    public void pasteRoadSchematic(Cell cell, Direction direction, Schematic schematic) throws IOException {
+        Paste paste = new Paste(schematic, schematic.xLength, schematic.zHeight, direction, cell.x, cell.z);
+        ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic"));
+        ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic")));
+        Clipboard clipboard = reader.read();
+        int rotation = 0;
+        if (paste.direction == Direction.E) {
+            rotation = 270;
+        } else if (paste.direction == Direction.S) {
+            rotation = 180;
+        } else if (paste.direction == Direction.W) {
+            rotation = 90;
+        }
+        int finalRotation = rotation;
+        Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+            @Override
+            public void run() {
+                EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
+                ClipboardHolder holder = new ClipboardHolder(clipboard);
+                if (finalRotation > 0) {
+                    holder.setTransform(new AffineTransform().rotateY(finalRotation));
+                }
+                if (paste.direction == Direction.N) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize), yLvl + 1, startZ + (paste.targetCellZ * -cellSize))).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.E) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 5), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.S) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((paste.targetCellX + 1) * cellSize) - 1), yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (paste.direction == Direction.W) {
+                    Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (paste.targetCellX * cellSize) + 4, yLvl + 1, (startZ + (paste.targetCellZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                editSession.close();
+                File configFile = new File(Grid.this.schematicDetailsDirectory, paste.schematic.fileName + ".yml");
+                if (configFile.exists()) {
+                    generateDetails(paste, configFile);
+                }
+                Grid.this.roadCells.remove(cell);
+                roadCellsGenerated++;
+                generationProgress = (float)roadCellsGenerated/(float)roadCellsSize;
+                if (Grid.this.roadCells.size() > 0) {
+                    try {
+                        generateRoads(Grid.this.roadCells.get(r.nextInt(Grid.this.roadCells.size())));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    try {
+                        generationProgress = 0.0f;
+                        taskBeingPerformed = "Generating structures...";
+                        tasksCompleted++;
+                        nonRepeatableSchematicsSize = plugin.schematicHandler.slumsSchematics.size() + plugin.schematicHandler.outskirtsSchematics.size() + plugin.schematicHandler.aristocracySchematics.size() + plugin.schematicHandler.farmSchematics.size() + plugin.schematicHandler.portSchematics.size();
+                        Grid.this.generateStructure(getSchematicsForDistrict(District.PORT), grid, getCellsForDistrict(District.PORT), District.PORT);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    } catch (DataException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }, paste.schematic.area);
+    }
+
+
+    public void assignDistricts(Cell[][] grid) {
+        float threeFourths = (3*(float)size)/4.0f;
+        float oneFourth = (float)size/4.0f;
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                if (z <= (oneFourth-1) &&
+                        x >= (float)(1 / 5) * (float)z + (oneFourth-1) &&
+                        x <= -(float)(1 / 5) * (float)z + (threeFourths-1)) {
+                    grid[x][z].district = District.PORT;
+                    this.portCells.add(grid[x][z]);
+                } else if (x <= (float) (1 / 5) * (float) (z - (size - 1)) + (threeFourths - 1) &&
+                        x >= -(float) (1 / 5) * (float) (z - (size - 1)) + (oneFourth - 1) &&
+                        z >= (threeFourths-1)) {
+                    grid[x][z].district = District.FARM;
+                    this.farmCells.add(grid[x][z]);
+                } else if (z >= -(float) (1 / 5) * (float) (x-(size-1)) + (oneFourth-1) &&
+                        z <= (float)(1/5) * (float)(x-(size-1)) + (threeFourths-1) &&
+                        x >= (threeFourths-1)) {
+                    grid[x][z].district = District.ARISTOCRACY;
+                    this.aristocracyCells.add(grid[x][z]);
+                } else if (z <= -(float)(1 / 5) * (float)x + (threeFourths-1) &&
+                        z >= (float)(1 / 5) * (float)x + (oneFourth-1) &&
+                        x <= (oneFourth-1)) {
+                    grid[x][z].district = District.SLUMS;
+                    this.slumsCells.add(grid[x][z]);
+                } else {
+                    grid[x][z].district = District.OUTSKIRTS;
+                    this.outskirtsCells.add(grid[x][z]);
+                }
             }
         }
     }
 
+    public void assignSideRoads() {
+        List<Cell> outskirtSideRoadStartPoints = new ArrayList<>();
+        for (int districtCount = 0; districtCount < 5; districtCount++) {
+            District district;
+            Direction toDirection = null;
+            Direction fromDirection = null;
+            if (districtCount == 0) {
+                district = District.PORT;
+                toDirection = Direction.N;
+                fromDirection = Direction.S;
+            } else if (districtCount == 1) {
+                district = District.ARISTOCRACY;
+                toDirection = Direction.W;
+                fromDirection = Direction.E;
+            } else if (districtCount == 2) {
+                district = District.FARM;
+                toDirection = Direction.S;
+                fromDirection = Direction.N;
+            } else if (districtCount==3) {
+                district = District.SLUMS;
+                toDirection = Direction.E;
+                fromDirection = Direction.W;
+            } else {
+                district = District.OUTSKIRTS;
+            }
+            if (districtCount != 4) {
+                List<Cell> fromCells = getBorderCells(district,fromDirection);
+                List<Cell> toCells = getBorderCells(district,toDirection);
+                fromCells = sortCellsByDirection(fromCells,fromDirection);
+                toCells = sortCellsByDirection(toCells,toDirection);
+
+                for (int j = 0; j < sideRoadsPerDistrict; j++) {
+                    int fromStart = Math.round(j * ((float)fromCells.size()/(float)sideRoadsPerDistrict));
+                    int fromBound = Math.round((j+1) * ((float)fromCells.size()/(float)sideRoadsPerDistrict));
+                    if (fromStart > fromBound) {
+                        int num1 = fromStart;
+                        int num2 = fromBound;
+                        fromBound = num1;
+                        fromStart = num2;
+                    }
+                    int toStart = Math.round(j * ((float)toCells.size()/(float)sideRoadsPerDistrict));
+                    int toBound = Math.round((j+1) * ((float)toCells.size()/(float)sideRoadsPerDistrict));
+                    if (toStart > toBound) {
+                        int num1 = toStart;
+                        int num2 = toBound;
+                        toBound = num1;
+                        toStart = num2;
+                    }
+                    List<AStarNode> path = null;
+                    int attempts = fromCells.size()*2;
+                    do {
+                        attempts--;
+
+                        Cell fromCell = fromCells.get(r.nextInt(fromStart,fromBound));
+                        Cell toCell = toCells.get(r.nextInt(toStart,toBound));
+                        if (!(fromCell.isRoad && fromCell.roadTier == RoadTier.HIGHWAY) && !(toCell.isRoad && toCell.roadTier == RoadTier.HIGHWAY)) {
+                            path = performSideRoadMapping(fromCell.x,fromCell.z,toCell.x,toCell.z);
+                            if (path != null) {
+                                outskirtSideRoadStartPoints.add(toCell);
+                            }
+                        }
+                    } while(path == null && attempts > 0);
+                    if (path != null) {
+                        for(AStarNode node : path) {
+                            int x = node.x;
+                            int z = node.z;
+                            grid[x][z].isRoad = true;
+                            grid[x][z].isOccupied = true;
+                            grid[x][z].roadTier = RoadTier.NORMAL;
+                            this.roadCells.add(grid[x][z]);
+                        }
+                    }
+                }
+            } else {
+                Iterator<Cell> iter = outskirtSideRoadStartPoints.iterator();
+                while (iter.hasNext()) {
+                    Cell cell = iter.next();
+                    Direction dir;
+                    if (cell.district == District.PORT) {
+                        dir = Direction.N;
+                    } else if (cell.district == District.ARISTOCRACY) {
+                        dir = Direction.W;
+                    } else if (cell.district == District.SLUMS) {
+                        dir = Direction.E;
+                    } else if (cell.district == District.FARM) {
+                        dir = Direction.S;
+                    } else {
+                        continue;
+                    }
+
+                    List<Cell> borderCells = getCellsOnMapBorder(dir);
+                    List<AStarNode> path = null;
+                    int attempts = borderCells.size()*2;
+                    do {
+                        attempts--;
+                        Cell toCell = borderCells.get(r.nextInt(borderCells.size()));
+                        if (!(cell.isRoad && cell.roadTier == RoadTier.HIGHWAY) && !(toCell.isRoad && toCell.roadTier == RoadTier.HIGHWAY)) {
+                            path = performSideRoadMappingOutskirts(cell.x, cell.z,toCell.x,toCell.z);
+                        }
+                    } while(path == null && attempts > 0);
+                    if (path != null) {
+                        for(AStarNode node : path) {
+                            int x = node.x;
+                            int z = node.z;
+                            grid[x][z].isRoad = true;
+                            grid[x][z].isOccupied = true;
+                            grid[x][z].roadTier = RoadTier.NORMAL;
+                            this.roadCells.add(grid[x][z]);
+                        }
+                    }
+                }
+            }
+
+        }
+        tasksCompleted++;
+
+    }
+
+    public List<Cell> sortCellsByDirection(List<Cell> cells, Direction direction) {
+        if (direction == Direction.N || direction == Direction.S) {
+            cells.sort(new Comparator<Cell>() {
+                @Override
+                public int compare(Cell o1, Cell o2) {
+                    return o1.x - o2.x;
+                }
+            });
+            return cells;
+        } else {
+            cells.sort(new Comparator<Cell>() {
+                @Override
+                public int compare(Cell o1, Cell o2) {
+                    return o1.z - o2.z;
+                }
+            });
+            return cells;
+        }
+    }
+
+    public Cell getCellOnMapBorder(District district) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        Cell returnCell = null;
+        do {
+            Cell cell = cells.next();
+            for (int i = 0; i < directions.length; i++) {
+                int x = cell.x+directions[i][0];
+                int z = cell.z+directions[i][1];
+                if (x < 0 || x >= size || z < 0 || z >= size) {
+                    returnCell = cell;
+                }
+            }
+        } while(returnCell == null && cells.hasNext());
+        return returnCell;
+    }
+
+    public Cell getCellOnDistrictBorder(District district) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        Cell returnCell = null;
+        do {
+            Cell cell = cells.next();
+            for (int i = 0; i < directions.length; i++) {
+                int x = cell.x+directions[i][0];
+                int z = cell.z+directions[i][1];
+                if (x >= 0 && x < size && z >= 0 && z < size) {
+                    if (grid[x][z].district != cell.district) {
+                        returnCell = cell;
+                    }
+                }
+            }
+        } while(returnCell == null && cells.hasNext());
+        return returnCell;
+    }
+    public List<Cell> getCellsOnMapBorder(District district) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        //int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        List<Cell> returnCells = new ArrayList<>();
+        do {
+            Cell cell = cells.next();
+            if (cell.x == 0 || cell.z == 0 || cell.x == size-1 || cell.z == size-1) {
+                returnCells.add(cell);
+            }
+        } while(cells.hasNext());
+        return returnCells;
+    }
+    public List<Cell> getCellsOnMapBorder(Direction dir) {
+        List<Cell> allCells = new ArrayList<>();
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                allCells.add(grid[x][z]);
+            }
+        }
+        Collections.shuffle(allCells);
+        Iterator<Cell> cells = allCells.iterator();
+        //int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        List<Cell> returnCells = new ArrayList<>();
+        do {
+            Cell cell = cells.next();
+            if (dir == Direction.N && cell.z == size-1) {
+                returnCells.add(cell);
+            } else if (dir == Direction.S && cell.z == 0) {
+                returnCells.add(cell);
+            } else if (dir == Direction.E && cell.x == size-1) {
+                returnCells.add(cell);
+            } else if (dir == Direction.W && cell.x == 0) {
+                returnCells.add(cell);
+            }
+        } while(cells.hasNext());
+        return returnCells;
+    }
+    public List<Cell> getCellsOnMapBorder(District district, Direction dir) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        //int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        List<Cell> returnCells = new ArrayList<>();
+        do {
+            Cell cell = cells.next();
+            if (dir == Direction.N && cell.z == size-1) {
+                returnCells.add(cell);
+            } else if (dir == Direction.S && cell.z == 0) {
+                returnCells.add(cell);
+            } else if (dir == Direction.E && cell.x == size-1) {
+                returnCells.add(cell);
+            } else if (dir == Direction.W && cell.x == 0) {
+                returnCells.add(cell);
+            }
+
+        } while(cells.hasNext());
+        return returnCells;
+    }
+
+    public List<Cell> getCellsOnDistrictBorder(District district) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        List<Cell> returnCells = new ArrayList<>();
+        do {
+            Cell cell = cells.next();
+            for (int i = 0; i < directions.length; i++) {
+                int x = cell.x+directions[i][0];
+                int z = cell.z+directions[i][1];
+                if (x >= 0 && x < size && z >= 0 && z < size) {
+                    if (grid[x][z].district != cell.district) {
+                        returnCells.add(cell);
+                    }
+                }
+            }
+        } while(cells.hasNext());
+        return returnCells;
+    }
+    public List<Cell> getCellsOnDistrictBorder(District district, Direction direction) {
+        List<Cell> cellsForDistrict = new ArrayList<>(getCellsForDistrict(district));
+        Collections.shuffle(cellsForDistrict);
+        Iterator<Cell> cells = cellsForDistrict.iterator();
+        int[][] directions = {{1,0},{0,1},{-1,0},{0,-1}};
+        List<Cell> returnCells = new ArrayList<>();
+        int[] offsetToMatch = getOffsetForDirection(direction);
+        do {
+            Cell cell = cells.next();
+            int count = 0;
+            for (int i = 0; i < directions.length; i++) {
+                int x = cell.x+directions[i][0];
+                int z = cell.z+directions[i][1];
+                if (x >= 0 && x < size && z >= 0 && z < size) {
+                    if (grid[x][z].district != cell.district) {
+                        count++;
+                    }
+                }
+            }
+            if ((cell.x+offsetToMatch[0] >= 0 && cell.x+offsetToMatch[0] < size && cell.z+offsetToMatch[1] >= 0 && cell.z+offsetToMatch[1] < size) && count == 1 && grid[cell.x+offsetToMatch[0]][cell.z+offsetToMatch[1]].district != cell.district) {
+                returnCells.add(cell);
+            }
+        } while(cells.hasNext());
+        return returnCells;
+    }
+
+    private int[] getOffsetForDirection(Direction direction) {
+        if (direction == Direction.N) {
+            return new int[]{0,1};
+        } else if (direction == Direction.S) {
+            return new int[]{0,-1};
+        } else if (direction == Direction.E) {
+            return new int[]{1,0};
+        } else if (direction == Direction.W) {
+            return new int[]{-1,0};
+        }
+        return null;
+    }
+
+    public List<Cell> getBorderCells(District district, Direction direction) {
+        if (district == District.PORT && direction == Direction.S) {
+            return getCellsOnMapBorder(district);
+        } else if (district == District.ARISTOCRACY && direction == Direction.E) {
+            return getCellsOnMapBorder(district);
+        } else if (district == District.FARM && direction == Direction.N) {
+            return getCellsOnMapBorder(district);
+        } else if (district == District.SLUMS && direction == Direction.W) {
+            return getCellsOnMapBorder(district);
+        } else {
+            return getCellsOnDistrictBorder(district,direction);
+        }
+    }
+
+    public Cell getBorderCell(District district, Direction direction) {
+
+        if (district == District.PORT && direction == Direction.S) {
+            return getCellOnMapBorder(district);
+        } else if (district == District.ARISTOCRACY && direction == Direction.E) {
+            return getCellOnMapBorder(district);
+        } else if (district == District.FARM && direction == Direction.N) {
+            return getCellOnMapBorder(district);
+        } else if (district == District.SLUMS && direction == Direction.W) {
+            return getCellOnMapBorder(district);
+        } else {
+            return getCellOnDistrictBorder(district);
+        }
+    }
+    public List<Cell> getBorderCells(District district) {
+        List<Cell> returnList = new ArrayList<>();
+        returnList.addAll(getCellsOnMapBorder(district));
+        returnList.addAll(getCellsOnDistrictBorder(district));
+        Collections.shuffle(returnList);
+        return returnList;
+    }
 
 
-    public void assignDistricts(Cell[][] grid) {
+    /*public void assignDistricts(Cell[][] grid) {
         for (int x = 0; x < size; x++) {
             for (int z = 0; z < size; z++) {
                 if (x < z && z <= (-x + (size-1))) {
@@ -259,19 +1592,20 @@ public class Grid {
                 this.outskirtsCells.add(grid[x][z]);
             }
         }
-    }
+    }*/
 
     public void generateSideRoads(Cell[][] grid) {
-
         for (int x = 0; x < size; x++) {
             if (x < size/2) {
                 if (x % 9 == 0) {
                     for (int z = 0; z < size; z++) {
 
-                        if (!grid[x][z].isOccupied) {
+                        if (!grid[x][z].isOccupied /*&& !(grid[x][z].district == District.OUTSKIRTS)*/) {
                             grid[x][z].isRoad = true;
                             grid[x][z].isOccupied = true;
-                            this.fillCellWithBlock(Material.COBBLESTONE, x , z );
+                            grid[x][z].roadTier = RoadTier.NORMAL;
+                            this.roadCells.add(grid[x][z]);
+                            //this.fillCellWithBlock(Material.COBBLESTONE, x , z );
                         }
 
                     }
@@ -280,10 +1614,12 @@ public class Grid {
                 if ((x-1) % 9 == 0) {
                     for (int z = 0; z < size; z++) {
 
-                        if (!grid[x][z].isOccupied) {
+                        if (!(grid[x][z].isOccupied && grid[x][z].isRiver) && !grid[x][z].isOccupied /*&& !(grid[x][z].district == District.OUTSKIRTS)*/) {
                             grid[x][z].isRoad = true;
                             grid[x][z].isOccupied = true;
-                            this.fillCellWithBlock(Material.COBBLESTONE, x , z );
+                            grid[x][z].roadTier = RoadTier.NORMAL;
+                            this.roadCells.add(grid[x][z]);
+                            //this.fillCellWithBlock(Material.COBBLESTONE, x , z );
                         }
 
                     }
@@ -318,7 +1654,7 @@ public class Grid {
         int lastX = startX;
         int lastZ = startZ;
         do {
-            List<Direction> potentialDirections = new ArrayList(Arrays.asList(new Direction[] {Direction.N, Direction.S, Direction.E, Direction.W}));
+            List<Direction> potentialDirections = new ArrayList(Arrays.asList(Direction.N, Direction.S, Direction.E, Direction.W));
             List<Direction> adjacentRoads = this.nearbyRoads(lastX, lastZ);
             if (!adjacentRoads.isEmpty()) {
                 if (adjacentRoads.contains(Direction.E)) {
@@ -339,10 +1675,8 @@ public class Grid {
                         nextDirection = Direction.E;
                     } else if (directionToMove < 80 && !(lastZ > (startZ+4))) {
                         nextDirection = Direction.N;
-                    } else if (directionToMove < 100 && !(lastZ < (startZ-4))) {
+                    } else if (!(lastZ < startZ-4)) {
                         nextDirection = Direction.S;
-                    } else {
-
                     }
                     if (!potentialDirections.contains(nextDirection)) {
                         if (!potentialDirections.contains(Direction.E)) {
@@ -356,16 +1690,19 @@ public class Grid {
 
                     if (nextDirection == Direction.E) {
                         lastX++;
-                    } else if (nextDirection == Direction.W) {
-                        lastX--;
                     } else if (nextDirection == Direction.S) {
                         lastZ--;
                     } else {
                         lastZ++;
                     }
+                    /*if (grid[lastX][lastZ].district == District.OUTSKIRTS) {
+                        return;
+                    }*/
                     grid[lastX][lastZ].isRoad = true;
                     grid[lastX][lastZ].isOccupied = true;
-                    this.fillCellWithBlock(Material.GRAVEL, lastX , lastZ);
+                    grid[lastX][lastZ].roadTier = RoadTier.BACKROAD;
+                    this.roadCells.add(grid[lastX][lastZ]);
+                    //this.fillCellWithBlock(Material.GRAVEL, lastX , lastZ);
 
 
                 }
@@ -441,6 +1778,34 @@ public class Grid {
         }
         return list;
     }
+    public List<Direction> nearbyRiversOnly(int cellX, int cellZ) {
+        List<Direction> list = new ArrayList();
+        int[][] neighbors = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        int direction = 0;
+        for (int[] neighbor : neighbors) {
+
+            int newRow = cellX + neighbor[0];
+            int newCol = cellZ + neighbor[1];
+            if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+                Cell neighborCell = grid[newRow][newCol];
+
+                if (neighborCell.isRiver) {
+                    if (direction == 0) {
+                        list.add(Direction.W);
+                    } else if (direction == 1) {
+                        list.add(Direction.E);
+                    } else if (direction == 2) {
+                        list.add(Direction.S);
+                    } else if (direction == 3) {
+                        list.add(Direction.N);
+                    }
+
+                }
+            }
+            direction++;
+        }
+        return list;
+    }
     public void pasteLinked(Paste paste, Paste parentPaste, List<Cell> cells) throws IOException {
         ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic"));
         ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, paste.schematic.fileName + ".schematic")));
@@ -469,7 +1834,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         try {
                             paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
@@ -503,7 +1868,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         try {
                             paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
@@ -537,7 +1902,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         try {
                             paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
@@ -571,7 +1936,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         try {
                             paste(parentPaste, getCellsForDistrict(parentPaste.schematic.district));
@@ -629,7 +1994,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                         try {
@@ -642,6 +2007,8 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     }
+                    nonRepeatableSchematicsGenerated++;
+                    generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
 
                 }
             }, paste.schematic.area);
@@ -683,7 +2050,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                         try {
@@ -696,6 +2063,8 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     }
+                    nonRepeatableSchematicsGenerated++;
+                    generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
 
 
                 }
@@ -738,7 +2107,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                         try {
@@ -751,6 +2120,8 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     }
+                    nonRepeatableSchematicsGenerated++;
+                    generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
 
                 }
             }, paste.schematic.area);
@@ -792,7 +2163,7 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        List<Cell> newCells = markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
+                        List<Cell> newCells = markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name);
                         getCellsForDistrict(paste.schematic.district).removeAll(newCells);
                         getSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
                         try {
@@ -805,6 +2176,8 @@ public class Grid {
                             throw new RuntimeException(e);
                         }
                     }
+                    nonRepeatableSchematicsGenerated++;
+                    generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
 
                 }
             }, paste.schematic.area);
@@ -816,8 +2189,10 @@ public class Grid {
             return;
         }
         FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+        if (!config.contains(paste.schematic.fileName)) {
+            return;
+        }
         ConfigurationSection master = config.getConfigurationSection(paste.schematic.fileName);
-        assert master != null;
         if (master.getConfigurationSection("ores") != null) {
             ConfigurationSection ores = master.getConfigurationSection("ores");
             Iterator iter = ores.getKeys(false).iterator();
@@ -1232,7 +2607,7 @@ public class Grid {
                     if (finalDistrict != District.OUTSKIRTS) {
                         newCells.addAll(markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name));
                     } else {
-                        newCells.addAll(markAsOccupiedOutskirts(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name));
+                        newCells.addAll(markAsOccupied(finalX, finalZ, paste.targetCellX, paste.targetCellZ, grid, finalDirection, paste.schematic.name));
                     }
                     for (Cell cell : newCells) {
                         cell.pasteDetails = new PasteDetails(paste.schematic.name, finalDirection, System.currentTimeMillis(), newCells, isOmni);
@@ -1265,7 +2640,8 @@ public class Grid {
                         throw new RuntimeException(e);
                     }
                     editSession.close();
-
+                    repeatableSchematicsGenerated+= newCells.size();
+                    generationProgress = (float)repeatableSchematicsGenerated/(float)repeatableSchematicsSize;
                     //getSchematicsForDistrict(finalDistrict).remove(paste.schematic);
                     //runningDelay = runningDelay + paste.schematic.area;
                     try {
@@ -1495,7 +2871,7 @@ public class Grid {
         }
     }
     public void generateStructure(List<Schematic> schematicList, Cell[][] grid, List<Cell> cells, District lastDistrict) throws IOException, WorldEditException, DataException {
-        if (schematicList.size() < 1 || schematicList.isEmpty()) {
+        if (schematicList.size() < 1) {
             if (plugin.schematicHandler.slumsSchematics.size() < 1 && plugin.schematicHandler.portSchematics.size() < 1 && plugin.schematicHandler.farmSchematics.size() < 1 && plugin.schematicHandler.aristocracySchematics.size() < 1) {
                 generateRepeatablesInitial(grid);
                 return;
@@ -1504,139 +2880,25 @@ public class Grid {
             return;
         }
         Schematic schematic = schematicList.get(0);
+
         Collections.shuffle(cells);
-        Iterator cellsIter = cells.iterator();
+        Iterator<Cell> cellsIter = cells.iterator();
         do {
             Cell cell = (Cell) cellsIter.next();
-            List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x, cell.z);
-            Direction direction = null;
-            if (nearbyRoads.size() > 1) {
-                direction = nearbyRoads.get(r.nextInt(nearbyRoads.size()));
-            } else if (nearbyRoads.size() == 1) {
-                direction = nearbyRoads.get(0);
-            }
-            if (direction == null) {
-                continue;
-            }
-            int targetZ = cell.z;
-            int targetX = cell.x;
-            int x = schematic.xLength;
-            int z = schematic.zHeight;
-            if (direction == Direction.W || direction == Direction.E) {
-                x = schematic.zHeight;
-                z = schematic.xLength;
-            }
-            if (cell.district != District.OUTSKIRTS) {
-                if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
-                    Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                    if (schematic.linkedSchematic == null) {
-                        paste(paste, getCellsForDistrict(paste.schematic.district));
-                    } else {
-                        Schematic linkedSchem = schematic.linkedSchematic;
-                        List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
-                        Collections.shuffle(linkedCells);
-                        Iterator linkedIter = linkedCells.iterator();
-
-                        do {
-                            Cell linkedCell = (Cell) linkedIter.next();
-                            List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
-                            Direction linkedDirection = null;
-                            if (linkedNearbyRoads.size() > 1) {
-                                linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
-                            } else if (linkedNearbyRoads.size() == 1) {
-                                linkedDirection = linkedNearbyRoads.get(0);
-                            }
-                            if (linkedDirection == null) {
-                                continue;
-                            }
-                            int linkedTargetZ = linkedCell.z;
-                            int linkedTargetX = linkedCell.x;
-                            int linkedX = linkedSchem.xLength;
-                            int linkedZ = linkedSchem.zHeight;
-                            if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
-                                linkedX = linkedSchem.zHeight;
-                                linkedZ = linkedSchem.xLength;
-                            }
-                            if (this.schemFitsInBounds(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(toBeOccupiedCells(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCells(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
-                                Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
-                                pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
-                                return;
-                            }
-                        } while (linkedIter.hasNext());
-
-                        schematicList.remove(schematic);
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-                    }
-                    return;
-                }
+            Direction direction;
+            if (schematic.omnidirectional) {
+                direction = potentialDirections.get(r.nextInt(potentialDirections.size()));
             } else {
-                if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
-                    Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
-                    if (schematic.linkedSchematic == null) {
-                        paste(paste, getCellsForDistrict(paste.schematic.district));
-                    } else {
-                        Schematic linkedSchem = schematic.linkedSchematic;
-                        List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
-                        Collections.shuffle(linkedCells);
-                        Iterator linkedIter = linkedCells.iterator();
-
-                        do {
-                            Cell linkedCell = (Cell) linkedIter.next();
-                            List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
-                            Direction linkedDirection = null;
-                            if (linkedNearbyRoads.size() > 1) {
-                                linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
-                            } else if (linkedNearbyRoads.size() == 1) {
-                                linkedDirection = linkedNearbyRoads.get(0);
-                            }
-                            if (linkedDirection == null) {
-                                continue;
-                            }
-                            int linkedTargetZ = linkedCell.z;
-                            int linkedTargetX = linkedCell.x;
-                            int linkedX = linkedSchem.xLength;
-                            int linkedZ = linkedSchem.zHeight;
-                            if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
-                                linkedX = linkedSchem.zHeight;
-                                linkedZ = linkedSchem.xLength;
-                            }
-                            if (this.schemFitsInBoundsOutskirts(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(toBeOccupiedCellsOutskirts(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCellsOutskirts(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
-                                Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
-                                pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
-                                return;
-                            }
-                        } while (linkedIter.hasNext());
-
-                        schematicList.remove(schematic);
-                        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-                    }
-                    return;
+                List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x, cell.z);
+                direction = null;
+                if (nearbyRoads.size() > 1) {
+                    direction = nearbyRoads.get(r.nextInt(nearbyRoads.size()));
+                } else if (nearbyRoads.size() == 1) {
+                    direction = nearbyRoads.get(0);
                 }
-            }
-
-        } while (cellsIter.hasNext());
-        schematicList.remove(schematic);
-        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
-        /*Collections.shuffle(cells);
-        Iterator cellsIter = cells.iterator();
-        do {
-            Cell cell = (Cell) cellsIter.next();
-            List<Direction> nearbyRoads = nearbyRoadsOnly(cell.x, cell.z);
-            Direction direction = null;
-            if (nearbyRoads.size() > 1) {
-                direction = nearbyRoads.get(r.nextInt(nearbyRoads.size()));
-            } else if (nearbyRoads.size() == 1) {
-                direction = nearbyRoads.get(0);
-            }
-            if (schematicList.size() < 1 || schematicList.isEmpty()) {
-                if (count < 5) {
-                    generateBuildingsHighway(grid, count + 1);
-                } else {
-                    return;
+                if (direction == null) {
+                    continue;
                 }
-            }
-            if (direction == null) {
-                continue;
             }
             int targetZ = cell.z;
             int targetX = cell.x;
@@ -1646,190 +2908,66 @@ public class Grid {
                 x = schematic.zHeight;
                 z = schematic.xLength;
             }
-            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
+            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, direction) && !this.containsBlacklistedCells(x,z,targetX,targetZ,direction,schematic)) {
+                Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
                 if (schematic.linkedSchematic == null) {
-
-                    return;
-                }
-            } else {
-                Schematic linkedSchematic = schematic.linkedSchematic;
-                List<Cell> linkedCells = getCellsForDistrict(linkedSchematic.district);
-                List<Cell> cellsToBeOccupied = toBeOccupiedCells(x, z, targetX, targetZ, grid, direction, schematic.name, cells);
-                Iterator linkedCellsIter = linkedCells.iterator();
+                    paste(paste, getCellsForDistrict(paste.schematic.district));
+                } else {
+                    Schematic linkedSchem = schematic.linkedSchematic;
+                    List<Cell> linkedCells = getCellsForDistrict(linkedSchem.district);
+                    Collections.shuffle(linkedCells);
+                    Iterator linkedIter = linkedCells.iterator();
                     do {
-                        Cell linkedCell = (Cell) linkedCellsIter.next();
-                        List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
-                        Direction linkedDirection = null;
-                        if (linkedNearbyRoads.size() > 1) {
-                            linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
-                        } else if (linkedNearbyRoads.size() == 1) {
-                            linkedDirection = linkedNearbyRoads.get(0);
-                        }
-                        if (linkedDirection == null) {
-                            continue;
+                        Cell linkedCell = (Cell) linkedIter.next();
+                        Direction linkedDirection;
+                        if (linkedSchem.omnidirectional) {
+                            linkedDirection = potentialDirections.get(r.nextInt(potentialDirections.size()));
+                        } else {
+                            List<Direction> linkedNearbyRoads = nearbyRoadsOnly(linkedCell.x, linkedCell.z);
+                            linkedDirection = null;
+                            if (linkedNearbyRoads.size() > 1) {
+                                linkedDirection = linkedNearbyRoads.get(r.nextInt(linkedNearbyRoads.size()));
+                            } else if (linkedNearbyRoads.size() == 1) {
+                                linkedDirection = linkedNearbyRoads.get(0);
+                            }
+                            if (linkedDirection == null) {
+                                continue;
+                            }
                         }
                         int linkedTargetZ = linkedCell.z;
                         int linkedTargetX = linkedCell.x;
-                        int linkedX = linkedSchematic.xLength;
-                        int linkedZ = linkedSchematic.zHeight;
+                        int linkedX = linkedSchem.xLength;
+                        int linkedZ = linkedSchem.zHeight;
                         if (linkedDirection == Direction.W || linkedDirection == Direction.E) {
-                            linkedX = linkedSchematic.zHeight;
-                            linkedZ = linkedSchematic.xLength;
+                            linkedX = linkedSchem.zHeight;
+                            linkedZ = linkedSchem.xLength;
                         }
-                        if (this.schemFitsInBounds(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !containsToBeOccupiedCells(cellsToBeOccupied, toBeOccupiedCells(linkedX, linkedZ,linkedTargetX, linkedTargetZ, grid, linkedDirection, linkedSchematic.name, linkedCells))) {
-                                ClipboardFormat format = ClipboardFormats.findByFile(new File(schemHandler.schematicDirectory, linkedSchematic.fileName + ".schematic"));
-                                ClipboardReader reader = format.getReader(new FileInputStream(new File(schemHandler.schematicDirectory, linkedSchematic.fileName + ".schematic")));
-                                Clipboard clipboard = reader.read();
-                                final int finalLinkedX = linkedX;
-                                final int finalLinkedZ = linkedZ;
-                                final Direction finalLinkedDirection = linkedDirection;
-                                    Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            Operation operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (linkedTargetX * cellSize), yLvl + 1, startZ + (linkedTargetZ * -cellSize))).ignoreAirBlocks(false).build();
-                                            try {
-                                                Operations.complete(operation);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            editSession.close();
-                                            List<Cell> newCells = markAsOccupied(finalLinkedX, finalLinkedZ, linkedTargetX, linkedTargetZ, grid, finalLinkedDirection, linkedSchematic.name, linkedCells);
-                                            if (linkedSchematic.district == District.FARM) {
-                                                farmCells = newCells;
-                                            } else if (linkedSchematic.district == District.ARISTOCRACY) {
-                                                aristocracyCells = newCells;
-                                            } else if (linkedSchematic.district == District.SLUMS) {
-                                                slumsCells = newCells;
-                                            } else if (linkedSchematic.district == District.PORT) {
-                                                portCells = newCells;
-                                            } else if (linkedSchematic.district == District.OUTSKIRTS) {
-                                                outskirtsCells = newCells;
-                                            }
-                                            editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            operation = (new ClipboardHolder(clipboard)).createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize), yLvl + 1, startZ + (targetZ * -cellSize))).ignoreAirBlocks(false).build();
-                                            try {
-                                                Operations.complete(operation);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            editSession.close();
-                                            newCells = markAsOccupied(x, z, targetX, targetZ, grid, direction, schematic.name, cells);
-                                            schematicList.remove(schematic);
-                                            try {
-                                                generateStructure(schematicList, grid, count, newCells, r);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (DataException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        }
-                                    }, schematic.area);
-                                    return;
-                                } else if (direction == Direction.E) {
-                                    Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                            holder.setTransform(new AffineTransform().rotateY(90));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at(startX + (targetX * cellSize) + 4, yLvl + 1, (startZ + (targetZ * -cellSize)) + 5 - cellSize)).ignoreAirBlocks(false).build();
-                                            try {
-                                                Operations.complete(operation);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            editSession.close();
-                                            List<Cell> newCells = markAsOccupied(finalX, finalZ, targetX, targetZ, grid, finalDirection, schematic.name, cells);
-                                            schematicList.remove(schematic);
-                                            try {
-                                                generateStructure(schematicList, grid, count, newCells, r);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (DataException e) {
-                                                throw new RuntimeException(e);
-                                            }
-
-                                        }
-                                    }, schematic.area);
-                                    return;
-                                } else if (direction == Direction.N) {
-                                    Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                            holder.setTransform(new AffineTransform().rotateY(180));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 1), yLvl + 1, (startZ + (targetZ * -cellSize)) + 1 - cellSize)).ignoreAirBlocks(false).build();
-                                            try {
-                                                Operations.complete(operation);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            editSession.close();
-                                            List<Cell> newCells = markAsOccupied(finalX, finalZ, targetX, targetZ, grid, finalDirection, schematic.name, cells);
-                                            schematicList.remove(schematic);
-                                            try {
-                                                generateStructure(schematicList, grid, count, newCells, r);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (DataException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        }
-                                    }, schematic.area);
-                                    return;
-                                } else if (direction == Direction.W) {
-                                    Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(BukkitAdapter.adapt(Bukkit.getWorlds().get(0)), -1);
-                                            ClipboardHolder holder = new ClipboardHolder(clipboard);
-                                            holder.setTransform(new AffineTransform().rotateY(270));
-                                            Operation operation = holder.createPaste(editSession).to(BlockVector3.at((startX + ((targetX + 1) * cellSize) - 5), yLvl + 1, (startZ + (targetZ * -cellSize) - 4))).ignoreAirBlocks(false).build();
-                                            try {
-                                                Operations.complete(operation);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                            editSession.close();
-                                            List<Cell> newCells = markAsOccupied(finalX, finalZ, targetX, targetZ, grid, finalDirection, schematic.name, cells);
-                                            schematicList.remove(schematic);
-                                            try {
-                                                generateStructure(schematicList, grid, count, newCells, r);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (WorldEditException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (DataException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        }
-                                    }, schematic.area);
-                                    return;
-                                }
-
+                        if (this.schemFitsInBounds(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection) && !this.containsBlacklistedCells(linkedX,linkedZ,linkedTargetX,linkedTargetZ,linkedDirection,linkedSchem) && !containsToBeOccupiedCells(toBeOccupiedCells(paste.x, paste.z, paste.targetCellX, paste.targetCellZ, grid, paste.direction), toBeOccupiedCells(linkedX, linkedZ, linkedTargetX, linkedTargetZ, grid, linkedDirection))) {
+                            Paste pasteLinked = new Paste(linkedSchem, linkedX, linkedZ, linkedDirection, linkedTargetX, linkedTargetZ);
+                            pasteLinked(pasteLinked, paste, getCellsForDistrict(pasteLinked.schematic.district));
+                            return;
                         }
 
-                    } while (cellsIter.hasNext());
+                    } while (linkedIter.hasNext());
+                    schematicList.remove(schematic);
+                    nonRepeatableSchematicsGenerated++;
+                    generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
+                    generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
+                    return;
                 }
-
-
+            }
         } while (cellsIter.hasNext());
-        if (count < 5) {
-            generateBuildingsHighway(grid, count + 1);
-        }
-*/
+        schematicList.remove(schematic);
+        nonRepeatableSchematicsGenerated++;
+        generationProgress = (float)nonRepeatableSchematicsGenerated/(float)nonRepeatableSchematicsSize;
+        generateStructure(getSchematicsForDistrict(cycleToNextDistrict(lastDistrict)), grid, getCellsForDistrict(cycleToNextDistrict(lastDistrict)), cycleToNextDistrict(lastDistrict));
     }
     public void generateRepeatablesInitial(Cell[][] grid) throws IOException {
         Bukkit.getLogger().log(Level.INFO, "Starting repeatable generation...");
         lastGeneration = System.currentTimeMillis();
+        tasksCompleted++;
+        generationProgress = 0.0f;
+        taskBeingPerformed = "Generating resources...";
         List<Cell> remainingCells = new ArrayList<>();
         remainingCells.addAll(getCellsForDistrict(District.FARM));
         remainingCells.addAll(getCellsForDistrict(District.ARISTOCRACY));
@@ -1837,6 +2975,7 @@ public class Grid {
         remainingCells.addAll(getCellsForDistrict(District.PORT));
         remainingCells.addAll(getCellsForDistrict(District.OUTSKIRTS));
         Collections.shuffle(remainingCells);
+        repeatableSchematicsSize = remainingCells.size();
         Bukkit.getLogger().log(Level.INFO, "Remaining cells to be filled: " + remainingCells.size());
         generateRepeatables(grid, remainingCells);
     }
@@ -1864,6 +3003,8 @@ public class Grid {
 
             if (cell.isOccupied || cell.isRoad) {
                 remainingCells.remove(cell);
+                repeatableSchematicsGenerated++;
+                generationProgress = (float)repeatableSchematicsGenerated/(float)repeatableSchematicsSize;
                 generateRepeatables(grid, remainingCells);
                 //Bukkit.getLogger().log(Level.INFO, "Cell was occupied moving on...");
                 return;
@@ -1903,7 +3044,7 @@ public class Grid {
                             z = schematic.zHeight;
                         }
                         if (cell.district != District.OUTSKIRTS) {
-                            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection)) {
+                            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection) && !this.containsBlacklistedCells(x,z,targetX,targetZ,oDirection,schematic)) {
 
                                 Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
 
@@ -1914,7 +3055,7 @@ public class Grid {
 
                             }
                         } else {
-                            if (this.schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, oDirection)) {
+                            if (this.schemFitsInBounds(x, z, targetX, targetZ, grid, oDirection) && !this.containsBlacklistedCells(x,z,targetX,targetZ,oDirection,schematic)) {
                                 Paste paste = new Paste(schematic, x, z, oDirection, targetX, targetZ);
                                 pasteRepeatable(paste, remainingCells, true);
                                 getOmniSchematicsForDistrict(paste.schematic.district).remove(paste.schematic);
@@ -1952,7 +3093,7 @@ public class Grid {
                         z = schematic.xLength;
                     }
                     if (cell.district != District.OUTSKIRTS) {
-                        if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction)) {
+                        if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction) && !this.containsBlacklistedCells(x,z,targetX,targetZ,direction,schematic)) {
                             Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
                             pasteRepeatable(paste, remainingCells, false);
                             //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
@@ -1960,7 +3101,7 @@ public class Grid {
                         }
                     } else {
 
-                        if (schemFitsInBoundsOutskirts(x, z, targetX, targetZ, grid, direction)) {
+                        if (schemFitsInBounds(x, z, targetX, targetZ, grid, direction) && !this.containsBlacklistedCells(x,z,targetX,targetZ,direction,schematic)) {
                             Paste paste = new Paste(schematic, x, z, direction, targetX, targetZ);
                             pasteRepeatable(paste, remainingCells, false);
                             //Bukkit.getLogger().log(Level.INFO, "Passing to pasteRepeatable");
@@ -1984,6 +3125,31 @@ public class Grid {
     }
 
 
+    public boolean containsBlacklistedCells(int xSize, int zSize, int gridX, int gridZ, Direction dir, Schematic schematic) {
+        int xFactor = 1;
+        int zFactor = 1;
+        if (dir == Direction.W) {
+            zFactor = -1;
+        } else if (dir == Direction.N) {
+            xFactor = -1;
+            zFactor = -1;
+        } else if (dir == Direction.E) {
+            xFactor = -1;
+        }
+        for (int x = 0 ; x < xSize; x++ ){
+            for (int z = 0; z < zSize; z++) {
+                int newX = gridX + (x * xFactor);
+                int newZ = gridZ + (z * zFactor);
+                for (int[] blacklist : schematic.blacklistedCells) {
+                    if (newX == blacklist[0] && newZ == blacklist[1]) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean schemFitsInBounds(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction) {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
@@ -1992,6 +3158,7 @@ public class Grid {
                         if (grid[gridX + x][gridZ + z].isOccupied) {
                             int xVal = gridX + x;
                             int zVal = gridZ + z;
+
                             //Bukkit.broadcastMessage("Schematic won't fit! Cell " + xVal + ", " + zVal + " is already occupied.");
                             return false;
                         }
@@ -2057,11 +3224,13 @@ public class Grid {
             return false;
         }
     }
+
+
     public boolean schemFitsInBoundsOutskirts(int xSize, int zSize, int gridX, int gridZ, Cell[][] grid, Direction direction) {
         if (direction == Direction.S) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX + x) < this.size ) && ((gridZ + z) < (int)size*1.5)) {
+                    if (((gridX + x) < this.size ) && ((gridZ + z) < size)) {
                         if (grid[gridX + x][gridZ + z].isOccupied) {
                             int xVal = gridX + x;
                             int zVal = gridZ + z;
@@ -2112,7 +3281,7 @@ public class Grid {
         } else if (direction == Direction.E) {
             for (int x = 0; x < xSize; x++) {
                 for (int z = 0; z < zSize; z++) {
-                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size*1.5)) {
+                    if (((gridX - x) >= 0 ) && ((gridZ + z) < size)) {
                         if (grid[gridX - x][gridZ + z].isOccupied) {
                             int xVal = gridX - x;
                             int zVal = gridZ + z;
@@ -2472,43 +3641,43 @@ public class Grid {
         }
     }
 
-    public void registerBlackList(List<String> list) {
-
+    public List<int[]> registerBlackList(List<String> list) {
+        List<int[]> returnList = new ArrayList<>();
         for (String line : list) {
             if (line.matches("[0-9]+,[0-9]+")) {
                 String[] parts = line.split(",");
-                this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]),Integer.parseInt(parts[1])});
+                returnList.add(new int[]{Integer.parseInt(parts[0]),Integer.parseInt(parts[1])});
             } else if (line.matches(">[0-9]+,[0-9]+")) {
                 String[] parts = line.split(",");
                 parts[0] = parts[0].replace(">","");
                 for (int i = Integer.parseInt(parts[0])+1; i < this.size; i++) {
-                    this.blacklistedCells.add(new int[]{i, Integer.parseInt(parts[1])});
+                    returnList.add(new int[]{i, Integer.parseInt(parts[1])});
                 }
             } else if (line.matches("<[0-9]+,[0-9]+")) {
                 String[] parts = line.split(",");
                 parts[0] = parts[0].replace("<","");
                 for (int i = 0; i < Integer.parseInt(parts[0]); i++) {
-                    this.blacklistedCells.add(new int[]{i, Integer.parseInt(parts[1])});
+                    returnList.add(new int[]{i, Integer.parseInt(parts[1])});
                 }
             } else if (line.matches("[0-9]+,>[0-9]+")) {
                 String[] parts = line.split(",");
                 parts[1] = parts[1].replace(">","");
-                for (int i = Integer.parseInt(parts[1])+1; i < this.size*1.5; i++) {
-                    this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]), i});
+                for (int i = Integer.parseInt(parts[1])+1; i < size; i++) {
+                    returnList.add(new int[]{Integer.parseInt(parts[0]), i});
                 }
             } else if (line.matches("[0-9]+,<[0-9]+")) {
                 String[] parts = line.split(",");
                 parts[1] = parts[1].replace("<","");
                 for (int i = 0; i < Integer.parseInt(parts[1]); i++) {
-                    this.blacklistedCells.add(new int[]{Integer.parseInt(parts[0]), i});
+                    returnList.add(new int[]{Integer.parseInt(parts[0]), i});
                 }
             } else if (line.matches(">[0-9]+,>[0-9]+")) {
                 String[] parts = line.split(",");
                 parts[0] = parts[0].replace(">","");
                 parts[1] = parts[1].replace(">","");
                 for (int x = Integer.parseInt(parts[0])+1; x < this.size; x++) {
-                    for (int z = Integer.parseInt(parts[1])+1; z < this.size*1.5; z++) {
-                        this.blacklistedCells.add(new int[]{x,z});
+                    for (int z = Integer.parseInt(parts[1])+1; z < size; z++) {
+                        returnList.add(new int[]{x,z});
                     }
                 }
             } else if (line.matches("<[0-9]+,>[0-9]+")) {
@@ -2516,8 +3685,8 @@ public class Grid {
                 parts[0] = parts[0].replace("<","");
                 parts[1] = parts[1].replace(">","");
                 for (int x = 0; x < Integer.parseInt(parts[0]); x++) {
-                    for (int z = Integer.parseInt(parts[1])+1; z < this.size*1.5; z++) {
-                        this.blacklistedCells.add(new int[]{x,z});
+                    for (int z = Integer.parseInt(parts[1])+1; z < size; z++) {
+                        returnList.add(new int[]{x,z});
                     }
                 }
             } else if (line.matches(">[0-9]+,<[0-9]+")) {
@@ -2526,7 +3695,7 @@ public class Grid {
                 parts[1] = parts[1].replace("<","");
                 for (int x = Integer.parseInt(parts[0])+1; x < this.size ; x++) {
                     for (int z = 0; z < Integer.parseInt(parts[1]); z++) {
-                        this.blacklistedCells.add(new int[]{x,z});
+                        returnList.add(new int[]{x,z});
                     }
                 }
             } else if (line.matches("<[0-9]+,<[0-9]+")) {
@@ -2535,22 +3704,25 @@ public class Grid {
                 parts[1] = parts[1].replace("<","");
                 for (int x = 0; x < Integer.parseInt(parts[0]); x++) {
                     for (int z = 0; z < Integer.parseInt(parts[1]); z++) {
-                        this.blacklistedCells.add(new int[]{x,z});
+                        returnList.add(new int[]{x,z});
                     }
                 }
             } else if (line.matches("x = [0-9]+")) {
                 String x = line.replace("x = ", "");
-                for (int z = 0; z < this.size*1.5; z++) {
-                    this.blacklistedCells.add(new int[]{Integer.parseInt(x), z});
+                for (int z = 0; z < size; z++) {
+                    returnList.add(new int[]{Integer.parseInt(x), z});
                 }
             } else if (line.matches("z = [0-9]+")) {
                 String z = line.replace("z = ", "");
-                for (int x = 0; x < this.size; x++) {
-                    this.blacklistedCells.add(new int[]{x, Integer.parseInt(z)});
+                for (int x = 0; x < size; x++) {
+                    returnList.add(new int[]{x, Integer.parseInt(z)});
                 }
             }
         }
+        return returnList;
     }
+
+
 
 
 }

@@ -7,22 +7,27 @@ import java.util.List;
 
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.npc.TGTNpc;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 
-public class OreHandler {
+public class OreHandler implements IHandler {
 
-    public List<OreTemplate> allOres;
+    public List<OreTemplate> allOres = new ArrayList<>();
 
-    public List<Ore> allSpawnedOres;
+    public List<Ore> allSpawnedOres = new ArrayList<>();
+    TGT plugin;
 
 
 
-    public OreHandler() {
-    }
-    public void registerOreTemplates(TGT plugin, ConfigurationSection config) throws IOException {
+    public OreHandler(TGT plugin) {
+        this.plugin = plugin;
         this.allOres = new ArrayList<>();
         this.allSpawnedOres = new ArrayList<>();
+    }
+    public void registerOreTemplates(ConfigurationSection config) throws IOException {
+
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -65,5 +70,10 @@ public class OreHandler {
             Ore ore = getClosestOre(ores, originLoc);
             return ore;
         }
+    }
+
+    @Override
+    public void register(YamlConfiguration configuration) throws IOException {
+        this.registerOreTemplates(configuration.getConfigurationSection("ores"));
     }
 }

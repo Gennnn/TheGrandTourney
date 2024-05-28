@@ -5,17 +5,20 @@
 
 package me.genn.thegrandtourney.shops;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
-public class ShopHandler {
+public class ShopHandler implements IHandler {
     public String soundSale;
     public String soundNoMoney;
     Map<String, ShopItem> items;
@@ -30,6 +33,10 @@ public class ShopHandler {
     public ShopHandler(TGT plugin) {
         this.plugin = plugin;
         this.invShops = new InvShop(plugin);
+    }
+
+    public void register(YamlConfiguration config) throws IOException {
+        this.registerShops(config.getConfigurationSection("shops"));
     }
 
     public void registerShops(ConfigurationSection config) {

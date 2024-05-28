@@ -10,27 +10,34 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.skills.farming.Crop;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
 import me.genn.thegrandtourney.skills.fishing.FishingZoneTemplate;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
-public class DungeonTemplateHandler {
+public class DungeonTemplateHandler implements IHandler {
 
     public List<DungeonTemplate> allTemplates;
 
     public List<Dungeon> allDungeons;
-
-
-
-
-    public DungeonTemplateHandler() {
+    TGT plugin;
+    public DungeonTemplateHandler(TGT plugin) {
+        this.plugin = plugin;
     }
-    public void registerTemplates(TGT plugin, ConfigurationSection config) throws IOException {
+
+    public void register(YamlConfiguration config) throws IOException {
+        if (config.contains("dungeons")) {
+            this.registerTemplates(config.getConfigurationSection("dungeons"));
+        }
+
+    }
+    public void registerTemplates(ConfigurationSection config) throws IOException {
         this.allDungeons = new ArrayList<>();
         this.allTemplates = new ArrayList<>();
         Iterator var4 = config.getKeys(false).iterator();

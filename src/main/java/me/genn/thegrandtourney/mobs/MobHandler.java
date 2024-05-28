@@ -13,23 +13,28 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.item.MMOItem;
 import me.genn.thegrandtourney.mobs.MMOMob;
 import me.genn.thegrandtourney.npc.TGTNpc;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import net.citizensnpcs.api.npc.NPC;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 
-public class MobHandler {
+public class MobHandler implements IHandler {
 
     public List<MMOMob> allMobs;
-
-
-
-    public MobHandler() {
+    TGT plugin;
+    public MobHandler(TGT plugin) {
+        this.plugin = plugin;
     }
-    public void registerMobs(TGT plugin, ConfigurationSection config) throws IOException {
+
+    public void register(YamlConfiguration config) throws IOException {
+        this.registerMobs(config.getConfigurationSection("mobs"));
+    }
+    public void registerMobs(ConfigurationSection config) throws IOException {
         this.allMobs = new ArrayList<>();
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {

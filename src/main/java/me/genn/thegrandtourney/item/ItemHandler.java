@@ -10,29 +10,35 @@ import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.npc.TGTNpc;
 import me.genn.thegrandtourney.player.StatUpdates;
 import me.genn.thegrandtourney.skills.Recipe;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import net.citizensnpcs.api.npc.NPC;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class ItemHandler {
+public class ItemHandler implements IHandler {
 
     public List<MMOItem> allItems;
     public List<Recipe> allRecipes;
     TGT plugin;
-
-
-
     public ItemHandler(TGT plugin) {
-    }
-    public void registerItems(TGT plugin, ConfigurationSection config) throws IOException {
+        this.plugin = plugin;
         this.allItems = new ArrayList<>();
         this.allRecipes = new ArrayList<>();
+    }
+
+    @Override
+    public void register(YamlConfiguration config) throws IOException {
+        this.registerItems(config.getConfigurationSection("items"));
+    }
+    public void registerItems(ConfigurationSection config) throws IOException {
+
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -43,10 +49,10 @@ public class ItemHandler {
                 plugin.getLogger().severe("Item " + key + " was empty!");
             }
         }
-        registerRecipes(plugin);
+        registerRecipes();
 
     }
-    public void registerRecipes(TGT plugin) throws IOException {
+    public void registerRecipes() throws IOException {
         Iterator var4 = this.allRecipes.iterator();
         while(var4.hasNext()) {
             Recipe recipe = (Recipe) var4.next();
@@ -185,11 +191,6 @@ public class ItemHandler {
             return null;
         }
     }
-
-
-
-
-
 
 
 

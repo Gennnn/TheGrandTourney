@@ -12,6 +12,7 @@ import de.tr7zw.nbtapi.NBTItem;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.npc.TGTNpc;
 import me.genn.thegrandtourney.skills.fishing.FishingZone;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -19,21 +20,25 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import net.citizensnpcs.api.npc.NPC;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 
-public class SpawnerHandler {
+public class SpawnerHandler implements IHandler {
 
     public List<SpawnerTemplate> allSpawners;
 
     public List<Spawner> allSpawnedSpawners;
+    TGT plugin;
 
 
 
-    public SpawnerHandler() {
-    }
-    public void registerSpawners(TGT plugin, ConfigurationSection config) throws IOException {
+    public SpawnerHandler(TGT plugin) {
+        this.plugin = plugin;
         this.allSpawners = new ArrayList<>();
         this.allSpawnedSpawners = new ArrayList<>();
+    }
+    public void registerSpawners(ConfigurationSection config) throws IOException {
+
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -76,5 +81,10 @@ public class SpawnerHandler {
             Spawner spawner = getClosestSpawner(spawners, originLoc);
             return spawner;
         }
+    }
+
+    @Override
+    public void register(YamlConfiguration configuration) throws IOException {
+        this.registerSpawners(configuration.getConfigurationSection("spawners"));
     }
 }

@@ -3,42 +3,37 @@ package me.genn.thegrandtourney.npc;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 import io.lumine.mythic.core.skills.stats.types.ParryChanceStat;
 import me.genn.thegrandtourney.TGT;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 
-public class NPCHandler {
+public class NPCHandler implements IHandler {
     public static File skinAndSigFolder;
     public static File skinAndSigDirectory;
-    public List<String> skinsAndSigs;
-    public List<TGTNpc> allNpcs;
-    public List<TGTNpc> subNpcs;
-    public List<TGTNpc> allSpawnedNpcs;
+    public List<TGTNpc> allNpcs = new ArrayList<>();
+    public List<TGTNpc> allSpawnedNpcs = new ArrayList<>();
     TGT plugin;
 
-
-
-    public NPCHandler(File skinAndSigFolder, File skinAndSigDirectory, TGT plugin) {
-        this.skinAndSigFolder = skinAndSigFolder;
-        this.skinAndSigDirectory = skinAndSigDirectory;
+    public NPCHandler(TGT plugin) {
         this.plugin = plugin;
+        this.skinAndSigFolder = new File(plugin.getDataFolder(), "npc-skins/");
+        this.skinAndSigDirectory = new File(plugin.getDataFolder(), "npc-skins");
     }
 
-    public void generate() {
-        this.allNpcs = new ArrayList<TGTNpc>();
-        this.allSpawnedNpcs = new ArrayList<TGTNpc>();
-        this.skinsAndSigs = new ArrayList<String>();
-        String[] contents = skinAndSigFolder.list();
-        for (int i=0; i < contents.length; i++) {
-            skinsAndSigs.add(contents[i]);
-        }
+    @Override
+    public void register(YamlConfiguration configuration) throws IOException {
+        this.registerNPCs(configuration.getConfigurationSection("npcs"));
+        this.registerSubNPCs();
     }
 
-    public void registerNPCs(TGT plugin, ConfigurationSection config) throws IOException {
+    public void registerNPCs(ConfigurationSection config) throws IOException {
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -52,7 +47,7 @@ public class NPCHandler {
 
     }
 
-    public void registerSubNPCs(TGT plugin) throws IOException {
+    public void registerSubNPCs() throws IOException {
         for (TGTNpc npc : allNpcs ) {
             if (npc != null) {
             TGTNpc.createStep2(npc);
@@ -81,6 +76,10 @@ public class NPCHandler {
         return list.stream().filter(o -> o.getName().equals(name)).toList();
     }
 
+    public TGTNpc getNpcWithName(final String name){
+        return this.allSpawnedNpcs.stream().filter(o -> o.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
+    }
+
     private TGTNpc getClosestNpc(List<TGTNpc> npcs, Location originLoc) {
         TGTNpc npc = npcs.get(0);
         Location minLoc = npc.pasteLocation;
@@ -104,7 +103,6 @@ public class NPCHandler {
             return npc;
         }
     }
-
 
 
 

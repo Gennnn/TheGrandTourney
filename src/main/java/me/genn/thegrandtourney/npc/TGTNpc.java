@@ -16,9 +16,11 @@ import me.genn.thegrandtourney.player.ObjectiveUpdate;
 import me.genn.thegrandtourney.xp.Xp;
 import me.genn.thegrandtourney.xp.XpType;
 import net.citizensnpcs.api.trait.trait.Equipment;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -86,19 +88,32 @@ public class TGTNpc {
         npc.childNpcs = config.getStringList("child-npcs");
         npc.skinAndSigName = config.getString("skin", npc.internalName);
         if (npc.skinAndSigName != null) {
-            File file = new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".skin.txt");
-            BufferedReader reader;
-            if (file.exists()) {
-                reader = new BufferedReader(new FileReader(file));
-                npc.skin = reader.readLine();
-                reader.close();
-            }
-            file = new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".sig.txt");
-            if (file.exists()) {
-                reader = new BufferedReader(new FileReader(file));
-                npc.skinSig = reader.readLine();
-                reader.close();
-            }
+            if (new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".skin.txt").exists() && new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".sig.txt").exists()) {
+                File file = new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".skin.txt");
+                BufferedReader reader;
+                if (file.exists()) {
+                    reader = new BufferedReader(new FileReader(file));
+                    npc.skin = reader.readLine();
+                    reader.close();
+                }
+                file = new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".sig.txt");
+                if (file.exists()) {
+                    reader = new BufferedReader(new FileReader(file));
+                    npc.skinSig = reader.readLine();
+                    reader.close();
+                }
+            } else if (new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".yml").exists()) {
+                File file = new File(NPCHandler.skinAndSigDirectory, npc.skinAndSigName + ".yml");
+                YamlConfiguration skinConfig = new YamlConfiguration();
+                try {
+                    skinConfig.load(file);
+                    npc.skin = skinConfig.getString("Skin");
+                    npc.skinSig = skinConfig.getString("Signature");
+                } catch (Exception var5) {
+                    Bukkit.getLogger().log(Level.SEVERE, "SKIN FILE FOR NPC=" + npc.internalName + " WAS NULL");
+                }
+             }
+
         }
         if (config.getBoolean("look-close", true)) {
 
@@ -304,6 +319,7 @@ public class TGTNpc {
             if (command.contains("$npcChildId")) {
                 command = command.replaceAll("(\\$npcChildId_)([^\\ \\s]*)",String.valueOf(((TGTNpc)( childNpcList.stream().filter(o -> o.getName().equals("$1")).toArray()[0])).npc.getId()));
             }
+
 
             component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command));
         } else {

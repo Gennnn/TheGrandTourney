@@ -7,28 +7,31 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import me.genn.thegrandtourney.TGT;
 import me.genn.thegrandtourney.skills.mining.Ore;
+import me.genn.thegrandtourney.util.IHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
-public class CropHandler {
+public class CropHandler implements IHandler {
 
     public List<CropTemplate> allCrops;
 
     public List<Crop> allSpawnedCrops;
+    TGT plugin;
 
-
-
-    public CropHandler() {
-    }
-    public void registerCropTemplates(TGT plugin, ConfigurationSection config) throws IOException {
+    public CropHandler(TGT plugin) {
+        this.plugin = plugin;
         this.allCrops = new ArrayList<>();
         this.allSpawnedCrops = new ArrayList<>();
+    }
+    public void registerCropTemplates(ConfigurationSection config) throws IOException {
+
         Iterator var4 = config.getKeys(false).iterator();
         while(var4.hasNext()) {
             String key = (String)var4.next();
@@ -85,5 +88,10 @@ public class CropHandler {
             Crop crop = getClosestCrop(crops, originLoc);
             return crop;
         }
+    }
+
+    @Override
+    public void register(YamlConfiguration configuration) throws IOException {
+        this.registerCropTemplates(configuration.getConfigurationSection("crops"));
     }
 }

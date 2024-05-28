@@ -739,7 +739,7 @@ public class EventListener implements Listener {
     @EventHandler
     public void onInvOpenNoMenuAnymore(InventoryOpenEvent e) {
 
-        if (plugin.itemHandler.itemIsMMOItemOfName(e.getPlayer().getItemOnCursor(), "tgt_menu")) {
+        if (plugin.itemHandler.itemIsMMOItemOfName(e.getPlayer().getItemOnCursor(), plugin.menuItemName)) {
             e.getPlayer().setItemOnCursor(new ItemStack(Material.AIR));
         }
     }
@@ -798,8 +798,9 @@ public class EventListener implements Listener {
         mmoPlayer.setHealth(mmoPlayer.getMaxHealth());
         if (!plugin.tournament) {
             e.getPlayer().teleport(mmoPlayer.getRespawnLocation());
-            mmoPlayer.removePurseGold((int)(mmoPlayer.getPurseGold()/2));
-            e.getPlayer().sendMessage(ChatColor.RED + "You died and lost " + (int)(mmoPlayer.getPurseGold()/2) + " Dosh!");
+            float removalAmount = (float) (mmoPlayer.getPurseGold()/2);
+            mmoPlayer.removePurseGold(removalAmount);
+            e.getPlayer().sendMessage(ChatColor.RED + "You died and lost " + getMoneyString(removalAmount) + " Dosh!");
             e.getPlayer().playSound(e.getPlayer(), "entity.zombie.attack_iron_door", 2000.0F, 2.0F);
             e.getPlayer().playSound(e.getPlayer(), "entity.player.death", 1000.0F, 2.0F);
         } else {
@@ -820,8 +821,14 @@ public class EventListener implements Listener {
 
         }
     }
-    private boolean fishingInOcean(Location loc) {
-        return loc.getX() < plugin.grid.oceanXMin
+    private String getMoneyString(double amount) {
+        if ((int) amount == amount) {
+            return String.format("%,d", (int) amount);
+        } else {
+            return String.format("%,.1f", amount);
+        }
+    }
+    private boolean fishingInOcean(Location loc) {return loc.getX() < plugin.grid.oceanXMin
                 || loc.getX() > plugin.grid.oceanXMax
                 || loc.getZ() < plugin.grid.oceanZMin
                 || loc.getZ() > plugin.grid.oceanZMax;

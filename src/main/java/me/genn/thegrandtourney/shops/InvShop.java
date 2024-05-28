@@ -75,6 +75,9 @@ public class InvShop implements Listener {
                                 NBTCompound comp = nbtI.getCompound("ExtraAttributes");
                                 if (comp.hasTag("id")) {
                                     String mmoId = comp.getString("id");
+                                    if (mmoId.equalsIgnoreCase(plugin.menuItemName)) {
+                                        continue;
+                                    }
                                     MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(mmoId);
                                     List<String> lore = item.getItemMeta().getLore();
                                     lores.put(i,lore);
@@ -241,6 +244,9 @@ public class InvShop implements Listener {
                         NBTCompound comp = nbtI.getCompound("ExtraAttributes");
                         if (comp.hasTag("id")) {
                             String mmoId = comp.getString("id");
+                            if (mmoId.equalsIgnoreCase(plugin.menuItemName)) {
+                                return;
+                            }
                             MMOItem mmoItem = plugin.itemHandler.getMMOItemFromString(mmoId);
                             float price = mmoItem.sellPrice * item.getAmount();
                             if (comp.hasTag("statBoost")) {
