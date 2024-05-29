@@ -23,6 +23,7 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.EulerAngle;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -264,6 +265,7 @@ public class Table {
         this.dir = dir;
     }
     public void alchemyHolding(Location loc, Direction dir) {
+
         Interaction in = loc.getWorld().spawn(loc, Interaction.class);
         in.setInteractionWidth(2);
         in.setInteractionHeight(2);
@@ -283,6 +285,7 @@ public class Table {
         summonArmorStand(0.0 ,-3.81633 ,0.4375,0f,-45f,0f,item,loc,dir);
 
         summonArmorStand(0.366465 ,-3.69708 ,0.472453,-20f,20f,-50f,new ItemStack(Material.BLAZE_ROD),loc,dir);
+        Direction finalDir = dir;
         new BukkitRunnable() {
 
             @Override
@@ -294,7 +297,10 @@ public class Table {
                 effect.particle = Particle.SMOKE_NORMAL;
                 effect.iterations = 1;
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(new Location(loc.getWorld(), 0.366465 ,-3.69708 ,0.472453)));
+                effect.particleOffsetX = 0;
+                effect.particleOffsetY = 0;
+                effect.particleOffsetZ = 0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(0 ,1.1 ,0), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 0L, 10L);
@@ -304,10 +310,10 @@ public class Table {
         summonArmorStand(0.3125 ,-3.50383 ,0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
         summonArmorStand(-0.3125 ,-3.50383 ,-0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
 
-        summonArmorStand(0.0 ,-3.47258 ,0.15625,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(-0.125 ,-3.47258 ,-0.03125,0f,180f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(0.125 ,-3.47258 ,-0.03125,0f,0f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(0.0 ,-3.47258 ,-0.21875,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.0 ,-3.77258 ,0.15625,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(-0.125 ,-3.77258 ,-0.03125,0f,180f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.125 ,-3.77258 ,-0.03125,0f,0f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.0 ,-3.77258 ,-0.21875,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
 
         summonSmallArmorStand(0.0 ,-2.65559 ,-0.34687500000000004,90f,0f,0f,new ItemStack(Material.LEVER),loc,dir);
         summonSmallArmorStand(0.28437500000000004 ,-2.27277 ,-0.03125,-90f,-90f,0f,new ItemStack(Material.LEVER),loc,dir);
@@ -318,7 +324,7 @@ public class Table {
         PotionMeta meta = (PotionMeta) item.getItemMeta();
         meta.setColor(Color.RED);
         item.setItemMeta(meta);
-        summonSmallArmorStand(0.0 ,-3.06105 ,0.37890599999999997,-20f,20f,-50f,item,loc,dir);
+        summonSmallArmorStand(0.0 ,-3.06105 ,0.37890599999999997,0f,0f,0f,item,loc,dir);
         meta.setColor(Color.GREEN);
         item.setItemMeta(meta);
         summonSmallArmorStand(0.0 ,-3.06105 ,-0.47265599999999997,0f,180f,0f,item,loc,dir);
@@ -330,11 +336,15 @@ public class Table {
         summonSmallArmorStand(-0.44140599999999997 ,-3.06105 ,-0.03125,0f,90f,0f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjlkYzk1OGU1YTM5NWNhMzE1NmNiODdkMTAzNjA0ZGIzYTIzMWQ4OTUwZjYzZjU5MDY2MTgwMWI3ZGEzYjlmOCJ9fX0=", item);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTFlN2ViMmU0NjFlOTZlNjMxY2JhMGMwY2RhYTU0NDg4MDYzMDJlZGFlOTFiNjFkYWZjMjgxYWU1ODRkOCJ9fX0=", item);
         summonSmallArmorStand(0.65625 ,-2.51418 ,-0.6875,0f,-60f,0f,item,loc,dir);
 
+        item = new ItemStack(Material.PLAYER_HEAD);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTYyOWEzZDNmNTE5ZGNkMzg1YjU5OTJlZjM0YmZhOGE2OGMzNzQ0NDc1MGI5NGVkZTVjMmY1MjFlMTczNDIifX19", item);
+        summonSmallArmorStand(-0.65625 ,-2.51418 ,-0.6875,0f,-20f,0f,item,loc,dir);
+
         item = new ItemStack(Material.NETHER_BRICK_SLAB);
-        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,45f,0f,-90f,item,loc,dir);
+        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,0f,-45f,0f,item,loc,dir);
         summonArmorStand(0.39552699999999996 ,-3.31633 ,-0.916973,-90f,45f,180f,item,loc,dir);
         summonArmorStand(0.65625 ,-3.31633 ,-0.65625,0f,-45f,180f,item,loc,dir);
         summonArmorStand(-0.39552699999999996 ,-3.31633 ,-0.916973,-90f,-45f,180f,item,loc,dir);
@@ -376,6 +386,7 @@ public class Table {
         summonArmorStand(0.0 ,-3.81633 ,0.4375,0f,-45f,0f,item,loc,dir);
 
         summonArmorStand(0.366465 ,-3.69708 ,0.472453,-20f,20f,-50f,new ItemStack(Material.BLAZE_ROD),loc,dir);
+        Direction finalDir = dir;
         new BukkitRunnable() {
 
             @Override
@@ -387,7 +398,10 @@ public class Table {
                 effect.particle = Particle.SMOKE_NORMAL;
                 effect.iterations = 1;
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(new Location(loc.getWorld(), 0.366465 ,-3.69708 ,0.472453)));
+                effect.particleOffsetX = 0;
+                effect.particleOffsetY = 0;
+                effect.particleOffsetZ = 0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(0 ,1.1 ,0), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 0L, 10L);
@@ -397,10 +411,10 @@ public class Table {
         summonArmorStand(0.3125 ,-3.50383 ,0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
         summonArmorStand(-0.3125 ,-3.50383 ,-0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
 
-        summonArmorStand(0.0 ,-3.47258 ,0.15625,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(-0.125 ,-3.47258 ,-0.03125,0f,180f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(0.125 ,-3.47258 ,-0.03125,0f,0f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
-        summonArmorStand(0.0 ,-3.47258 ,-0.21875,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.0 ,-3.77258 ,0.15625,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(-0.125 ,-3.77258 ,-0.03125,0f,180f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.125 ,-3.77258 ,-0.03125,0f,0f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
+        summonArmorStand(0.0 ,-3.77258 ,-0.21875,0f,90f,0f,new ItemStack(Material.STONE_BUTTON),loc,dir);
 
         summonSmallArmorStand(0.0 ,-2.65559 ,-0.34687500000000004,90f,0f,0f,new ItemStack(Material.LEVER),loc,dir);
         summonSmallArmorStand(0.28437500000000004 ,-2.27277 ,-0.03125,-90f,-90f,0f,new ItemStack(Material.LEVER),loc,dir);
@@ -411,7 +425,7 @@ public class Table {
         PotionMeta meta = (PotionMeta) item.getItemMeta();
         meta.setColor(Color.RED);
         item.setItemMeta(meta);
-        summonSmallArmorStand(0.0 ,-3.06105 ,0.37890599999999997,-20f,20f,-50f,item,loc,dir);
+        summonSmallArmorStand(0.0 ,-3.06105 ,0.37890599999999997,0f,0f,0f,item,loc,dir);
         meta.setColor(Color.GREEN);
         item.setItemMeta(meta);
         summonSmallArmorStand(0.0 ,-3.06105 ,-0.47265599999999997,0f,180f,0f,item,loc,dir);
@@ -423,11 +437,15 @@ public class Table {
         summonSmallArmorStand(-0.44140599999999997 ,-3.06105 ,-0.03125,0f,90f,0f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjlkYzk1OGU1YTM5NWNhMzE1NmNiODdkMTAzNjA0ZGIzYTIzMWQ4OTUwZjYzZjU5MDY2MTgwMWI3ZGEzYjlmOCJ9fX0=", item);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTFlN2ViMmU0NjFlOTZlNjMxY2JhMGMwY2RhYTU0NDg4MDYzMDJlZGFlOTFiNjFkYWZjMjgxYWU1ODRkOCJ9fX0=", item);
         summonSmallArmorStand(0.65625 ,-2.51418 ,-0.6875,0f,-60f,0f,item,loc,dir);
 
+        item = new ItemStack(Material.PLAYER_HEAD);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTYyOWEzZDNmNTE5ZGNkMzg1YjU5OTJlZjM0YmZhOGE2OGMzNzQ0NDc1MGI5NGVkZTVjMmY1MjFlMTczNDIifX19", item);
+        summonSmallArmorStand(-0.65625 ,-2.51418 ,-0.6875,0f,-20f,0f,item,loc,dir);
+
         item = new ItemStack(Material.NETHER_BRICK_SLAB);
-        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,45f,0f,-90f,item,loc,dir);
+        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,0f,-45f,0f,item,loc,dir);
         summonArmorStand(0.39552699999999996 ,-3.31633 ,-0.916973,-90f,45f,180f,item,loc,dir);
         summonArmorStand(0.65625 ,-3.31633 ,-0.65625,0f,-45f,180f,item,loc,dir);
         summonArmorStand(-0.39552699999999996 ,-3.31633 ,-0.916973,-90f,-45f,180f,item,loc,dir);
@@ -460,14 +478,17 @@ public class Table {
         summonArmorStand(-0.3125 ,-3.50383 ,-0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
 
         item = new ItemStack(Material.NETHER_BRICK_SLAB);
-        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,45f,0f,-90f,item,loc,dir);
+        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,0f,-45f,0f,item,loc,dir);
         summonArmorStand(0.39552699999999996 ,-3.31633 ,-0.916973,-90f,45f,180f,item,loc,dir);
         summonArmorStand(0.65625 ,-3.31633 ,-0.65625,0f,-45f,180f,item,loc,dir);
         summonArmorStand(-0.39552699999999996 ,-3.31633 ,-0.916973,-90f,-45f,180f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNzI4YWQ4ZDMxNDg2YTdmOWFhZDIwMGVkYjM3M2VhODAzZDFmYzVmZDQzMjFiMmUyYTk3MTM0ODIzNDQ0MyJ9fX0==", item);
-        summonArmorStand(0.0 ,-3.47258 ,0.0,0f,0f,0f,item,loc,dir);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNzI4YWQ4ZDMxNDg2YTdmOWFhZDIwMGVkYjM3M2VhODAzZDFmYzVmZDQzMjFiMmUyYTk3MTM0ODIzNDQ0MyJ9fX0=", item);
+        summonArmorStand(0.0 ,-3.69258 ,0.0,0f,0f,0f,item,loc,dir);
+
+        item = new ItemStack(Material.STICK);
+        summonArmorStand(0.577666 ,-3.69121 ,0.10055399999999999,0f,-30f,-25f,item,loc,dir);
 
         item = new ItemStack(Material.GOLDEN_SHOVEL);
         summonSmallArmorStand(0.10644500000000001 ,-2.58527 ,0.40625,-90f,-90f,0f,item,loc,dir);
@@ -478,8 +499,10 @@ public class Table {
         summonSmallArmorStand(0.701782 ,-2.67721 ,-0.23855700000000002,-80f,-165f,0f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI3ZDY0ZTE0M2UwNThhZmQ5MWFhYTY1MTFiZTVlNDc0OTg3OWZlNDU2NGI0YTVjNTVhMzI0MzkzMTU2NDVhZSJ9fX0===", item);
-        summonSmallArmorStand(-0.65625 ,-2.51418 ,-0.65625,0f,-60f,0f,item,loc,dir);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI3ZDY0ZTE0M2UwNThhZmQ5MWFhYTY1MTFiZTVlNDc0OTg3OWZlNDU2NGI0YTVjNTVhMzI0MzkzMTU2NDVhZSJ9fX0=", item);
+        summonSmallArmorStand(-0.65625 ,-2.61418 ,-0.65625,0f,-60f,0f,item,loc,dir);
+
+        summonSmallArmorStand(0.63625 ,-2.31418 ,-0.65625,90f,-60f,0f,item,loc,dir);
         this.dir = dir;
     }
 
@@ -524,14 +547,17 @@ public class Table {
         summonArmorStand(-0.3125 ,-3.50383 ,-0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
 
         item = new ItemStack(Material.NETHER_BRICK_SLAB);
-        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,45f,0f,-90f,item,loc,dir);
+        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,0f,-45f,0f,item,loc,dir);
         summonArmorStand(0.39552699999999996 ,-3.31633 ,-0.916973,-90f,45f,180f,item,loc,dir);
         summonArmorStand(0.65625 ,-3.31633 ,-0.65625,0f,-45f,180f,item,loc,dir);
         summonArmorStand(-0.39552699999999996 ,-3.31633 ,-0.916973,-90f,-45f,180f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNzI4YWQ4ZDMxNDg2YTdmOWFhZDIwMGVkYjM3M2VhODAzZDFmYzVmZDQzMjFiMmUyYTk3MTM0ODIzNDQ0MyJ9fX0==", item);
-        summonArmorStand(0.0 ,-3.47258 ,0.0,0f,0f,0f,item,loc,dir);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNzI4YWQ4ZDMxNDg2YTdmOWFhZDIwMGVkYjM3M2VhODAzZDFmYzVmZDQzMjFiMmUyYTk3MTM0ODIzNDQ0MyJ9fX0=", item);
+        summonArmorStand(0.0 ,-3.69258 ,0.0,0f,0f,0f,item,loc,dir);
+
+        item = new ItemStack(Material.STICK);
+        summonArmorStand(0.577666 ,-3.69121 ,0.10055399999999999,0f,-30f,-25f,item,loc,dir);
 
         item = new ItemStack(Material.GOLDEN_SHOVEL);
         summonSmallArmorStand(0.10644500000000001 ,-2.58527 ,0.40625,-90f,-90f,0f,item,loc,dir);
@@ -542,8 +568,10 @@ public class Table {
         summonSmallArmorStand(0.701782 ,-2.67721 ,-0.23855700000000002,-80f,-165f,0f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI3ZDY0ZTE0M2UwNThhZmQ5MWFhYTY1MTFiZTVlNDc0OTg3OWZlNDU2NGI0YTVjNTVhMzI0MzkzMTU2NDVhZSJ9fX0===", item);
-        summonSmallArmorStand(-0.65625 ,-2.51418 ,-0.65625,0f,-60f,0f,item,loc,dir);
+        MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI3ZDY0ZTE0M2UwNThhZmQ5MWFhYTY1MTFiZTVlNDc0OTg3OWZlNDU2NGI0YTVjNTVhMzI0MzkzMTU2NDVhZSJ9fX0=", item);
+        summonSmallArmorStand(-0.65625 ,-2.61418 ,-0.65625,0f,-60f,0f,item,loc,dir);
+
+        summonSmallArmorStand(0.63625 ,-2.31418 ,-0.65625,90f,-60f,0f,item,loc,dir);
         this.dir = dir;
     }
 
@@ -597,21 +625,25 @@ public class Table {
         item = new ItemStack(Material.PLAYER_HEAD);
         MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWQzMGM1YjkzNTgxNzlkMDk4Nzc0MGQ3NDc4YzBlZWI2YjljN2ZhMDdjZTQ4OGRkNjk4NTE4MWFmNjFmYjhhMiJ9fX0=", item);
         summonSmallArmorStand(0.6875 ,-2.5425 ,-0.59375, 0f,20f,0f,item,loc,dir);
+        Direction finalDir = dir;
         new BukkitRunnable() {
 
             @Override
             public void run() {
                 EffectManager em = MagicSpells.getEffectManager();
-                FlameEffect effect = new FlameEffect(em);
+                ParticleEffect effect = new ParticleEffect(em);
                 effect.particleCount = 1;
                 effect.yaw = 0f;
                 effect.speed = 0.00001f;
                 effect.particle = Particle.FLAME;
-                effect.particles = 1;
                 effect.particleCount = 1;
                 effect.iterations = 1;
+
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(loc.clone().add(0.6875 ,-1.8425 ,-0.59375)));
+                effect.particleOffsetX=0;
+                effect.particleOffsetY=0;
+                effect.particleOffsetZ=0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(0.6875 ,1.1 ,-0.59375), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 0L, 10L);
@@ -622,16 +654,18 @@ public class Table {
             @Override
             public void run() {
                 EffectManager em = MagicSpells.getEffectManager();
-                FlameEffect effect = new FlameEffect(em);
+                ParticleEffect effect = new ParticleEffect(em);
                 effect.particleCount = 1;
                 effect.yaw = 0f;
                 effect.speed = 0.00001f;
                 effect.particle = Particle.FLAME;
-                effect.particles = 1;
                 effect.particleCount = 1;
                 effect.iterations = 1;
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(loc.clone().add(-0.6875 ,-1.8925 ,-0.59375)));
+                effect.particleOffsetX=0;
+                effect.particleOffsetY=0;
+                effect.particleOffsetZ=0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(-0.6875 ,1.1 ,-0.59375), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 1L, 10L);
@@ -663,7 +697,6 @@ public class Table {
         this.dir = dir;
     }
     public void alchemyMashing(Location loc, Direction dir) {
-
         Interaction in = loc.getWorld().spawn(loc, Interaction.class);
         in.setInteractionWidth(2);
         in.setInteractionHeight(2);
@@ -689,14 +722,15 @@ public class Table {
         summonArmorStand(-0.3125 ,-3.50383 ,-0.3125,0f,0f,0f,new ItemStack(Material.ORANGE_CARPET),loc,dir);
 
         item = new ItemStack(Material.NETHER_BRICK_SLAB);
-        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,45f,0f,-90f,item,loc,dir);
+        summonArmorStand(-0.65625 ,-3.50383 ,-0.65625,0f,-45f,0f,item,loc,dir);
         summonArmorStand(0.39552699999999996 ,-3.31633 ,-0.916973,-90f,45f,180f,item,loc,dir);
         summonArmorStand(0.65625 ,-3.31633 ,-0.65625,0f,-45f,180f,item,loc,dir);
         summonArmorStand(-0.39552699999999996 ,-3.31633 ,-0.916973,-90f,-45f,180f,item,loc,dir);
 
         item = new ItemStack(Material.PLAYER_HEAD);
         MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWQzMGM1YjkzNTgxNzlkMDk4Nzc0MGQ3NDc4YzBlZWI2YjljN2ZhMDdjZTQ4OGRkNjk4NTE4MWFmNjFmYjhhMiJ9fX0=", item);
-        summonSmallArmorStand(0.6875 ,-2.4925 ,-0.59375, 0f,20f,0f,item,loc,dir);
+        summonSmallArmorStand(0.6875 ,-2.5425 ,-0.59375, 0f,20f,0f,item,loc,dir);
+        Direction finalDir = dir;
         new BukkitRunnable() {
 
             @Override
@@ -704,16 +738,22 @@ public class Table {
                 EffectManager em = MagicSpells.getEffectManager();
                 ParticleEffect effect = new ParticleEffect(em);
                 effect.particleCount = 1;
+                effect.yaw = 0f;
                 effect.speed = 0.00001f;
                 effect.particle = Particle.FLAME;
+                effect.particleCount = 1;
                 effect.iterations = 1;
+
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(new Location(loc.getWorld(), 0.6875 ,-2.0925 ,-0.59375)));
+                effect.particleOffsetX=0;
+                effect.particleOffsetY=0;
+                effect.particleOffsetZ=0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(0.6875 ,1.1 ,-0.59375), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 0L, 10L);
 
-        summonSmallArmorStand(-0.6875 ,-2.4925 ,-0.59375, 0f,-70f,0f,item,loc,dir);
+        summonSmallArmorStand(-0.6875 ,-2.5425 ,-0.59375, 0f,-70f,0f,item,loc,dir);
         new BukkitRunnable() {
 
             @Override
@@ -721,39 +761,44 @@ public class Table {
                 EffectManager em = MagicSpells.getEffectManager();
                 ParticleEffect effect = new ParticleEffect(em);
                 effect.particleCount = 1;
+                effect.yaw = 0f;
                 effect.speed = 0.00001f;
                 effect.particle = Particle.FLAME;
+                effect.particleCount = 1;
                 effect.iterations = 1;
                 effect.period = 1;
-                effect.setDynamicOrigin(new DynamicLocation(new Location(loc.getWorld(), -0.6875 ,-2.0925 ,-0.59375)));
+                effect.particleOffsetX=0;
+                effect.particleOffsetY=0;
+                effect.particleOffsetZ=0;
+                effect.setDynamicOrigin(new DynamicLocation(getLocationForDir(loc.clone(), new Vector(-0.6875 ,1.1 ,-0.59375), finalDir)));
                 em.start(effect);
             }
         }.runTaskTimer(plugin, 1L, 10L);
 
         MMOItem.getHeadFrom64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWEwYzA0OWVhNGU5NDRmOWE5MDJmYzM1ZWM3YWFkMjg4NDAzMmQ4YmJlZTlkYTM1NzAyOGQ0NjEwN2JjZGRhZiJ9fX0=",item);
-        summonSmallArmorStand(-0.3125 ,-3.02375 ,-0.09375, 0f,-95f,0f,item,loc,dir);
-        summonSmallArmorStand(0.3125 ,-3.02375 ,0.21875, 0f,-125f,0f,item,loc,dir);
-        summonSmallArmorStand(0.1875 ,-3.02375 ,-0.34375, 0f,-75f,0f,item,loc,dir);
+        summonSmallArmorStand(-0.3125 ,-3.12375 ,-0.09375, 0f,-95f,0f,item,loc,dir);
+        summonSmallArmorStand(0.3125 ,-3.12375 ,0.21875, 0f,-125f,0f,item,loc,dir);
+        summonSmallArmorStand(0.1875 ,-3.12375 ,-0.34375, 0f,-75f,0f,item,loc,dir);
 
         item = new ItemStack(Material.NETHER_WART);
-        summonSmallArmorStand(-0.18366700000000002 ,-2.52096 ,0.09707100000000002, -80f,35f,0f,item,loc,dir);
-        summonSmallArmorStand(0.6289830000000001 ,-2.53451 ,0.031725999999999976, -75f,-50f,0f,item,loc,dir);
-        summonSmallArmorStand(0.599349 ,-2.5814 ,-0.755599, -70f,-135f,0f,item,loc,dir);
+        summonSmallArmorStand(-0.18366700000000002 ,-2.62096 ,0.09707100000000002, -80f,35f,0f,item,loc,dir);
+        summonSmallArmorStand(0.6289830000000001 ,-2.63451 ,0.031725999999999976, -75f,-50f,0f,item,loc,dir);
+        summonSmallArmorStand(0.599349 ,-2.6814 ,-0.755599, -70f,-135f,0f,item,loc,dir);
 
         item = new ItemStack(Material.BOWL);
         summonSmallArmorStand(0.797886 ,-2.80342 ,1.153594, -70f,-15f,0f,item,loc,dir);
         summonSmallArmorStand(1.286424 ,-2.80342 ,0.89862, -70f,-60f,0f,item,loc,dir);
 
         item = new ItemStack(Material.BLAZE_POWDER);
-        summonSmallArmorStand(-0.14661999999999997 ,-2.38507 ,0.434531, -95f,60f,0f,item,loc,dir);
-        summonSmallArmorStand(0.799056 ,-2.38507 ,0.070457, -95f,-100f,0f,item,loc,dir);
-        summonSmallArmorStand(0.334883 ,-2.38221 ,0.710932, -95f,-5f,-5f,item,loc,dir);
+        summonSmallArmorStand(-0.14661999999999997 ,-2.48507 ,0.434531, -95f,60f,0f,item,loc,dir);
+        summonSmallArmorStand(0.799056 ,-2.48507 ,0.070457, -95f,-100f,0f,item,loc,dir);
+        summonSmallArmorStand(0.334883 ,-2.48221 ,0.710932, -95f,-5f,-5f,item,loc,dir);
 
         item = new ItemStack(Material.SPIDER_EYE);
-        summonSmallArmorStand(0.29515800000000003 ,-2.61592 ,-0.014804999999999999, -70f,-85f,0f,item,loc,dir);
-        summonSmallArmorStand(-0.40625 ,-2.61592 ,-0.703491, -70f,-180f,0f,item,loc,dir);
-        summonSmallArmorStand(-0.30822 ,-2.12192 ,-0.101351, 35f,-15f,180f,item,loc,dir);
-        summonSmallArmorStand(0.245969 ,-2.61592 ,-0.418774, -70f,-115f,0f,item,loc,dir);
+        summonSmallArmorStand(0.29515800000000003 ,-2.71592 ,-0.014804999999999999, -70f,-85f,0f,item,loc,dir);
+        summonSmallArmorStand(-0.40625 ,-2.71592 ,-0.703491, -70f,-180f,0f,item,loc,dir);
+        summonSmallArmorStand(-0.30822 ,-2.22192 ,-0.101351, 35f,-15f,180f,item,loc,dir);
+        summonSmallArmorStand(0.245969 ,-2.71592 ,-0.418774, -70f,-115f,0f,item,loc,dir);
         this.dir = dir;
     }
 
@@ -1286,6 +1331,29 @@ public class Table {
         as.setHeadPose(new EulerAngle(xAngle, yAngle, zAngle));
         as.setHelmet(item);
         this.displayStands.add(as);
+    }
+
+    private Location getLocationForDir(Location loc, Vector offset, Direction dir) {
+        double newX = offset.getX();
+        double newZ = offset.getZ();
+        if (dir == Direction.S) {
+            loc.setYaw(0);
+        } else if (dir == Direction.N) {
+            newX = -offset.getX();
+            newZ = -offset.getZ();
+            loc.setYaw(180);
+        } else if (dir == Direction.W) {
+            newX = -offset.getZ();
+            newZ = offset.getX();
+            loc.setYaw(90);
+        } else if (dir == Direction.E) {
+            //E
+            newX = offset.getZ();
+            newZ = -offset.getX();
+            loc.setYaw(-90);
+        }
+        Vector newOffset = new Vector(newX, offset.getY(), newZ);
+        return loc.clone().add(newOffset);
     }
 
     public String getName() {
