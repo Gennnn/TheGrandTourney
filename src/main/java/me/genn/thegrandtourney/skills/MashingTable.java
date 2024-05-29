@@ -12,6 +12,8 @@ public class MashingTable extends Table {
             this.tableTest(loc);
         } else if (type == XpType.BLACKSMITHING) {
             this.blacksmithMashing(loc);
+        } else if (type == XpType.ALCHEMY) {
+            this.alchemyMashing(loc);
         }
         plugin.tableHandler.allMashingTables.add(this);
     }
@@ -21,6 +23,8 @@ public class MashingTable extends Table {
             this.tableTest(loc,dir);
         } else if (type == XpType.BLACKSMITHING) {
             this.blacksmithMashing(loc,dir);
+        }else if (type == XpType.ALCHEMY) {
+            this.alchemyMashing(loc,dir);
         }
         plugin.tableHandler.allMashingTables.add(this);
     }

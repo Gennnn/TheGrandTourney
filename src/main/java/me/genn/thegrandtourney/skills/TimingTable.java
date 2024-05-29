@@ -13,6 +13,8 @@ public class TimingTable extends Table {
             this.tableTest2(loc);
         } else if (type == XpType.BLACKSMITHING) {
             this.blacksmithTiming(loc);
+        } else if (type == XpType.ALCHEMY) {
+            this.alchemyTiming(loc);
         }
 
         plugin.tableHandler.allTimingTables.add(this);
@@ -23,6 +25,8 @@ public class TimingTable extends Table {
             this.tableTest2(loc, dir);
         } else if (type == XpType.BLACKSMITHING) {
             this.blacksmithTiming(loc, dir);
+        } else if (type == XpType.ALCHEMY) {
+            this.alchemyTiming(loc,dir);
         }
         plugin.tableHandler.allTimingTables.add(this);
     }

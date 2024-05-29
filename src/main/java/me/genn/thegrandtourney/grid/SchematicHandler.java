@@ -62,12 +62,12 @@ public class SchematicHandler implements IHandler {
 
     @Override
     public void register(YamlConfiguration config) throws IOException {
+        String[] contents = schematicFolder.list();
+        allSchematicsFiles.addAll(Arrays.asList(contents));
         this.registerLinkedSchematics(config.getConfigurationSection("schematics.linked-schematics"));
         this.registerSchematics(config.getConfigurationSection("schematics.main-schematics"));
         this.registerRiverSchematics(config.getConfigurationSection("schematics.river-schematics"));
         this.registerRoadSchematics(config.getConfigurationSection("schematics.road-schematics"));
-        String[] contents = schematicFolder.list();
-        allSchematicsFiles.addAll(Arrays.asList(contents));
     }
     public void registerLinkedSchematics(ConfigurationSection config) {
         Iterator var4 = config.getKeys(false).iterator();

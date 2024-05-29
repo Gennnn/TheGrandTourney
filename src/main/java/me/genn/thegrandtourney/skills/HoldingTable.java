@@ -12,6 +12,8 @@ public class HoldingTable extends Table {
                         this.tableTest3(loc);
                 } else if (type == XpType.BLACKSMITHING) {
                         this.blacksmithHolding(loc);
+                } else if (type == XpType.ALCHEMY) {
+                        this.alchemyHolding(loc);
                 }
 
                 plugin.tableHandler.allHoldingTables.add(this);
@@ -22,6 +24,8 @@ public class HoldingTable extends Table {
                         this.tableTest3(loc, dir);
                 } else if (type == XpType.BLACKSMITHING) {
                         this.blacksmithHolding(loc, dir);
+                } else if (type == XpType.ALCHEMY) {
+                        this.alchemyHolding(loc, dir);
                 }
                 plugin.tableHandler.allHoldingTables.add(this);
         }
